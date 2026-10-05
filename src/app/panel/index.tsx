@@ -14,13 +14,15 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { eventService } from '@/services/eventService';
-import { EventModel, PhotoModel } from '@/types';
+import { authService } from '@/services/authService';
+import { EventModel, PhotoModel, UserModel } from '@/types';
 import { StorageMeter } from '@/components/StorageMeter';
 
 export default function HostPanelScreen() {
   const router = useRouter();
   const [event, setEvent] = useState<EventModel | null>(null);
   const [photos, setPhotos] = useState<PhotoModel[]>([]);
+  const [currentUser, setCurrentUser] = useState<UserModel | null>(authService.getState().user);
   const [isPrivate, setIsPrivate] = useState(false);
   const [pinCode, setPinCode] = useState('1923');
   const [allowDownloads, setAllowDownloads] = useState(true);
@@ -41,6 +43,10 @@ export default function HostPanelScreen() {
 
   useEffect(() => {
     loadData();
+    const unsub = authService.subscribe((state) => {
+      setCurrentUser(state.user);
+    });
+    return () => unsub();
   }, []);
 
   const handleDownloadAllZip = () => {
@@ -94,6 +100,49 @@ export default function HostPanelScreen() {
             <Text style={styles.viewEventText}>Sayfayı Gör</Text>
           </TouchableOpacity>
         </View>
+
+        {/* User Account Bar */}
+        {currentUser ? (
+          <View style={styles.userBar}>
+            <View style={styles.userInfoRow}>
+              <View style={styles.userAvatar}>
+                <Text style={styles.userAvatarText}>
+                  {currentUser.displayName?.charAt(0).toUpperCase() || 'E'}
+                </Text>
+              </View>
+              <View>
+                <Text style={styles.userWelcome}>Hoş geldiniz,</Text>
+                <Text style={styles.userName}>{currentUser.displayName || currentUser.email}</Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={styles.logoutBtn}
+              onPress={() => {
+                authService.signOut();
+                Alert.alert('Çıkış Yapıldı', 'Hesabınızdan güvenle çıkış yaptınız.');
+              }}
+            >
+              <Ionicons name="log-out-outline" size={16} color="#EF4444" />
+              <Text style={styles.logoutText}>Çıkış</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.guestHostBanner}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.guestHostTitle}>Ev Sahibi Hesabı</Text>
+              <Text style={styles.guestHostSub}>
+                Etkinliklerinizi güvenle saklamak için giriş yapın veya yeni hesap açın.
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.loginCtaBtn}
+              onPress={() => router.push('/giris' as any)}
+            >
+              <Ionicons name="log-in-outline" size={16} color="#FFF" />
+              <Text style={styles.loginCtaText}>Giriş Yap</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Live Storage Meter */}
         <StorageMeter storage={event.storage} />
@@ -514,5 +563,98 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#6B7280',
     lineHeight: 15,
+  },
+  userBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+  },
+  userInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  userAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#C5A059',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  userAvatarText: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  userWelcome: {
+    fontSize: 11,
+    color: '#6B7280',
+  },
+  userName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1A1817',
+  },
+  logoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FEF2F2',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+  },
+  logoutText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#EF4444',
+  },
+  guestHostBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFF',
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+    gap: 12,
+  },
+  guestHostTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1A1817',
+    marginBottom: 2,
+  },
+  guestHostSub: {
+    fontSize: 11,
+    color: '#6B7280',
+    lineHeight: 14,
+  },
+  loginCtaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#C5A059',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+  },
+  loginCtaText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

@@ -112,3 +112,20 @@ export interface PlanTierConfig {
   features: string[];
   isPopular?: boolean;
 }
+
+export interface UserModel {
+  uid: string;
+  email: string;
+  displayName: string;
+  photoURL?: string;
+  isHost: boolean;
+  events: string[]; // List of event slugs owned by this user
+  createdAt: string;
+}
+
+export interface AuthState {
+  user: UserModel | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+}
+

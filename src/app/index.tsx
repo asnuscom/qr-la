@@ -35,16 +35,16 @@ export default function LandingScreen() {
           <View style={styles.navActions}>
             <TouchableOpacity
               style={styles.navLinkBtn}
-              onPress={() => router.push('/panel' as any)}
+              onPress={() => router.push('/giris' as any)}
             >
-              <Text style={styles.navLinkText}>Ev Sahibi Paneli</Text>
+              <Text style={styles.navLinkText}>Giriş Yap</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.demoHeaderBtn}
-              onPress={() => router.push('/yavuz-ve-merve' as any)}
+              onPress={() => router.push('/panel' as any)}
             >
-              <Text style={styles.demoHeaderBtnText}>Canlı Demo</Text>
+              <Text style={styles.demoHeaderBtnText}>Ev Sahibi Paneli</Text>
             </TouchableOpacity>
           </View>
         </View>
