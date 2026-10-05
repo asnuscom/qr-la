@@ -9,6 +9,7 @@ import {
   TextInput,
   Image,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -29,6 +30,9 @@ export default function HostPanelScreen() {
   const [allowDownloads, setAllowDownloads] = useState(true);
   const [isLiveFeedActive, setIsLiveFeedActive] = useState(true);
   const [originalQuality, setOriginalQuality] = useState(false);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [settingsSaveSuccess, setSettingsSaveSuccess] = useState(false);
+  const [hasUnsavedSettings, setHasUnsavedSettings] = useState(false);
 
   const resolveActiveSlug = (user: UserModel | null): string => {
     if (!user) return 'demo-panel';
@@ -50,9 +54,44 @@ export default function HostPanelScreen() {
       setAllowDownloads(ev.settings.allowGuestDownloads);
       setIsLiveFeedActive(ev.settings.isLiveFeedActive);
       setOriginalQuality(Boolean((ev.settings as any).originalQuality || !ev.settings.enableCompression));
+      setHasUnsavedSettings(false);
     }
     const ph = await eventService.getPhotos(activeSlug);
     setPhotos(ph);
+  };
+
+  const handleSaveSettings = async () => {
+    if (!event) return;
+    if (isPrivate && (!pinCode || pinCode.trim().length !== 4)) {
+      Alert.alert('Eksik Bilgi', 'PIN koruması aktifken lütfen 4 haneli geçerli bir PIN kodu giriniz.');
+      return;
+    }
+
+    setIsSavingSettings(true);
+    try {
+      const updatedSettings = {
+        ...event.settings,
+        isPrivate,
+        pinCode: pinCode.trim(),
+        allowGuestDownloads: allowDownloads,
+        isLiveFeedActive,
+        enableCompression: !originalQuality,
+        originalQuality,
+      };
+
+      await eventService.saveEvent(event.slug, { settings: updatedSettings });
+      setEvent({ ...event, settings: updatedSettings });
+      setHasUnsavedSettings(false);
+      setSettingsSaveSuccess(true);
+      setTimeout(() => setSettingsSaveSuccess(false), 3500);
+
+      Alert.alert('Başarılı! 🎉', 'Gizlilik ve etkinlik ayarlarınız başarıyla güncellendi.');
+    } catch (e) {
+      console.error('Settings save error:', e);
+      Alert.alert('Hata', 'Ayarlar kaydedilirken bir hata oluştu.');
+    } finally {
+      setIsSavingSettings(false);
+    }
   };
 
   useEffect(() => {
@@ -237,7 +276,37 @@ export default function HostPanelScreen() {
 
         {/* Security & Event Settings */}
         <View style={styles.settingsSection}>
-          <Text style={styles.sectionHeaderTitle}>Gizlilik & Etkinlik Ayarları</Text>
+          <View style={styles.settingsHeaderRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.sectionHeaderTitle}>Gizlilik & Etkinlik Ayarları</Text>
+              <Text style={styles.sectionHeaderSub}>Misafir erişimi ve yükleme kuralları</Text>
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.saveSettingsHeaderBtn,
+                hasUnsavedSettings && styles.saveSettingsHeaderBtnActive,
+                isSavingSettings && { opacity: 0.6 },
+              ]}
+              onPress={handleSaveSettings}
+              disabled={isSavingSettings}
+              activeOpacity={0.8}
+            >
+              {isSavingSettings ? (
+                <ActivityIndicator color="#FFF" size="small" />
+              ) : (
+                <>
+                  <Ionicons
+                    name={settingsSaveSuccess ? 'checkmark-circle' : 'save-outline'}
+                    size={15}
+                    color="#FFF"
+                  />
+                  <Text style={styles.saveSettingsHeaderBtnText}>
+                    {settingsSaveSuccess ? 'Kaydedildi' : 'Kaydet'}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
 
           {/* Private Event Switch */}
           <View style={styles.settingRow}>
@@ -249,11 +318,9 @@ export default function HostPanelScreen() {
             </View>
             <Switch
               value={isPrivate}
-              onValueChange={async (val) => {
+              onValueChange={(val) => {
                 setIsPrivate(val);
-                if (event) {
-                  await eventService.saveEvent(event.slug, { settings: { ...event.settings, isPrivate: val } });
-                }
+                setHasUnsavedSettings(true);
               }}
               trackColor={{ false: '#D1D5DB', true: '#C5A059' }}
             />
@@ -265,11 +332,9 @@ export default function HostPanelScreen() {
               <TextInput
                 style={styles.pinInputField}
                 value={pinCode}
-                onChangeText={async (newPin) => {
+                onChangeText={(newPin) => {
                   setPinCode(newPin);
-                  if (event && newPin.length === 4) {
-                    await eventService.saveEvent(event.slug, { settings: { ...event.settings, pinCode: newPin } });
-                  }
+                  setHasUnsavedSettings(true);
                 }}
                 keyboardType="numeric"
                 maxLength={4}
@@ -287,11 +352,9 @@ export default function HostPanelScreen() {
             </View>
             <Switch
               value={allowDownloads}
-              onValueChange={async (val) => {
+              onValueChange={(val) => {
                 setAllowDownloads(val);
-                if (event) {
-                  await eventService.saveEvent(event.slug, { settings: { ...event.settings, allowGuestDownloads: val } });
-                }
+                setHasUnsavedSettings(true);
               }}
               trackColor={{ false: '#D1D5DB', true: '#C5A059' }}
             />
@@ -307,11 +370,9 @@ export default function HostPanelScreen() {
             </View>
             <Switch
               value={isLiveFeedActive}
-              onValueChange={async (val) => {
+              onValueChange={(val) => {
                 setIsLiveFeedActive(val);
-                if (event) {
-                  await eventService.saveEvent(event.slug, { settings: { ...event.settings, isLiveFeedActive: val } });
-                }
+                setHasUnsavedSettings(true);
               }}
               trackColor={{ false: '#D1D5DB', true: '#C5A059' }}
             />
@@ -334,17 +395,9 @@ export default function HostPanelScreen() {
             </View>
             <Switch
               value={originalQuality}
-              onValueChange={async (val) => {
+              onValueChange={(val) => {
                 setOriginalQuality(val);
-                if (event) {
-                  await eventService.saveEvent(event.slug, {
-                    settings: {
-                      ...event.settings,
-                      enableCompression: !val,
-                      originalQuality: val,
-                    },
-                  });
-                }
+                setHasUnsavedSettings(true);
               }}
               trackColor={{ false: '#D1D5DB', true: '#F59E0B' }}
             />
@@ -361,6 +414,37 @@ export default function HostPanelScreen() {
               </Text>
             </View>
           )}
+
+          {/* Bottom Prominent Save Button */}
+          <TouchableOpacity
+            style={[
+              styles.saveSettingsMainBtn,
+              hasUnsavedSettings && styles.saveSettingsMainBtnActive,
+              isSavingSettings && { opacity: 0.7 },
+            ]}
+            onPress={handleSaveSettings}
+            disabled={isSavingSettings}
+            activeOpacity={0.8}
+          >
+            {isSavingSettings ? (
+              <ActivityIndicator color="#FFF" size="small" />
+            ) : (
+              <>
+                <Ionicons
+                  name={settingsSaveSuccess ? 'checkmark-circle' : 'checkmark-done'}
+                  size={18}
+                  color="#FFF"
+                />
+                <Text style={styles.saveSettingsMainBtnText}>
+                  {settingsSaveSuccess
+                    ? 'Ayarlar Kaydedildi!'
+                    : hasUnsavedSettings
+                    ? 'Değişiklikleri Kaydet'
+                    : 'Ayarları Kaydet'}
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
         </View>
 
         {/* Moderation section */}
@@ -877,5 +961,61 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#92400E',
     lineHeight: 18,
+  },
+  settingsHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sectionHeaderSub: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  saveSettingsHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#C5A059',
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    shadowColor: '#C5A059',
+    shadowOpacity: 0.25,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  saveSettingsHeaderBtnActive: {
+    backgroundColor: '#10B981',
+    shadowColor: '#10B981',
+  },
+  saveSettingsHeaderBtnText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  saveSettingsMainBtn: {
+    backgroundColor: '#C5A059',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 14,
+    marginTop: 16,
+    shadowColor: '#C5A059',
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  saveSettingsMainBtnActive: {
+    backgroundColor: '#10B981',
+    shadowColor: '#10B981',
+  },
+  saveSettingsMainBtnText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
