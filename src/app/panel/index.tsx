@@ -29,7 +29,7 @@ export default function HostPanelScreen() {
   const [isLiveFeedActive, setIsLiveFeedActive] = useState(true);
 
   const loadData = async () => {
-    const ev = await eventService.getEvent('yavuz-ve-merve');
+    const ev = await eventService.getEvent('demo-panel');
     if (ev) {
       setEvent(ev);
       setIsPrivate(ev.settings.isPrivate);
@@ -37,7 +37,7 @@ export default function HostPanelScreen() {
       setAllowDownloads(ev.settings.allowGuestDownloads);
       setIsLiveFeedActive(ev.settings.isLiveFeedActive);
     }
-    const ph = await eventService.getPhotos('yavuz-ve-merve');
+    const ph = await eventService.getPhotos('demo-panel');
     setPhotos(ph);
   };
 
@@ -66,7 +66,7 @@ export default function HostPanelScreen() {
           text: 'Sil',
           style: 'destructive',
           onPress: async () => {
-            await eventService.deletePhoto('yavuz-ve-merve', photoId);
+            await eventService.deletePhoto('demo-panel', photoId);
             loadData();
           },
         },

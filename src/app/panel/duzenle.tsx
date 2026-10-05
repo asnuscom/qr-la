@@ -52,7 +52,7 @@ export default function EventFormScreen() {
   const router = useRouter();
   const { slug: paramSlug } = useLocalSearchParams<{ slug?: string }>();
 
-  const currentSlug = paramSlug || 'yavuz-ve-merve';
+  const currentSlug = paramSlug || 'demo-panel';
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);

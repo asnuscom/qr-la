@@ -22,7 +22,7 @@ export default function QRCardScreen() {
   useEffect(() => {
     const load = async () => {
       setIsLoading(true);
-      const ev = await eventService.getEvent('yavuz-ve-merve');
+      const ev = await eventService.getEvent('demo-panel');
       setEvent(ev);
       setIsLoading(false);
     };

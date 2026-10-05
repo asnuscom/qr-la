@@ -2,7 +2,7 @@ import { EventModel, AlbumModel, PhotoModel, GuestbookEntryModel, PlanTierConfig
 
 export const DEMO_EVENT: EventModel = {
   id: 'event-yavuz-merve-2026',
-  slug: 'yavuz-ve-merve',
+  slug: 'demo-panel',
   title: 'Yavuz & Merve Düğünü',
   subtitle: 'Bu mutlu anımıza ortak olduğunuz için teşekkür ederiz.',
   hosts: {
@@ -119,7 +119,7 @@ export const DEMO_ALBUMS: AlbumModel[] = [
 export const DEMO_PHOTOS: PhotoModel[] = [
   {
     id: 'ph-1',
-    eventSlug: 'yavuz-ve-merve',
+    eventSlug: 'demo-panel',
     albumId: 'alb-1',
     originalUrl: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1400&q=80',
     thumbnailUrl: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=600&q=80',
@@ -135,7 +135,7 @@ export const DEMO_PHOTOS: PhotoModel[] = [
   },
   {
     id: 'ph-2',
-    eventSlug: 'yavuz-ve-merve',
+    eventSlug: 'demo-panel',
     albumId: 'alb-1',
     originalUrl: 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?auto=format&fit=crop&w=1400&q=80',
     thumbnailUrl: 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?auto=format&fit=crop&w=600&q=80',
@@ -151,7 +151,7 @@ export const DEMO_PHOTOS: PhotoModel[] = [
   },
   {
     id: 'ph-3',
-    eventSlug: 'yavuz-ve-merve',
+    eventSlug: 'demo-panel',
     albumId: 'alb-2',
     originalUrl: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=1400&q=80',
     thumbnailUrl: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=600&q=80',
@@ -167,7 +167,7 @@ export const DEMO_PHOTOS: PhotoModel[] = [
   },
   {
     id: 'ph-4',
-    eventSlug: 'yavuz-ve-merve',
+    eventSlug: 'demo-panel',
     albumId: 'alb-3',
     originalUrl: 'https://images.unsplash.com/photo-1469371670807-013ccf25f16a?auto=format&fit=crop&w=1400&q=80',
     thumbnailUrl: 'https://images.unsplash.com/photo-1469371670807-013ccf25f16a?auto=format&fit=crop&w=600&q=80',
@@ -183,7 +183,7 @@ export const DEMO_PHOTOS: PhotoModel[] = [
   },
   {
     id: 'ph-5',
-    eventSlug: 'yavuz-ve-merve',
+    eventSlug: 'demo-panel',
     albumId: 'alb-2',
     originalUrl: 'https://images.unsplash.com/photo-1520854221256-17451cc331bf?auto=format&fit=crop&w=1400&q=80',
     thumbnailUrl: 'https://images.unsplash.com/photo-1520854221256-17451cc331bf?auto=format&fit=crop&w=600&q=80',
@@ -199,7 +199,7 @@ export const DEMO_PHOTOS: PhotoModel[] = [
   },
   {
     id: 'ph-6',
-    eventSlug: 'yavuz-ve-merve',
+    eventSlug: 'demo-panel',
     albumId: 'alb-1',
     originalUrl: 'https://images.unsplash.com/photo-1522673607200-164d1b6ce486?auto=format&fit=crop&w=1400&q=80',
     thumbnailUrl: 'https://images.unsplash.com/photo-1522673607200-164d1b6ce486?auto=format&fit=crop&w=600&q=80',
@@ -218,7 +218,7 @@ export const DEMO_PHOTOS: PhotoModel[] = [
 export const DEMO_GUESTBOOK: GuestbookEntryModel[] = [
   {
     id: 'gb-1',
-    eventSlug: 'yavuz-ve-merve',
+    eventSlug: 'demo-panel',
     authorName: 'Selin & Burak Özkan',
     tableNumber: 'Masa 4',
     relationship: 'Lise Dostları',
@@ -229,7 +229,7 @@ export const DEMO_GUESTBOOK: GuestbookEntryModel[] = [
   },
   {
     id: 'gb-2',
-    eventSlug: 'yavuz-ve-merve',
+    eventSlug: 'demo-panel',
     authorName: 'Kemal Amcan & Fatma Teyzen',
     tableNumber: 'Masa 1',
     relationship: 'Aile Büyükleri',
@@ -239,7 +239,7 @@ export const DEMO_GUESTBOOK: GuestbookEntryModel[] = [
   },
   {
     id: 'gb-3',
-    eventSlug: 'yavuz-ve-merve',
+    eventSlug: 'demo-panel',
     authorName: 'Yazılım & Şirket Ekibi',
     tableNumber: 'Masa 8',
     relationship: 'İş Arkadaşları',
@@ -249,7 +249,7 @@ export const DEMO_GUESTBOOK: GuestbookEntryModel[] = [
   },
   {
     id: 'gb-4',
-    eventSlug: 'yavuz-ve-merve',
+    eventSlug: 'demo-panel',
     authorName: 'Zeynep Kaya',
     tableNumber: 'Masa 6',
     relationship: 'Nedime',

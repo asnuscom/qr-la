@@ -42,7 +42,7 @@ export default function LandingScreen() {
 
             <TouchableOpacity
               style={styles.demoHeaderBtn}
-              onPress={() => router.push('/yavuz-ve-merve' as any)}
+              onPress={() => router.push('/demo-panel' as any)}
             >
               <Text style={styles.demoHeaderBtnText}>Demo</Text>
             </TouchableOpacity>
@@ -79,7 +79,7 @@ export default function LandingScreen() {
 
             <TouchableOpacity
               style={styles.secondaryCta}
-              onPress={() => router.push('/yavuz-ve-merve' as any)}
+              onPress={() => router.push('/demo-panel' as any)}
               activeOpacity={0.85}
             >
               <Ionicons name="play-circle" size={20} color="#1A1817" />
@@ -88,7 +88,7 @@ export default function LandingScreen() {
 
             <TouchableOpacity
               style={styles.secondaryCta}
-              onPress={() => router.push('/yavuz-ve-merve/canli' as any)}
+              onPress={() => router.push('/demo-panel/canli' as any)}
               activeOpacity={0.85}
             >
               <Ionicons name="tv-outline" size={20} color="#1A1817" />

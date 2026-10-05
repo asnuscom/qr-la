@@ -15,7 +15,7 @@ const DEMO_USER: UserModel = {
   email: 'yavuz@qr-la.com',
   displayName: 'Yavuz & Merve (Ev Sahibi)',
   isHost: true,
-  events: ['yavuz-ve-merve'],
+  events: ['demo-panel', 'yavuz-ve-merve'],
   createdAt: '2026-10-01T00:00:00.000Z',
 };
 
@@ -42,7 +42,7 @@ class AuthService {
             displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Ev Sahibi',
             photoURL: firebaseUser.photoURL || undefined,
             isHost: true,
-            events: ['yavuz-ve-merve'],
+            events: ['demo-panel', 'yavuz-ve-merve'],
             createdAt: new Date().toISOString(),
           };
 
@@ -107,7 +107,7 @@ class AuthService {
         email: user.email || email,
         displayName: user.displayName || email.split('@')[0],
         isHost: true,
-        events: ['yavuz-ve-merve'],
+        events: ['demo-panel', 'yavuz-ve-merve'],
         createdAt: new Date().toISOString(),
       };
       this.updateState({ user: userProfile, isAuthenticated: true });
@@ -119,7 +119,7 @@ class AuthService {
         email,
         displayName: email.split('@')[0],
         isHost: true,
-        events: ['yavuz-ve-merve'],
+        events: ['demo-panel', 'yavuz-ve-merve'],
         createdAt: new Date().toISOString(),
       };
       this.updateState({ user: userProfile, isAuthenticated: true });
