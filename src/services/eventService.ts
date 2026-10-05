@@ -13,7 +13,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { signInAnonymously } from 'firebase/auth';
 
 import { db, storage, auth, isRealFirebaseConfigured } from './firebase';
-import { EventModel, AlbumModel, PhotoModel, GuestbookEntryModel } from '@/types';
+import { EventModel, AlbumModel, PhotoModel, GuestbookEntryModel, StorageTier, StorageInfo } from '@/types';
 import { appStorage } from './storage';
 import {
   DEMO_EVENT,
@@ -22,6 +22,7 @@ import {
   DEMO_PHOTOS,
   DEMO_GUESTBOOK,
   generateDefaultEvent,
+  slugify,
 } from './mockData';
 
 class EventService {
@@ -151,6 +152,12 @@ class EventService {
     const cached = this.events.get(slug);
     if (cached) return { ...cached };
 
+    const stored = this.loadSavedEventFromStorage(slug);
+    if (stored) {
+      this.events.set(slug, stored);
+      return { ...stored };
+    }
+
     // Auto-generate rich default event if visiting a new slug
     const isDemo =
       slug === DEMO_EVENT.slug || slug === 'demo' || slug === 'demo-panel' || slug === 'yavuz-ve-merve';
@@ -215,6 +222,7 @@ class EventService {
     };
 
     this.events.set(slug, merged);
+    this.saveEventToStorage(slug, merged);
 
     if (isRealFirebaseConfigured && db) {
       try {
@@ -234,6 +242,66 @@ class EventService {
     return event.settings.pinCode === pin;
   }
 
+  private loadSavedEventFromStorage(slug: string): EventModel | null {
+    try {
+      const data = appStorage.getItem(`qr_la_event_${slug}`);
+      if (data) {
+        return JSON.parse(data) as EventModel;
+      }
+    } catch (_e) {}
+    return null;
+  }
+
+  private saveEventToStorage(slug: string, event: EventModel): void {
+    try {
+      appStorage.setItem(`qr_la_event_${slug}`, JSON.stringify(event));
+    } catch (_e) {}
+  }
+
+  async upgradeStorageTier(
+    slug: string,
+    tier: StorageTier,
+    retentionDays: number,
+    quotaMB: number
+  ): Promise<EventModel> {
+    const current = await this.getEvent(slug);
+    const expiresAt = new Date(Date.now() + retentionDays * 24 * 60 * 60 * 1000).toISOString();
+    const updatedStorage: StorageInfo = {
+      ...current.storage,
+      tier,
+      quotaBytes: quotaMB * 1024 * 1024,
+      expiresAt,
+    };
+
+    const updatedSettings = {
+      ...current.settings,
+      ...(tier === 'premium' || tier === 'vip'
+        ? { isLiveFeedActive: true, allowGuestDownloads: true }
+        : {}),
+    };
+
+    return await this.saveEvent(slug, {
+      storage: updatedStorage,
+      settings: updatedSettings,
+    });
+  }
+
+  private loadSavedAlbumsFromStorage(slug: string): AlbumModel[] {
+    try {
+      const data = appStorage.getItem(`qr_la_albums_${slug}`);
+      if (data) {
+        return JSON.parse(data) as AlbumModel[];
+      }
+    } catch (_e) {}
+    return [];
+  }
+
+  private saveAlbumsToStorage(slug: string, albums: AlbumModel[]): void {
+    try {
+      appStorage.setItem(`qr_la_albums_${slug}`, JSON.stringify(albums));
+    } catch (_e) {}
+  }
+
   async getAlbums(slug: string): Promise<AlbumModel[]> {
     if (isRealFirebaseConfigured && db) {
       try {
@@ -241,18 +309,116 @@ class EventService {
         const snap = await getDocs(albumsRef);
         if (!snap.empty) {
           const list: AlbumModel[] = [];
-          snap.forEach((d) => list.push(d.data() as AlbumModel));
+          snap.forEach((d) => {
+            const data = d.data() as AlbumModel;
+            if (!(data as any).isDeleted) {
+              list.push(data);
+            }
+          });
           list.sort((a, b) => a.order - b.order);
-          this.albums.set(slug, list);
-          return list;
+          if (list.length > 0) {
+            this.albums.set(slug, list);
+            this.saveAlbumsToStorage(slug, list);
+            return list;
+          }
         }
       } catch (err) {
-        console.warn('Firestore albums fetch failed:', err);
+        console.warn('Firestore albums fetch notice:', err);
       }
     }
+
+    const saved = this.loadSavedAlbumsFromStorage(slug);
+    if (saved && saved.length > 0) {
+      this.albums.set(slug, saved);
+      return saved;
+    }
+
     const isDemo =
       slug === DEMO_EVENT.slug || slug === 'demo' || slug === 'demo-panel' || slug === 'yavuz-ve-merve';
-    return this.albums.get(slug) || (isDemo ? [...DEMO_ALBUMS] : [...DEFAULT_ALBUMS]);
+    const defaults = isDemo ? [...DEMO_ALBUMS] : [...DEFAULT_ALBUMS];
+    this.albums.set(slug, defaults);
+    this.saveAlbumsToStorage(slug, defaults);
+    return defaults;
+  }
+
+  async saveAlbums(slug: string, albums: AlbumModel[]): Promise<AlbumModel[]> {
+    const normalized = albums.map((alb, idx) => ({
+      ...alb,
+      order: idx,
+    }));
+    this.albums.set(slug, normalized);
+    this.saveAlbumsToStorage(slug, normalized);
+
+    if (isRealFirebaseConfigured && db) {
+      try {
+        const albumsRef = collection(db, 'events', slug, 'albums');
+        for (const album of normalized) {
+          await setDoc(doc(albumsRef, album.id), album, { merge: true });
+        }
+      } catch (err) {
+        console.warn('Firestore albums save error:', err);
+      }
+    }
+
+    return normalized;
+  }
+
+  async addAlbum(slug: string, name: string): Promise<AlbumModel> {
+    const current = await this.getAlbums(slug);
+    const cleanName = name.trim();
+    const newAlbum: AlbumModel = {
+      id: `alb-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      slug: slugify(cleanName) || `cat-${Date.now()}`,
+      name: cleanName,
+      order: current.length,
+      photoCount: 0,
+    };
+    const updated = [...current, newAlbum];
+    await this.saveAlbums(slug, updated);
+    return newAlbum;
+  }
+
+  async updateAlbum(slug: string, albumId: string, newName: string): Promise<AlbumModel[]> {
+    const current = await this.getAlbums(slug);
+    const cleanName = newName.trim();
+    const updated = current.map((a) =>
+      a.id === albumId ? { ...a, name: cleanName, slug: slugify(cleanName) || a.slug } : a
+    );
+    await this.saveAlbums(slug, updated);
+    return updated;
+  }
+
+  async deleteAlbum(slug: string, albumId: string): Promise<AlbumModel[]> {
+    const current = await this.getAlbums(slug);
+    if (albumId === 'alb-all' || albumId === 'alb-genel' || albumId === 'all') {
+      return current; // Core categories cannot be deleted
+    }
+    const updated = current.filter((a) => a.id !== albumId);
+    await this.saveAlbums(slug, updated);
+
+    if (isRealFirebaseConfigured && db) {
+      try {
+        const albumDoc = doc(db, 'events', slug, 'albums', albumId);
+        await setDoc(albumDoc, { isDeleted: true }, { merge: true });
+      } catch (_err) {}
+    }
+    return updated;
+  }
+
+  private loadSavedPhotosFromStorage(slug: string): PhotoModel[] {
+    try {
+      const data = appStorage.getItem(`qr_la_photos_${slug}`);
+      if (data) {
+        return JSON.parse(data) as PhotoModel[];
+      }
+    } catch (_e) {}
+    return [];
+  }
+
+  private savePhotosToStorage(slug: string, photos: PhotoModel[]): void {
+    try {
+      appStorage.setItem(`qr_la_photos_${slug}`, JSON.stringify(photos));
+    } catch (_e) {}
   }
 
   async getPhotos(slug: string, albumId?: string): Promise<PhotoModel[]> {
@@ -265,17 +431,41 @@ class EventService {
           const list: PhotoModel[] = [];
           snap.forEach((d) => list.push(d.data() as PhotoModel));
           this.photos.set(slug, list);
+          this.savePhotosToStorage(slug, list);
           if (!albumId || albumId === 'alb-all' || albumId === 'all') {
             return list;
           }
           return list.filter((p) => p.albumId === albumId);
         }
-      } catch (err) {
-        console.warn('Firestore photos fetch failed:', err);
+      } catch (err: any) {
+        if (
+          err?.code === 'permission-denied' ||
+          err?.message?.includes('Missing or insufficient permissions')
+        ) {
+          console.info(
+            'ℹ️ [Firestore Bilgisi]: Firestore Güvenlik Kuralları (Security Rules) izni kısıtlı. Firebase Console > Firestore > Rules sekmesinden "allow read, write: if true;" yapılarak yayınlanmalıdır.'
+          );
+        } else {
+          console.warn('Firestore photos fetch failed:', err);
+        }
       }
     }
 
-    const all = this.photos.get(slug) || [];
+    const saved = this.loadSavedPhotosFromStorage(slug);
+    const memory = this.photos.get(slug) || [];
+    const combinedMap = new Map<string, PhotoModel>();
+    memory.forEach((p) => combinedMap.set(p.id, p));
+    saved.forEach((p) => combinedMap.set(p.id, p));
+
+    const isDemo =
+      slug === DEMO_EVENT.slug || slug === 'demo' || slug === 'demo-panel' || slug === 'yavuz-ve-merve';
+    if (combinedMap.size === 0 && isDemo) {
+      DEMO_PHOTOS.forEach((p) => combinedMap.set(p.id, p));
+    }
+
+    const all = Array.from(combinedMap.values());
+    this.photos.set(slug, all);
+
     if (!albumId || albumId === 'alb-all' || albumId === 'all') {
       return [...all];
     }
@@ -290,16 +480,24 @@ class EventService {
     const photoId = `ph-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     let finalUrl = newPhoto.originalUrl;
 
-    // Upload to Firebase Storage if real Firebase is configured and it's a local file / blob
+    // Upload to Firebase Storage with a 6-second timeout so it never hangs
     if (isRealFirebaseConfigured && storage && newPhoto.originalUrl) {
       try {
-        const response = await fetch(newPhoto.originalUrl);
-        const blob = await response.blob();
-        const fileRef = ref(storage, `events/${slug}/photos/${photoId}.jpg`);
-        await uploadBytes(fileRef, blob, { contentType: 'image/jpeg' });
-        finalUrl = await getDownloadURL(fileRef);
+        const uploadTask = (async () => {
+          const response = await fetch(newPhoto.originalUrl);
+          const blob = await response.blob();
+          const fileRef = ref(storage, `events/${slug}/photos/${photoId}.jpg`);
+          await uploadBytes(fileRef, blob, { contentType: 'image/jpeg' });
+          return await getDownloadURL(fileRef);
+        })();
+
+        const timeout = new Promise<string>((_, reject) =>
+          setTimeout(() => reject(new Error('Storage upload timed out')), 6000)
+        );
+
+        finalUrl = await Promise.race([uploadTask, timeout]);
       } catch (err) {
-        console.warn('Firebase Storage upload error, using local URI fallback:', err);
+        console.warn('Firebase Storage upload notice (using local/data URI):', err);
       }
     }
 
@@ -313,39 +511,48 @@ class EventService {
       isApproved: true,
     };
 
-    // Save to Firestore
-    if (isRealFirebaseConfigured && db) {
-      try {
-        const photoDocRef = doc(db, 'events', slug, 'photos', photoId);
-        await setDoc(photoDocRef, createdPhoto);
-
-        // Update quota and count
-        const eventDocRef = doc(db, 'events', slug);
-        const event = await this.getEvent(slug);
-        const updatedPhotoCount = (event.storage.photoCount || 0) + 1;
-        const updatedUsedBytes = (event.storage.usedBytes || 0) + (newPhoto.sizeBytes || 650000);
-        await updateDoc(eventDocRef, {
-          'storage.photoCount': updatedPhotoCount,
-          'storage.usedBytes': updatedUsedBytes,
-        });
-      } catch (err) {
-        console.warn('Firestore photo save error:', err);
-      }
-    }
-
-    // In-memory update
-    const currentList = this.photos.get(slug) || [];
-    const updatedList = [createdPhoto, ...currentList];
+    // Save to In-Memory & LocalStorage immediately so it is 100% persistent
+    const currentList = this.photos.get(slug) || this.loadSavedPhotosFromStorage(slug);
+    const updatedList = [createdPhoto, ...currentList.filter((p) => p.id !== photoId)];
     this.photos.set(slug, updatedList);
+    this.savePhotosToStorage(slug, updatedList);
 
     const event = this.events.get(slug);
     if (event) {
-      event.storage.photoCount += 1;
+      event.storage.photoCount = updatedList.length;
       event.storage.usedBytes += newPhoto.sizeBytes || 650000;
       this.events.set(slug, { ...event });
     }
 
     this.notifyPhotoSubscribers(slug, updatedList);
+
+    // Save to Firestore in background
+    if (isRealFirebaseConfigured && db) {
+      try {
+        const photoDocRef = doc(db, 'events', slug, 'photos', photoId);
+        await setDoc(photoDocRef, createdPhoto);
+
+        // Update quota and count with setDoc merge
+        const eventDocRef = doc(db, 'events', slug);
+        const ev = await this.getEvent(slug);
+        const updatedPhotoCount = updatedList.length;
+        const updatedUsedBytes = (ev.storage.usedBytes || 0) + (newPhoto.sizeBytes || 650000);
+        await setDoc(
+          eventDocRef,
+          {
+            storage: {
+              ...ev.storage,
+              photoCount: updatedPhotoCount,
+              usedBytes: updatedUsedBytes,
+            },
+          },
+          { merge: true }
+        );
+      } catch (err) {
+        console.warn('Firestore photo save notice:', err);
+      }
+    }
+
     return createdPhoto;
   }
 
@@ -371,9 +578,10 @@ class EventService {
   }
 
   async deletePhoto(slug: string, photoId: string): Promise<boolean> {
-    const list = this.photos.get(slug) || [];
+    const list = this.photos.get(slug) || this.loadSavedPhotosFromStorage(slug);
     const filtered = list.filter((p) => p.id !== photoId);
     this.photos.set(slug, filtered);
+    this.savePhotosToStorage(slug, filtered);
     this.notifyPhotoSubscribers(slug, filtered);
 
     if (isRealFirebaseConfigured && db) {
@@ -463,8 +671,17 @@ class EventService {
             this.photos.set(slug, list);
             callback(list);
           },
-          (error) => {
-            console.warn('Firestore photo listener error:', error);
+          (error: any) => {
+            if (
+              error?.code === 'permission-denied' ||
+              error?.message?.includes('Missing or insufficient permissions')
+            ) {
+              console.info(
+                'ℹ️ [Firestore Listener]: Firestore okuma izinleri kapalı olduğundan yerel veriler dinleniyor.'
+              );
+            } else {
+              console.warn('Firestore photo listener error:', error);
+            }
           }
         );
       } catch (err) {

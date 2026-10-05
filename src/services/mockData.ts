@@ -1,4 +1,4 @@
-import { EventModel, AlbumModel, PhotoModel, GuestbookEntryModel, PlanTierConfig } from '@/types';
+import { EventModel, AlbumModel, PhotoModel, GuestbookEntryModel, PlanTierConfig, CouponDefinition } from '@/types';
 
 export const DEMO_EVENT: EventModel = {
   id: 'event-yavuz-merve-2026',
@@ -91,28 +91,11 @@ export const DEFAULT_ALBUMS: AlbumModel[] = [
     photoCount: 0,
   },
   {
-    id: 'alb-1',
-    slug: 'nikah-ve-dans',
-    name: 'Nikah & İlk Dans',
+    id: 'alb-genel',
+    slug: 'genel',
+    name: 'Genel',
     order: 1,
     photoCount: 0,
-    coverPhotoUrl: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=600&q=80',
-  },
-  {
-    id: 'alb-2',
-    slug: 'masalar-ve-misafirler',
-    name: 'Masalar & Misafirler',
-    order: 2,
-    photoCount: 0,
-    coverPhotoUrl: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=600&q=80',
-  },
-  {
-    id: 'alb-3',
-    slug: 'eglence-ve-dans',
-    name: 'Eğlence & Halay',
-    order: 3,
-    photoCount: 0,
-    coverPhotoUrl: 'https://images.unsplash.com/photo-1469371670807-013ccf25f16a?auto=format&fit=crop&w=600&q=80',
   },
 ];
 
@@ -125,28 +108,27 @@ export const DEMO_ALBUMS: AlbumModel[] = [
     photoCount: 42,
   },
   {
+    id: 'alb-genel',
+    slug: 'genel',
+    name: 'Genel',
+    order: 1,
+    photoCount: 20,
+  },
+  {
     id: 'alb-1',
     slug: 'nikah-ve-dans',
     name: 'Nikah & İlk Dans',
-    order: 1,
-    photoCount: 16,
+    order: 2,
+    photoCount: 12,
     coverPhotoUrl: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=600&q=80',
   },
   {
     id: 'alb-2',
     slug: 'masalar-ve-misafirler',
     name: 'Masalar & Misafirler',
-    order: 2,
-    photoCount: 14,
-    coverPhotoUrl: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=600&q=80',
-  },
-  {
-    id: 'alb-3',
-    slug: 'eglence-ve-dans',
-    name: 'Eğlence & Halay',
     order: 3,
-    photoCount: 12,
-    coverPhotoUrl: 'https://images.unsplash.com/photo-1469371670807-013ccf25f16a?auto=format&fit=crop&w=600&q=80',
+    photoCount: 10,
+    coverPhotoUrl: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=600&q=80',
   },
 ];
 
@@ -356,6 +338,49 @@ export const PLAN_TIERS: PlanTierConfig[] = [
     ],
   },
 ];
+
+export const COUPON_CODES: Record<string, CouponDefinition> = {
+  ASNUSVIP: {
+    code: 'ASNUSVIP',
+    tier: 'vip',
+    tierName: 'VIP Masalsı Düğün',
+    quotaMB: 15360,
+    retentionDays: 365,
+    description: '15 GB Devasa Depolama, 1 Yıl Arşiv ve Canlı Projeksiyon Yayını',
+  },
+  ASNUSPREMIUM: {
+    code: 'ASNUSPREMIUM',
+    tier: 'premium',
+    tierName: 'Premium Düğün',
+    quotaMB: 5120,
+    retentionDays: 180,
+    description: '5 GB Bulut Depolama, 6 Ay Arşiv ve Canlı Projeksiyon Yayını',
+  },
+  ASNUSPREIMUM: { // Exact user typo supported
+    code: 'ASNUSPREIMUM',
+    tier: 'premium',
+    tierName: 'Premium Düğün',
+    quotaMB: 5120,
+    retentionDays: 180,
+    description: '5 GB Bulut Depolama, 6 Ay Arşiv ve Canlı Projeksiyon Yayını',
+  },
+  ASNUSSTANDART: {
+    code: 'ASNUSSTANDART',
+    tier: 'standart',
+    tierName: 'Standart Kutlama',
+    quotaMB: 2048,
+    retentionDays: 90,
+    description: '2 GB Bulut Depolama ve 90 Gün Arşiv',
+  },
+  ASNUSSTANDARD: {
+    code: 'ASNUSSTANDARD',
+    tier: 'standart',
+    tierName: 'Standart Kutlama',
+    quotaMB: 2048,
+    retentionDays: 90,
+    description: '2 GB Bulut Depolama ve 90 Gün Arşiv',
+  },
+};
 
 export function slugify(text: string): string {
   return (text || '')

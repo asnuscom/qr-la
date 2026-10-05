@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -10,20 +10,22 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { eventService } from '@/services/eventService';
 import { authService } from '@/services/authService';
-import { slugify } from '@/services/mockData';
-import { EventModel, PhotoModel, UserModel } from '@/types';
+import { slugify, DEMO_PHOTOS } from '@/services/mockData';
+import { EventModel, PhotoModel, UserModel, AlbumModel } from '@/types';
 import { StorageMeter } from '@/components/StorageMeter';
 
 export default function HostPanelScreen() {
   const router = useRouter();
   const [event, setEvent] = useState<EventModel | null>(null);
   const [photos, setPhotos] = useState<PhotoModel[]>([]);
+  const [albums, setAlbums] = useState<AlbumModel[]>([]);
   const [currentUser, setCurrentUser] = useState<UserModel | null>(authService.getState().user);
   const [isPrivate, setIsPrivate] = useState(false);
   const [pinCode, setPinCode] = useState('1923');
@@ -33,6 +35,10 @@ export default function HostPanelScreen() {
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [settingsSaveSuccess, setSettingsSaveSuccess] = useState(false);
   const [hasUnsavedSettings, setHasUnsavedSettings] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoadingSamples, setIsLoadingSamples] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
 
   const resolveActiveSlug = (user: UserModel | null): string => {
     if (!user) return 'demo-panel';
@@ -58,6 +64,104 @@ export default function HostPanelScreen() {
     }
     const ph = await eventService.getPhotos(activeSlug);
     setPhotos(ph);
+    const alb = await eventService.getAlbums(activeSlug);
+    setAlbums(alb);
+  };
+
+  const handleAddCategory = async () => {
+    if (!event || !newCategoryName.trim()) return;
+    setIsAddingCategory(true);
+    try {
+      await eventService.addAlbum(event.slug, newCategoryName.trim());
+      const updated = await eventService.getAlbums(event.slug);
+      setAlbums(updated);
+      setNewCategoryName('');
+      Alert.alert('Kategori Eklendi! 🏷️', `"${newCategoryName.trim()}" kategorisi başarıyla eklendi.`);
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Hata', 'Kategori eklenirken bir sorun oluştu.');
+    } finally {
+      setIsAddingCategory(false);
+    }
+  };
+
+  const handleDeleteCategory = async (album: AlbumModel) => {
+    if (!event) return;
+    if (album.id === 'alb-all' || album.id === 'alb-genel' || album.slug === 'all' || album.slug === 'genel') {
+      Alert.alert('Bilgi', 'Varsayılan sistem kategorisi silinemez.');
+      return;
+    }
+
+    Alert.alert(
+      'Kategoriyi Sil',
+      `"${album.name}" kategorisini silmek istediğinizden emin misiniz? (Bu kategorideki fotoğraflar "Genel" kategorisine aktarılacaktır.)`,
+      [
+        { text: 'Vazgeç', style: 'cancel' },
+        {
+          text: 'Sil',
+          style: 'destructive',
+          onPress: async () => {
+            await eventService.deleteAlbum(event.slug, album.id);
+            const updated = await eventService.getAlbums(event.slug);
+            setAlbums(updated);
+            Alert.alert('Silindi', `"${album.name}" kategorisi başarıyla silindi.`);
+          },
+        },
+      ]
+    );
+  };
+
+  // Re-fetch data whenever user navigates back to this screen
+  useFocusEffect(
+    useCallback(() => {
+      const u = authService.getState().user;
+      setCurrentUser(u);
+      loadData(u);
+    }, [])
+  );
+
+  // Live real-time listener for photos
+  useEffect(() => {
+    const activeSlug = resolveActiveSlug(currentUser);
+    const unsub = eventService.subscribePhotos(activeSlug, (updatedPhotos) => {
+      setPhotos(updatedPhotos);
+    });
+    return () => unsub();
+  }, [currentUser]);
+
+  const onRefresh = async () => {
+    setIsRefreshing(true);
+    await loadData(currentUser);
+    setIsRefreshing(false);
+  };
+
+  const handleLoadSamplePhotos = async () => {
+    if (!event) return;
+    setIsLoadingSamples(true);
+    try {
+      for (const sample of DEMO_PHOTOS) {
+        await eventService.addPhoto(event.slug, {
+          eventSlug: event.slug,
+          albumId: sample.albumId || 'alb-1',
+          originalUrl: sample.originalUrl,
+          thumbnailUrl: sample.thumbnailUrl,
+          uploaderName: sample.uploaderName,
+          tableNumber: sample.tableNumber,
+          guestNote: sample.guestNote,
+          sizeBytes: sample.sizeBytes,
+        });
+      }
+      await loadData(currentUser);
+      Alert.alert(
+        'Örnek Fotoğraflar Yüklendi! 📸',
+        'Etkinliğinize 6 adet örnek misafir fotoğrafı eklendi. Moderasyon ve galeri özelliklerini hemen test edebilirsiniz.'
+      );
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Hata', 'Örnek fotoğraflar yüklenirken bir sorun oluştu.');
+    } finally {
+      setIsLoadingSamples(false);
+    }
   };
 
   const handleSaveSettings = async () => {
@@ -136,7 +240,18 @@ export default function HostPanelScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            tintColor="#C5A059"
+            colors={['#C5A059']}
+          />
+        }
+      >
         {/* Top Navbar */}
         <View style={styles.navBar}>
           <TouchableOpacity
@@ -203,7 +318,17 @@ export default function HostPanelScreen() {
         )}
 
         {/* Live Storage Meter */}
-        <StorageMeter storage={event.storage} />
+        <StorageMeter
+          storage={{
+            ...event.storage,
+            photoCount: photos.length,
+            usedBytes:
+              photos.length > 0
+                ? photos.reduce((acc, p) => acc + (p.sizeBytes || 650000), 0)
+                : event.storage.usedBytes,
+          }}
+          onUpgradePress={() => router.push(`/panel/tarifeler?slug=${event.slug}` as any)}
+        />
 
         {/* Prominent Edit / Setup Button */}
         <TouchableOpacity
@@ -311,9 +436,9 @@ export default function HostPanelScreen() {
           {/* Private Event Switch */}
           <View style={styles.settingRow}>
             <View style={{ flex: 1, paddingRight: 10 }}>
-              <Text style={styles.settingLabel}>PIN Kodu Koruması</Text>
+              <Text style={styles.settingLabel}>PIN Kodu ile Galeri Koruması</Text>
               <Text style={styles.settingDesc}>
-                Etkinliğe yalnızca masadaki PIN koduna sahip misafirler girebilir.
+                Fotoğraf galerisine yalnızca masadaki PIN koduna sahip misafirler girebilir.
               </Text>
             </View>
             <Switch
@@ -447,6 +572,104 @@ export default function HostPanelScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Gallery Categories Management Section */}
+        <View style={styles.categoriesSection}>
+          <View style={styles.categoriesHeaderRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.sectionHeaderTitle}>Galeri Kategorileri (Albümler)</Text>
+              <Text style={styles.sectionHeaderSub}>
+                Misafirler fotoğrafları bu kategorilere göre yükler ve galeri içinde filtreler
+              </Text>
+            </View>
+            <View style={styles.catCountBadge}>
+              <Text style={styles.catCountBadgeText}>{albums.length} Kategori</Text>
+            </View>
+          </View>
+
+          <View style={styles.catListWrap}>
+            {albums.map((album) => {
+              const isAll = album.id === 'alb-all' || album.slug === 'all';
+              const isDefault = album.id === 'alb-genel' || album.slug === 'genel';
+              const isCustom = !isAll && !isDefault;
+              const photoCount = isAll
+                ? photos.length
+                : isDefault
+                ? photos.filter((p) => !p.albumId || p.albumId === 'alb-genel').length
+                : photos.filter((p) => p.albumId === album.id).length;
+
+              return (
+                <View key={album.id} style={styles.catItemRow}>
+                  <View style={styles.catItemInfo}>
+                    <View style={[styles.catIconWrap, isDefault && { backgroundColor: '#FEF3C7' }]}>
+                      <Ionicons
+                        name={isAll ? 'albums' : isDefault ? 'folder' : 'folder-outline'}
+                        size={18}
+                        color={isDefault ? '#D97706' : '#C5A059'}
+                      />
+                    </View>
+                    <View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={styles.catItemName}>{album.name}</Text>
+                        {isDefault && (
+                          <View style={styles.catDefaultBadge}>
+                            <Text style={styles.catDefaultBadgeText}>Varsayılan</Text>
+                          </View>
+                        )}
+                        {isAll && (
+                          <View style={styles.catSystemBadge}>
+                            <Text style={styles.catSystemBadgeText}>Filtre</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={styles.catItemSub}>{photoCount} Fotoğraf</Text>
+                    </View>
+                  </View>
+
+                  {isCustom && (
+                    <TouchableOpacity
+                      style={styles.catDeleteBtn}
+                      onPress={() => handleDeleteCategory(album)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+
+          {/* Quick Add Category Input */}
+          <View style={styles.addCatRow}>
+            <TextInput
+              style={styles.addCatInput}
+              placeholder="Yeni Kategori (Örn: Aile, Pasta, Dans...)"
+              placeholderTextColor="#9CA3AF"
+              value={newCategoryName}
+              onChangeText={setNewCategoryName}
+              onSubmitEditing={handleAddCategory}
+            />
+            <TouchableOpacity
+              style={[
+                styles.addCatBtn,
+                (!newCategoryName.trim() || isAddingCategory) && styles.addCatBtnDisabled,
+              ]}
+              onPress={handleAddCategory}
+              disabled={!newCategoryName.trim() || isAddingCategory}
+              activeOpacity={0.8}
+            >
+              {isAddingCategory ? (
+                <ActivityIndicator color="#FFF" size="small" />
+              ) : (
+                <>
+                  <Ionicons name="add" size={18} color="#FFF" />
+                  <Text style={styles.addCatBtnText}>Ekle</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Moderation section */}
         <View style={styles.moderationSection}>
           <View style={styles.modHeaderRow}>
@@ -464,7 +687,7 @@ export default function HostPanelScreen() {
               </View>
               <Text style={styles.emptyModTitle}>Henüz Fotoğraf Yüklenmedi</Text>
               <Text style={styles.emptyModSubtitle}>
-                Masalardaki QR kodu misafirlerinizle paylaşarak ilk fotoğrafları toplamaya başlayabilirsiniz.
+                Bu yeni etkinlik için henüz fotoğraf bulunmuyor. Masa QR kodunu paylaşarak misafirlerden fotoğraf toplayabilir veya sistemi hemen denemek için örnek fotoğrafları yükleyebilirsiniz.
               </Text>
               <View style={styles.emptyModActionsRow}>
                 <TouchableOpacity
@@ -483,6 +706,24 @@ export default function HostPanelScreen() {
                   <Text style={styles.emptyModBtnSecondaryText}>Fotoğraf Yükle</Text>
                 </TouchableOpacity>
               </View>
+
+              <TouchableOpacity
+                style={[styles.emptyModBtnSamples, isLoadingSamples && { opacity: 0.6 }]}
+                onPress={handleLoadSamplePhotos}
+                disabled={isLoadingSamples}
+                activeOpacity={0.8}
+              >
+                {isLoadingSamples ? (
+                  <ActivityIndicator color="#C5A059" size="small" />
+                ) : (
+                  <>
+                    <Ionicons name="sparkles" size={16} color="#C5A059" />
+                    <Text style={styles.emptyModBtnSamplesText}>
+                      Örnek Fotoğrafları Yükle (Test Et)
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
             </View>
           ) : (
             <View style={styles.modGrid}>
@@ -924,6 +1165,26 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
+  emptyModBtnSamples: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#FAF7F2',
+    borderWidth: 1.5,
+    borderColor: '#EAD7BB',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    marginTop: 12,
+    width: '100%',
+    maxWidth: 290,
+  },
+  emptyModBtnSamplesText: {
+    color: '#C5A059',
+    fontSize: 13,
+    fontWeight: '700',
+  },
   warningBadge: {
     backgroundColor: '#FEF3C7',
     paddingVertical: 2,
@@ -1016,6 +1277,138 @@ const styles = StyleSheet.create({
   saveSettingsMainBtnText: {
     color: '#FFF',
     fontSize: 14,
+    fontWeight: '700',
+  },
+  categoriesSection: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 24,
+    marginHorizontal: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  categoriesHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  catCountBadge: {
+    backgroundColor: '#FAF7F2',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+  },
+  catCountBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#8A6D3B',
+  },
+  catListWrap: {
+    gap: 8,
+    marginBottom: 16,
+  },
+  catItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FAF7F2',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+  },
+  catItemInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  catIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#FAF0E1',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  catItemName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1A1817',
+  },
+  catItemSub: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginTop: 1,
+  },
+  catDefaultBadge: {
+    backgroundColor: '#FEF3C7',
+    paddingVertical: 1,
+    paddingHorizontal: 6,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  catDefaultBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#D97706',
+  },
+  catSystemBadge: {
+    backgroundColor: '#E0E7FF',
+    paddingVertical: 1,
+    paddingHorizontal: 6,
+    borderRadius: 4,
+  },
+  catSystemBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#4F46E5',
+  },
+  catDeleteBtn: {
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: '#FEE2E2',
+  },
+  addCatRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  addCatInput: {
+    flex: 1,
+    backgroundColor: '#FAF7F2',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 13,
+    color: '#1A1817',
+  },
+  addCatBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#C5A059',
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderRadius: 12,
+  },
+  addCatBtnDisabled: {
+    backgroundColor: '#D1D5DB',
+  },
+  addCatBtnText: {
+    color: '#FFF',
+    fontSize: 13,
     fontWeight: '700',
   },
 });

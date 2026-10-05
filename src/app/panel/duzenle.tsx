@@ -16,8 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { eventService } from '@/services/eventService';
 import { authService } from '@/services/authService';
-import { slugify } from '@/services/mockData';
-import { EventModel, ScheduleItem } from '@/types';
+import { EventModel, ScheduleItem, AlbumModel } from '@/types';
 
 // Curated luxury cover photo presets so user can pick with one tap
 const COVER_PRESETS = [
@@ -93,6 +92,9 @@ export default function EventFormScreen() {
     { id: '5', time: '23:00', title: 'After Party & Canlı DJ', description: 'Kapanış partisi' },
   ]);
 
+  const [albums, setAlbums] = useState<AlbumModel[]>([]);
+  const [newCategoryName, setNewCategoryName] = useState('');
+
   // Load existing event if available, or generate default
   useEffect(() => {
     const load = async () => {
@@ -120,6 +122,9 @@ export default function EventFormScreen() {
             setSchedule(ev.schedule);
           }
         }
+
+        const alb = await eventService.getAlbums(currentSlug);
+        setAlbums(alb);
       } catch (err) {
         console.warn('Load event form err:', err);
       } finally {
@@ -148,6 +153,30 @@ export default function EventFormScreen() {
         .replace(/ü/g, 'u');
       setSlug(generatedSlug);
     }
+  };
+
+  // Category Management Handlers
+  const handleAddCategory = () => {
+    if (!newCategoryName.trim()) return;
+    const name = newCategoryName.trim();
+    const newId = `alb-${Date.now().toString(36)}`;
+    const newAlbum: AlbumModel = {
+      id: newId,
+      name,
+      slug: name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+      order: albums.length + 1,
+      photoCount: 0,
+    };
+    setAlbums([...albums, newAlbum]);
+    setNewCategoryName('');
+  };
+
+  const handleDeleteCategory = (albumId: string) => {
+    if (albumId === 'alb-all' || albumId === 'alb-genel') {
+      Alert.alert('İşlem Engellendi', 'Bu temel sistem kategorisi silinemez.');
+      return;
+    }
+    setAlbums(albums.filter((a) => a.id !== albumId));
   };
 
   const handleSave = async () => {
@@ -197,6 +226,7 @@ export default function EventFormScreen() {
       };
 
       await eventService.saveEvent(cleanSlug, updatedData);
+      await eventService.saveAlbums(cleanSlug, albums);
       if (user) {
         await authService.addEventToUser(user.uid, cleanSlug);
       }
@@ -415,9 +445,9 @@ export default function EventFormScreen() {
 
           <View style={styles.switchRow}>
             <View style={{ flex: 1, paddingRight: 10 }}>
-              <Text style={styles.switchLabel}>PIN Kodu ile Koru</Text>
+              <Text style={styles.switchLabel}>PIN Kodu ile Galeriyi Koru</Text>
               <Text style={styles.switchSub}>
-                Etkinliğe yalnızca masadaki PIN koduna sahip misafirler girebilir.
+                Fotoğraf galerisine yalnızca masadaki PIN koduna sahip misafirler girebilir.
               </Text>
             </View>
             <Switch
@@ -489,6 +519,74 @@ export default function EventFormScreen() {
               onValueChange={setAllowGuestDownloads}
               trackColor={{ false: '#D1D5DB', true: '#C5A059' }}
             />
+          </View>
+        </View>
+
+        {/* Section 5: Gallery Categories (Albums) */}
+        <View style={styles.formCard}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <Text style={styles.cardHeader}>5. Fotoğraf Galerisi Kategorileri</Text>
+            <View style={styles.categoryCountBadge}>
+              <Text style={styles.categoryCountBadgeText}>{albums.filter(a => a.id !== 'alb-all').length} Kategori</Text>
+            </View>
+          </View>
+          <Text style={styles.cardSub}>
+            Misafirler fotoğraf yüklerken bu kategorileri seçebilir. 'Genel' varsayılan kategoridir.
+          </Text>
+
+          {/* Add Category Input */}
+          <View style={styles.addCategoryRow}>
+            <TextInput
+              style={styles.addCategoryInput}
+              value={newCategoryName}
+              onChangeText={setNewCategoryName}
+              placeholder="Yeni kategori adı (örn: Pasta Kesimi, Kına)"
+              placeholderTextColor="#9CA3AF"
+            />
+            <TouchableOpacity
+              style={[styles.addCategoryBtn, !newCategoryName.trim() && { opacity: 0.5 }]}
+              onPress={handleAddCategory}
+              disabled={!newCategoryName.trim()}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="add" size={18} color="#FFF" />
+              <Text style={styles.addCategoryBtnText}>Ekle</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Categories List */}
+          <View style={styles.categoriesList}>
+            {albums
+              .filter((a) => a.id !== 'alb-all')
+              .map((album) => {
+                const isSystem = album.id === 'alb-genel';
+                return (
+                  <View key={album.id} style={styles.categoryItem}>
+                    <View style={styles.categoryInfo}>
+                      <Ionicons
+                        name={isSystem ? 'folder' : 'folder-outline'}
+                        size={18}
+                        color={isSystem ? '#C5A059' : '#8A6D3B'}
+                      />
+                      <Text style={styles.categoryNameText}>{album.name}</Text>
+                      {isSystem && (
+                        <View style={styles.defaultBadge}>
+                          <Text style={styles.defaultBadgeText}>Varsayılan</Text>
+                        </View>
+                      )}
+                    </View>
+                    {!isSystem && (
+                      <TouchableOpacity
+                        style={styles.deleteCategoryBtn}
+                        onPress={() => handleDeleteCategory(album.id)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons name="trash-outline" size={16} color="#DC2626" />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                );
+              })}
           </View>
         </View>
 
@@ -622,6 +720,12 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#1A1817',
     marginBottom: 16,
+  },
+  cardSub: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginBottom: 12,
+    lineHeight: 18,
   },
   row: {
     flexDirection: 'row',
@@ -815,5 +919,89 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#92400E',
     lineHeight: 18,
+  },
+  categoryCountBadge: {
+    backgroundColor: '#FAF5EA',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+  },
+  categoryCountBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#8A6D3B',
+  },
+  addCategoryRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+    marginBottom: 12,
+  },
+  addCategoryInput: {
+    flex: 1,
+    backgroundColor: '#FAF7F2',
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 13,
+    color: '#1A1817',
+  },
+  addCategoryBtn: {
+    backgroundColor: '#C5A059',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  addCategoryBtnText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  categoriesList: {
+    gap: 8,
+  },
+  categoryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FAF7F2',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#F3EFE6',
+  },
+  categoryInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  categoryNameText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1A1817',
+  },
+  defaultBadge: {
+    backgroundColor: '#EAD7BB',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  defaultBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#654B1A',
+  },
+  deleteCategoryBtn: {
+    padding: 6,
+    borderRadius: 6,
+    backgroundColor: '#FEE2E2',
   },
 });

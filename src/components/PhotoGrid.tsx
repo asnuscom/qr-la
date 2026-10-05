@@ -23,10 +23,14 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ albums, photos, onLikePhot
   const [activePhoto, setActivePhoto] = useState<PhotoModel | null>(null);
   const { width } = useWindowDimensions();
 
+  const albumIds = new Set(albums.map((a) => a.id));
+
   // Filter photos based on album
   const filteredPhotos =
     selectedAlbumId === 'alb-all' || selectedAlbumId === 'all'
       ? photos
+      : selectedAlbumId === 'alb-genel'
+      ? photos.filter((p) => !p.albumId || p.albumId === 'alb-genel' || !albumIds.has(p.albumId))
       : photos.filter((p) => p.albumId === selectedAlbumId);
 
   // Column calculations
@@ -39,6 +43,9 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ albums, photos, onLikePhot
   const getAlbumCount = (albumId: string) => {
     if (albumId === 'alb-all' || albumId === 'all') {
       return photos.length;
+    }
+    if (albumId === 'alb-genel') {
+      return photos.filter((p) => !p.albumId || p.albumId === 'alb-genel' || !albumIds.has(p.albumId)).length;
     }
     return photos.filter((p) => p.albumId === albumId).length;
   };

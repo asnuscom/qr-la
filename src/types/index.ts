@@ -71,7 +71,7 @@ export interface AlbumModel {
   slug: string;
   name: string;
   order: number;
-  photoCount: number;
+  photoCount?: number;
   coverPhotoUrl?: string;
 }
 
@@ -112,6 +112,15 @@ export interface PlanTierConfig {
   retentionDays: number;
   features: string[];
   isPopular?: boolean;
+}
+
+export interface CouponDefinition {
+  code: string;
+  tier: StorageTier;
+  tierName: string;
+  quotaMB: number;
+  retentionDays: number;
+  description: string;
 }
 
 export interface UserModel {

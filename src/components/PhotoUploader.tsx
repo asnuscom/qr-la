@@ -41,7 +41,9 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
   const [tableNumber, setTableNumber] = useState('');
   const [guestNote, setGuestNote] = useState('');
   const [selectedAlbumId, setSelectedAlbumId] = useState<string>(
-    albums.find((a) => a.slug !== 'all')?.id || 'alb-1'
+    albums.find((a) => a.slug === 'genel' || a.id === 'alb-genel')?.id ||
+    albums.find((a) => a.slug !== 'all')?.id ||
+    'alb-genel'
   );
   const [isCompressionEnabled, setIsCompressionEnabled] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
@@ -121,10 +123,13 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
       setGuestNote('');
       Alert.alert('Harika! 🎉', 'Fotoğraflarınız başarıyla yüklendi ve canlı ekrana yansıtıldı.');
       onUploadSuccess();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Upload failed:', err);
       setIsUploading(false);
-      Alert.alert('Hata', 'Yükleme sırasında bir sorun oluştu. Lütfen tekrar deneyin.');
+      Alert.alert(
+        'Yükleme Sırasında Hata Oluştu',
+        `Fotoğraf kaydedilirken bir sorun oluştu: ${err?.message || 'Lütfen tekrar deneyin.'}`
+      );
     }
   };
 

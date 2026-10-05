@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -10,10 +10,11 @@ import {
   Linking,
   Platform,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { eventService } from '@/services/eventService';
+import { appStorage } from '@/services/storage';
 import { EventModel, PhotoModel } from '@/types';
 import { EventHeader } from '@/components/EventHeader';
 import { ScheduleTimeline } from '@/components/ScheduleTimeline';
@@ -24,19 +25,31 @@ export default function EventHomeScreen() {
   const [event, setEvent] = useState<EventModel | null>(null);
   const [recentPhotos, setRecentPhotos] = useState<PhotoModel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUnlocked, setIsUnlocked] = useState(false);
+
+  const fetchDetails = useCallback(async () => {
+    if (!slug) return;
+    setIsLoading(true);
+    const ev = await eventService.getEvent(slug);
+    const ph = await eventService.getPhotos(slug);
+    setEvent(ev);
+    setRecentPhotos(ph.slice(0, 4));
+    const unlocked = appStorage.getItem(`qr_la_unlocked_${slug}`) === 'true';
+    setIsUnlocked(unlocked);
+    setIsLoading(false);
+  }, [slug]);
 
   useEffect(() => {
-    if (!slug) return;
-    const fetchDetails = async () => {
-      setIsLoading(true);
-      const ev = await eventService.getEvent(slug);
-      const ph = await eventService.getPhotos(slug);
-      setEvent(ev);
-      setRecentPhotos(ph.slice(0, 4));
-      setIsLoading(false);
-    };
     fetchDetails();
-  }, [slug]);
+  }, [fetchDetails]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!slug) return;
+      const unlocked = appStorage.getItem(`qr_la_unlocked_${slug}`) === 'true';
+      setIsUnlocked(unlocked);
+    }, [slug])
+  );
 
   if (isLoading || !event) {
     return (
@@ -102,39 +115,71 @@ export default function EventHomeScreen() {
         {/* Event Schedule Timeline */}
         <ScheduleTimeline schedule={event.schedule} />
 
-        {/* Recent Photos Teaser */}
+        {/* Recent Photos Teaser or Private Lock Card */}
         {recentPhotos.length > 0 && (
           <View style={styles.recentSection}>
             <View style={styles.sectionHeaderRow}>
               <View>
                 <Text style={styles.sectionTitle}>Son Paylaşılan Kareler</Text>
-                <Text style={styles.sectionSubtitle}>Misafirlerimizden sıcağı sıcağına</Text>
+                <Text style={styles.sectionSubtitle}>
+                  {event.settings.isPrivate && !isUnlocked
+                    ? 'PIN korumalı özel galeri'
+                    : 'Misafirlerimizden sıcağı sıcağına'}
+                </Text>
               </View>
               <TouchableOpacity
                 onPress={() => router.push(`/${event.slug}/galeri` as any)}
                 style={styles.seeAllBtn}
               >
-                <Text style={styles.seeAllText}>Tümünü Gör</Text>
-                <Ionicons name="arrow-forward" size={14} color="#C5A059" />
+                <Text style={styles.seeAllText}>
+                  {event.settings.isPrivate && !isUnlocked ? 'Kilidi Aç' : 'Tümünü Gör'}
+                </Text>
+                <Ionicons
+                  name={event.settings.isPrivate && !isUnlocked ? 'lock-closed' : 'arrow-forward'}
+                  size={14}
+                  color="#C5A059"
+                />
               </TouchableOpacity>
             </View>
 
-            <View style={styles.recentGrid}>
-              {recentPhotos.map((photo) => (
-                <TouchableOpacity
-                  key={photo.id}
-                  style={styles.recentThumb}
-                  onPress={() => router.push(`/${event.slug}/galeri` as any)}
-                >
-                  <Image source={{ uri: photo.thumbnailUrl || photo.originalUrl }} style={styles.recentImage} />
-                  <View style={styles.recentUploaderBadge}>
-                    <Text style={styles.recentUploaderText} numberOfLines={1}>
-                      {photo.uploaderName || 'Misafir'}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {event.settings.isPrivate && !isUnlocked ? (
+              <TouchableOpacity
+                style={styles.privateTeaserCard}
+                onPress={() => router.push(`/${event.slug}/galeri` as any)}
+                activeOpacity={0.85}
+              >
+                <View style={styles.privateTeaserLockCircle}>
+                  <Ionicons name="lock-closed" size={26} color="#C5A059" />
+                </View>
+                <Text style={styles.privateTeaserTitle}>Fotoğraflar PIN Korumalı</Text>
+                <Text style={styles.privateTeaserDesc}>
+                  Fotoğrafları ve galeriyi görüntülemek için masanızdaki PIN kodunu giriniz.
+                </Text>
+                <View style={styles.privateTeaserBtn}>
+                  <Ionicons name="key-outline" size={15} color="#FFF" />
+                  <Text style={styles.privateTeaserBtnText}>
+                    PIN ile Galeriyi Aç ({recentPhotos.length}+ Fotoğraf)
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.recentGrid}>
+                {recentPhotos.map((photo) => (
+                  <TouchableOpacity
+                    key={photo.id}
+                    style={styles.recentThumb}
+                    onPress={() => router.push(`/${event.slug}/galeri` as any)}
+                  >
+                    <Image source={{ uri: photo.thumbnailUrl || photo.originalUrl }} style={styles.recentImage} />
+                    <View style={styles.recentUploaderBadge}>
+                      <Text style={styles.recentUploaderText} numberOfLines={1}>
+                        {photo.uploaderName || 'Misafir'}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
         )}
 
@@ -333,5 +378,56 @@ const styles = StyleSheet.create({
   poweredText: {
     fontSize: 12,
     color: '#9CA3AF',
+  },
+  privateTeaserCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 22,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  privateTeaserLockCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(197, 160, 89, 0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(197, 160, 89, 0.25)',
+  },
+  privateTeaserTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1A1817',
+    marginBottom: 4,
+  },
+  privateTeaserDesc: {
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 17,
+    marginBottom: 14,
+    maxWidth: 280,
+  },
+  privateTeaserBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#C5A059',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+  },
+  privateTeaserBtnText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });
