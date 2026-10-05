@@ -4,10 +4,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { ScheduleItem } from '@/types';
 
 interface ScheduleTimelineProps {
-  schedule: ScheduleItem[];
+  schedule?: ScheduleItem[];
 }
 
-export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({ schedule }) => {
+export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({ schedule = [] }) => {
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>

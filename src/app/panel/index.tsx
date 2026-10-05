@@ -98,6 +98,24 @@ export default function HostPanelScreen() {
         {/* Live Storage Meter */}
         <StorageMeter storage={event.storage} />
 
+        {/* Prominent Edit / Setup Button */}
+        <TouchableOpacity
+          style={styles.editSetupCard}
+          onPress={() => router.push(`/panel/duzenle?slug=${event.slug}` as any)}
+          activeOpacity={0.85}
+        >
+          <View style={styles.editSetupIcon}>
+            <Ionicons name="create" size={22} color="#FFF" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.editSetupTitle}>Etkinlik Bilgilerini & Akışı Düzenle</Text>
+            <Text style={styles.editSetupSub}>
+              İsimler, kapak görseli, mekan, akış saatleri ve tema ayarları
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#C5A059" />
+        </TouchableOpacity>
+
         {/* Quick Host Actions */}
         <View style={styles.actionGrid}>
           <TouchableOpacity
@@ -461,5 +479,40 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(239, 68, 68, 0.25)',
     padding: 4,
     borderRadius: 6,
+  },
+  editSetupCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginBottom: 20,
+    padding: 16,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#C5A059',
+    gap: 12,
+    shadowColor: '#C5A059',
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  editSetupIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#C5A059',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  editSetupTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#1A1817',
+    marginBottom: 2,
+  },
+  editSetupSub: {
+    fontSize: 11,
+    color: '#6B7280',
+    lineHeight: 15,
   },
 });

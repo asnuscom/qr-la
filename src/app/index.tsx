@@ -70,11 +70,20 @@ export default function LandingScreen() {
           <View style={styles.ctaRow}>
             <TouchableOpacity
               style={styles.primaryCta}
+              onPress={() => router.push('/panel/duzenle' as any)}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="sparkles" size={20} color="#FFF" />
+              <Text style={styles.primaryCtaText}>Kendi Etkinliğini Başlat</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.secondaryCta}
               onPress={() => router.push('/yavuz-ve-merve' as any)}
               activeOpacity={0.85}
             >
-              <Ionicons name="play-circle" size={22} color="#FFF" />
-              <Text style={styles.primaryCtaText}>Canlı Düğün Demosunu Gör</Text>
+              <Ionicons name="play-circle" size={20} color="#1A1817" />
+              <Text style={styles.secondaryCtaText}>Canlı Düğün Demosunu Gör</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -83,7 +92,7 @@ export default function LandingScreen() {
               activeOpacity={0.85}
             >
               <Ionicons name="tv-outline" size={20} color="#1A1817" />
-              <Text style={styles.secondaryCtaText}>Canlı Projeksiyon Ekranı</Text>
+              <Text style={styles.secondaryCtaText}>Projeksiyon Modu</Text>
             </TouchableOpacity>
           </View>
 

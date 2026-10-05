@@ -322,3 +322,111 @@ export const PLAN_TIERS: PlanTierConfig[] = [
     ],
   },
 ];
+
+export function generateDefaultEvent(slug: string): EventModel {
+  const cleanSlug = (slug || 'etkinlik').toLowerCase().replace(/[^a-z0-9-]/g, '');
+  const parts = cleanSlug.split(/-ve-|-ile-|-and-|-/);
+
+  const capitalize = (str: string) => (str ? str.charAt(0).toUpperCase() + str.slice(1) : '');
+
+  let brideName = 'Merve';
+  let groomName = 'Yavuz';
+  let title = 'Özel Düğün Kutlaması';
+
+  if (parts.length >= 2) {
+    brideName = capitalize(parts[0]);
+    groomName = capitalize(parts[1]);
+    title = `${brideName} & ${groomName} Düğünü`;
+  } else if (parts.length === 1 && parts[0]) {
+    brideName = capitalize(parts[0]);
+    title = `${brideName} Kutlaması`;
+  }
+
+  // 14 days from now as sensible default wedding date
+  const defaultDate = new Date();
+  defaultDate.setDate(defaultDate.getDate() + 14);
+  defaultDate.setHours(19, 0, 0, 0);
+
+  return {
+    id: `event-${cleanSlug}`,
+    slug: cleanSlug,
+    title,
+    subtitle: 'Bu mutlu anımıza ortak olduğunuz için teşekkür ederiz. Masanızdaki QR kodu okutarak anılarınızı hemen paylaşabilirsiniz.',
+    hosts: {
+      brideOrPrimary: brideName,
+      groomOrSecondary: groomName,
+    },
+    eventType: 'dugun',
+    eventDate: defaultDate.toISOString(),
+    coverPhotoUrl: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1200&q=80',
+    invitationUrl: 'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=800&q=80',
+    theme: {
+      primaryColor: '#C5A059',
+      secondaryColor: '#EAD7BB',
+      backgroundColor: '#FAF7F2',
+      textColor: '#1A1817',
+    },
+    venue: {
+      name: 'Boğaz Kır Bahçesi / Sait Halim Paşa Yalısı',
+      address: 'Köybaşı Cad. No:83, Yeniköy, Sarıyer / İstanbul',
+      mapUrl: 'https://maps.google.com/?q=Sait+Halim+Pasa+Yalisi+Istanbul',
+      lat: 41.1197,
+      lng: 29.0601,
+    },
+    schedule: [
+      {
+        id: 'sch-1',
+        time: '18:30',
+        title: 'Karşılama Kokteyli',
+        description: 'Giriş bahçesinde canlı caz müzik ve ikramlar eşliğinde karşılama.',
+        icon: 'glass-cocktail',
+      },
+      {
+        id: 'sch-2',
+        time: '19:30',
+        title: 'Nikah Töreni & İlk Dans',
+        description: 'Boğaz manzaralı terasta evlilik yemini ve ilk vals.',
+        icon: 'ring',
+      },
+      {
+        id: 'sch-3',
+        time: '20:30',
+        title: 'Akşam Yemeği & Müzik',
+        description: 'Zengin düğün menüsü eşliğinde orkestra dinletisi.',
+        icon: 'silverware-fork-knife',
+      },
+      {
+        id: 'sch-4',
+        time: '22:00',
+        title: 'Düğün Pastası Kesimi',
+        description: 'Işık gösterisi ve şampanya eşliğinde pasta merasimi.',
+        icon: 'cake-variant',
+      },
+      {
+        id: 'sch-5',
+        time: '23:00',
+        title: 'After Party & Canlı DJ',
+        description: 'Gece yarısına kadar sürecek dans ve eğlence.',
+        icon: 'music',
+      },
+    ],
+    settings: {
+      isPrivate: false,
+      pinCode: '1923',
+      enableCompression: true,
+      allowGuestDownloads: true,
+      isLiveFeedActive: true,
+      allowGuestbook: true,
+      autoApprovePhotos: true,
+    },
+    storage: {
+      quotaBytes: 524288000, // 500 MB
+      usedBytes: 134217728,
+      photoCount: 6,
+      tier: 'free',
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+    createdAt: new Date().toISOString(),
+  };
+}
+

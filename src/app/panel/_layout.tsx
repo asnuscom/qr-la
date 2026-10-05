@@ -10,6 +10,7 @@ export default function PanelLayout() {
       }}
     >
       <Stack.Screen name="index" />
+      <Stack.Screen name="duzenle" />
       <Stack.Screen name="qr-kart" />
       <Stack.Screen name="tarifeler" />
     </Stack>

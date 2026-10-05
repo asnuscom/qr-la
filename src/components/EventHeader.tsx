@@ -94,7 +94,7 @@ export const EventHeader: React.FC<EventHeaderProps> = ({ event, activeTab = 'ho
           </View>
           <TouchableOpacity style={styles.metaItem} onPress={openMap} activeOpacity={0.7}>
             <Ionicons name="location-outline" size={16} color="#C5A059" />
-            <Text style={[styles.metaText, styles.mapLink]}>{event.venue.name}</Text>
+            <Text style={[styles.metaText, styles.mapLink]}>{event.venue?.name || 'Düğün Mekanı'}</Text>
           </TouchableOpacity>
         </View>
 
