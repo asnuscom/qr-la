@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { eventService } from '@/services/eventService';
 import { authService } from '@/services/authService';
+import { slugify } from '@/services/mockData';
 import { EventModel, PhotoModel, UserModel } from '@/types';
 import { StorageMeter } from '@/components/StorageMeter';
 
@@ -28,8 +29,19 @@ export default function HostPanelScreen() {
   const [allowDownloads, setAllowDownloads] = useState(true);
   const [isLiveFeedActive, setIsLiveFeedActive] = useState(true);
 
-  const loadData = async () => {
-    const ev = await eventService.getEvent('demo-panel');
+  const resolveActiveSlug = (user: UserModel | null): string => {
+    if (!user) return 'demo-panel';
+    if (user.uid === 'demo-host-yavuz') return 'demo-panel';
+    const personal = user.events?.find((s) => s && s !== 'demo-panel' && s !== 'yavuz-ve-merve');
+    if (personal) return personal;
+    const rawName = user.displayName || user.email?.split('@')[0] || 'etkinlik';
+    return slugify(rawName);
+  };
+
+  const loadData = async (userToUse?: UserModel | null) => {
+    const targetUser = userToUse !== undefined ? userToUse : currentUser;
+    const activeSlug = resolveActiveSlug(targetUser);
+    const ev = await eventService.getEvent(activeSlug, targetUser?.displayName);
     if (ev) {
       setEvent(ev);
       setIsPrivate(ev.settings.isPrivate);
@@ -37,14 +49,18 @@ export default function HostPanelScreen() {
       setAllowDownloads(ev.settings.allowGuestDownloads);
       setIsLiveFeedActive(ev.settings.isLiveFeedActive);
     }
-    const ph = await eventService.getPhotos('demo-panel');
+    const ph = await eventService.getPhotos(activeSlug);
     setPhotos(ph);
   };
 
   useEffect(() => {
-    loadData();
+    const initialUser = authService.getState().user;
+    setCurrentUser(initialUser);
+    loadData(initialUser);
+
     const unsub = authService.subscribe((state) => {
       setCurrentUser(state.user);
+      loadData(state.user);
     });
     return () => unsub();
   }, []);
@@ -57,6 +73,7 @@ export default function HostPanelScreen() {
   };
 
   const handleDeletePhoto = async (photoId: string) => {
+    if (!event) return;
     Alert.alert(
       'Fotoğrafı Sil',
       'Bu fotoğrafı kalıcı olarak silmek istediğinizden emin misiniz?',
@@ -66,8 +83,8 @@ export default function HostPanelScreen() {
           text: 'Sil',
           style: 'destructive',
           onPress: async () => {
-            await eventService.deletePhoto('demo-panel', photoId);
-            loadData();
+            await eventService.deletePhoto(event.slug, photoId);
+            loadData(currentUser);
           },
         },
       ]
@@ -230,7 +247,12 @@ export default function HostPanelScreen() {
             </View>
             <Switch
               value={isPrivate}
-              onValueChange={setIsPrivate}
+              onValueChange={async (val) => {
+                setIsPrivate(val);
+                if (event) {
+                  await eventService.saveEvent(event.slug, { settings: { ...event.settings, isPrivate: val } });
+                }
+              }}
               trackColor={{ false: '#D1D5DB', true: '#C5A059' }}
             />
           </View>
@@ -241,7 +263,12 @@ export default function HostPanelScreen() {
               <TextInput
                 style={styles.pinInputField}
                 value={pinCode}
-                onChangeText={setPinCode}
+                onChangeText={async (newPin) => {
+                  setPinCode(newPin);
+                  if (event && newPin.length === 4) {
+                    await eventService.saveEvent(event.slug, { settings: { ...event.settings, pinCode: newPin } });
+                  }
+                }}
                 keyboardType="numeric"
                 maxLength={4}
               />
@@ -258,7 +285,12 @@ export default function HostPanelScreen() {
             </View>
             <Switch
               value={allowDownloads}
-              onValueChange={setAllowDownloads}
+              onValueChange={async (val) => {
+                setAllowDownloads(val);
+                if (event) {
+                  await eventService.saveEvent(event.slug, { settings: { ...event.settings, allowGuestDownloads: val } });
+                }
+              }}
               trackColor={{ false: '#D1D5DB', true: '#C5A059' }}
             />
           </View>
@@ -273,7 +305,12 @@ export default function HostPanelScreen() {
             </View>
             <Switch
               value={isLiveFeedActive}
-              onValueChange={setIsLiveFeedActive}
+              onValueChange={async (val) => {
+                setIsLiveFeedActive(val);
+                if (event) {
+                  await eventService.saveEvent(event.slug, { settings: { ...event.settings, isLiveFeedActive: val } });
+                }
+              }}
               trackColor={{ false: '#D1D5DB', true: '#C5A059' }}
             />
           </View>
@@ -289,24 +326,53 @@ export default function HostPanelScreen() {
             İstemediğiniz veya uygunsuz bulduğunuz fotoğrafları tek tıkla silebilirsiniz.
           </Text>
 
-          <View style={styles.modGrid}>
-            {photos.map((photo) => (
-              <View key={photo.id} style={styles.modCard}>
-                <Image source={{ uri: photo.thumbnailUrl || photo.originalUrl }} style={styles.modImage} />
-                <View style={styles.modInfoRow}>
-                  <Text style={styles.modUploader} numberOfLines={1}>
-                    {photo.uploaderName || 'Misafir'}
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.modDeleteBtn}
-                    onPress={() => handleDeletePhoto(photo.id)}
-                  >
-                    <Ionicons name="trash-outline" size={14} color="#EF4444" />
-                  </TouchableOpacity>
-                </View>
+          {photos.length === 0 ? (
+            <View style={styles.emptyModBox}>
+              <View style={styles.emptyModIconCircle}>
+                <Ionicons name="images-outline" size={32} color="#C5A059" />
               </View>
-            ))}
-          </View>
+              <Text style={styles.emptyModTitle}>Henüz Fotoğraf Yüklenmedi</Text>
+              <Text style={styles.emptyModSubtitle}>
+                Masalardaki QR kodu misafirlerinizle paylaşarak ilk fotoğrafları toplamaya başlayabilirsiniz.
+              </Text>
+              <View style={styles.emptyModActionsRow}>
+                <TouchableOpacity
+                  style={styles.emptyModBtnPrimary}
+                  onPress={() => router.push('/panel/qr-kart' as any)}
+                >
+                  <Ionicons name="print-outline" size={16} color="#FFF" />
+                  <Text style={styles.emptyModBtnText}>Masa QR Kartı</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.emptyModBtnSecondary}
+                  onPress={() => router.push(`/${event.slug}/yukle` as any)}
+                >
+                  <Ionicons name="camera-outline" size={16} color="#1A1817" />
+                  <Text style={styles.emptyModBtnSecondaryText}>Fotoğraf Yükle</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.modGrid}>
+              {photos.map((photo) => (
+                <View key={photo.id} style={styles.modCard}>
+                  <Image source={{ uri: photo.thumbnailUrl || photo.originalUrl }} style={styles.modImage} />
+                  <View style={styles.modInfoRow}>
+                    <Text style={styles.modUploader} numberOfLines={1}>
+                      {photo.uploaderName || 'Misafir'}
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.modDeleteBtn}
+                      onPress={() => handleDeletePhoto(photo.id)}
+                    >
+                      <Ionicons name="trash-outline" size={14} color="#EF4444" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -655,6 +721,76 @@ const styles = StyleSheet.create({
   loginCtaText: {
     color: '#FFF',
     fontSize: 12,
+    fontWeight: '700',
+  },
+  emptyModBox: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+    marginTop: 8,
+  },
+  emptyModIconCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FAF7F2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+  },
+  emptyModTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1A1817',
+    marginBottom: 6,
+  },
+  emptyModSubtitle: {
+    fontSize: 13,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 18,
+    maxWidth: 290,
+  },
+  emptyModActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  emptyModBtnPrimary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#C5A059',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+  },
+  emptyModBtnText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  emptyModBtnSecondary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FAF7F2',
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+  },
+  emptyModBtnSecondaryText: {
+    color: '#1A1817',
+    fontSize: 13,
     fontWeight: '700',
   },
 });

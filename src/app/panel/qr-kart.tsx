@@ -13,6 +13,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { eventService } from '@/services/eventService';
 import { EventModel } from '@/types';
 import { QRCardTemplate } from '@/components/QRCardTemplate';
+import { authService } from '@/services/authService';
+import { slugify } from '@/services/mockData';
 
 export default function QRCardScreen() {
   const router = useRouter();
@@ -22,7 +24,14 @@ export default function QRCardScreen() {
   useEffect(() => {
     const load = async () => {
       setIsLoading(true);
-      const ev = await eventService.getEvent('demo-panel');
+      const user = authService.getState().user;
+      let activeSlug = 'demo-panel';
+      if (user && user.uid !== 'demo-host-yavuz') {
+        activeSlug =
+          user.events?.find((s) => s && s !== 'demo-panel' && s !== 'yavuz-ve-merve') ||
+          slugify(user.displayName || user.email?.split('@')[0] || 'etkinlik');
+      }
+      const ev = await eventService.getEvent(activeSlug, user?.displayName);
       setEvent(ev);
       setIsLoading(false);
     };

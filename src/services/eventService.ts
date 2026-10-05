@@ -87,7 +87,7 @@ class EventService {
   }
 
   // Get or auto-generate event
-  async getEvent(slug: string): Promise<EventModel> {
+  async getEvent(slug: string, hostDisplayName?: string): Promise<EventModel> {
     await this.ensureAuth();
 
     // 1. If real Firebase is available, check Firestore first
@@ -101,31 +101,34 @@ class EventService {
           this.events.set(slug, remoteEvent);
           return remoteEvent;
         } else {
-          // Event does not exist in Firestore yet: Generate complete, filled default event
+          // Event does not exist in Firestore yet: Generate complete event
           const isDemoSlug =
             slug === DEMO_EVENT.slug || slug === 'demo' || slug === 'demo-panel' || slug === 'yavuz-ve-merve';
-          const defaultEvent = isDemoSlug ? { ...DEMO_EVENT, slug } : generateDefaultEvent(slug);
+          const defaultEvent = isDemoSlug
+            ? { ...DEMO_EVENT, slug }
+            : generateDefaultEvent(slug, hostDisplayName);
 
           // Save default event to Firestore so it is never empty
           await setDoc(docRef, defaultEvent);
           this.events.set(slug, defaultEvent);
 
-          // Seed default albums
+          // Seed default albums for photo categorization
           const albumsRef = collection(db, 'events', slug, 'albums');
           for (const album of DEMO_ALBUMS) {
             await setDoc(doc(albumsRef, album.id), album);
           }
 
-          // Seed default sample photos
-          const photosRef = collection(db, 'events', slug, 'photos');
-          for (const photo of DEMO_PHOTOS) {
-            await setDoc(doc(photosRef, photo.id), { ...photo, eventSlug: slug });
-          }
+          // Seed sample photos and guestbook ONLY for the demo wedding
+          if (isDemoSlug) {
+            const photosRef = collection(db, 'events', slug, 'photos');
+            for (const photo of DEMO_PHOTOS) {
+              await setDoc(doc(photosRef, photo.id), { ...photo, eventSlug: slug });
+            }
 
-          // Seed default guestbook notes
-          const guestbookRef = collection(db, 'events', slug, 'guestbook');
-          for (const entry of DEMO_GUESTBOOK) {
-            await setDoc(doc(guestbookRef, entry.id), { ...entry, eventSlug: slug });
+            const guestbookRef = collection(db, 'events', slug, 'guestbook');
+            for (const entry of DEMO_GUESTBOOK) {
+              await setDoc(doc(guestbookRef, entry.id), { ...entry, eventSlug: slug });
+            }
           }
 
           return defaultEvent;
@@ -148,14 +151,50 @@ class EventService {
     // Auto-generate rich default event if visiting a new slug
     const isDemo =
       slug === DEMO_EVENT.slug || slug === 'demo' || slug === 'demo-panel' || slug === 'yavuz-ve-merve';
-    const generated = isDemo ? { ...DEMO_EVENT, slug } : generateDefaultEvent(slug);
+    const generated = isDemo
+      ? { ...DEMO_EVENT, slug }
+      : generateDefaultEvent(slug, hostDisplayName);
 
     this.events.set(slug, generated);
     this.albums.set(slug, [...DEMO_ALBUMS]);
-    this.photos.set(slug, DEMO_PHOTOS.map((p) => ({ ...p, eventSlug: slug })));
-    this.guestbooks.set(slug, DEMO_GUESTBOOK.map((g) => ({ ...g, eventSlug: slug })));
+
+    if (isDemo) {
+      this.photos.set(slug, DEMO_PHOTOS.map((p) => ({ ...p, eventSlug: slug })));
+      this.guestbooks.set(slug, DEMO_GUESTBOOK.map((g) => ({ ...g, eventSlug: slug })));
+    } else {
+      this.photos.set(slug, []);
+      this.guestbooks.set(slug, []);
+    }
 
     return generated;
+  }
+
+  // Ensure real registered user has a personalized event with 0 photos / 0 bytes
+  async ensureUserEvent(user: { uid: string; displayName?: string; email?: string; events?: string[] }): Promise<string> {
+    if (user.uid === 'demo-host-yavuz') return 'demo-panel';
+
+    const existing = user.events?.find((s) => s && s !== 'demo-panel' && s !== 'yavuz-ve-merve');
+    if (existing) {
+      await this.getEvent(existing, user.displayName);
+      return existing;
+    }
+
+    const rawName = user.displayName || user.email?.split('@')[0] || 'etkinlik';
+    const cleanSlug = rawName
+      .toLowerCase()
+      .trim()
+      .replace(/ğ/g, 'g')
+      .replace(/ü/g, 'u')
+      .replace(/ş/g, 's')
+      .replace(/ı/g, 'i')
+      .replace(/ö/g, 'o')
+      .replace(/ç/g, 'c')
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-') || 'etkinlik';
+
+    await this.getEvent(cleanSlug, user.displayName);
+    return cleanSlug;
   }
 
   // Save / Update Event details (e.g. from Host Setup Form)

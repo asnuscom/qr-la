@@ -15,6 +15,8 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { eventService } from '@/services/eventService';
+import { authService } from '@/services/authService';
+import { slugify } from '@/services/mockData';
 import { EventModel, ScheduleItem } from '@/types';
 
 // Curated luxury cover photo presets so user can pick with one tap
@@ -52,7 +54,11 @@ export default function EventFormScreen() {
   const router = useRouter();
   const { slug: paramSlug } = useLocalSearchParams<{ slug?: string }>();
 
-  const currentSlug = paramSlug || 'demo-panel';
+  const user = authService.getState().user;
+  const userSlug =
+    (user && user.uid !== 'demo-host-yavuz' && user.events?.find((s) => s && s !== 'demo-panel' && s !== 'yavuz-ve-merve')) ||
+    user?.events?.[0];
+  const currentSlug = paramSlug || userSlug || 'demo-panel';
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -92,7 +98,7 @@ export default function EventFormScreen() {
     const load = async () => {
       setIsLoading(true);
       try {
-        const ev = await eventService.getEvent(currentSlug);
+        const ev = await eventService.getEvent(currentSlug, user?.displayName);
         if (ev) {
           setSlug(ev.slug);
           setBrideName(ev.hosts.brideOrPrimary || 'Merve');
@@ -191,9 +197,16 @@ export default function EventFormScreen() {
       };
 
       await eventService.saveEvent(cleanSlug, updatedData);
+      if (user) {
+        await authService.addEventToUser(user.uid, cleanSlug);
+      }
 
       setIsSaving(false);
       Alert.alert('Harika! 🎉', 'Etkinliğiniz başarıyla oluşturuldu ve Firebase ile senkronize edildi!', [
+        {
+          text: 'Panele Dön',
+          onPress: () => router.push('/panel' as any),
+        },
         {
           text: 'Sayfayı Gör',
           onPress: () => router.push(`/${cleanSlug}` as any),

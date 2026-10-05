@@ -9,6 +9,8 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 import { auth, db, isRealFirebaseConfigured } from './firebase';
 import { UserModel, AuthState } from '@/types';
+import { eventService } from './eventService';
+import { slugify } from './mockData';
 
 const DEMO_USER: UserModel = {
   uid: 'demo-host-yavuz',
@@ -42,7 +44,7 @@ class AuthService {
             displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Ev Sahibi',
             photoURL: firebaseUser.photoURL || undefined,
             isHost: true,
-            events: ['demo-panel', 'yavuz-ve-merve'],
+            events: [],
             createdAt: new Date().toISOString(),
           };
 
@@ -50,10 +52,21 @@ class AuthService {
             try {
               const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
               if (userDoc.exists()) {
-                userProfile = userDoc.data() as UserModel;
+                userProfile = { ...userProfile, ...(userDoc.data() as UserModel) };
               }
             } catch (err) {
               console.warn('User profile fetch error:', err);
+            }
+          }
+
+          // Ensure real users get their own personalized event (not demo-panel)
+          const personalSlug = await eventService.ensureUserEvent(userProfile);
+          if (!userProfile.events || userProfile.events.length === 0 || userProfile.events.includes('demo-panel')) {
+            userProfile.events = [personalSlug];
+            if (db) {
+              try {
+                await setDoc(doc(db, 'users', firebaseUser.uid), userProfile, { merge: true });
+              } catch (_) {}
             }
           }
 
@@ -102,26 +115,49 @@ class AuthService {
     if (isRealFirebaseConfigured && auth) {
       const cred = await signInWithEmailAndPassword(auth, email, pass);
       const user = cred.user;
-      const userProfile: UserModel = {
+      let userProfile: UserModel = {
         uid: user.uid,
         email: user.email || email,
         displayName: user.displayName || email.split('@')[0],
         isHost: true,
-        events: ['demo-panel', 'yavuz-ve-merve'],
+        events: [],
         createdAt: new Date().toISOString(),
       };
+
+      if (db) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            userProfile = { ...userProfile, ...(userDoc.data() as UserModel) };
+          }
+        } catch (_) {}
+      }
+
+      const personalSlug = await eventService.ensureUserEvent(userProfile);
+      if (!userProfile.events || userProfile.events.length === 0 || userProfile.events.includes('demo-panel')) {
+        userProfile.events = [personalSlug];
+        if (db) {
+          try {
+            await setDoc(doc(db, 'users', user.uid), userProfile, { merge: true });
+          } catch (_) {}
+        }
+      }
+
       this.updateState({ user: userProfile, isAuthenticated: true });
       return userProfile;
     } else {
       // Fallback/demo authentication
+      const rawName = email.split('@')[0];
+      const cleanSlug = slugify(rawName);
       const userProfile: UserModel = {
         uid: `user-${Date.now()}`,
         email,
-        displayName: email.split('@')[0],
+        displayName: rawName,
         isHost: true,
-        events: ['demo-panel', 'yavuz-ve-merve'],
+        events: [cleanSlug],
         createdAt: new Date().toISOString(),
       };
+      await eventService.getEvent(cleanSlug, rawName);
       this.updateState({ user: userProfile, isAuthenticated: true });
       return userProfile;
     }
@@ -144,6 +180,9 @@ class AuthService {
         createdAt: new Date().toISOString(),
       };
 
+      const personalSlug = await eventService.ensureUserEvent(userProfile);
+      userProfile.events = [personalSlug];
+
       if (db) {
         try {
           await setDoc(doc(db, 'users', user.uid), userProfile);
@@ -155,16 +194,32 @@ class AuthService {
       this.updateState({ user: userProfile, isAuthenticated: true });
       return userProfile;
     } else {
+      const cleanSlug = slugify(displayName || email.split('@')[0]);
       const userProfile: UserModel = {
         uid: `user-${Date.now()}`,
         email,
         displayName,
         isHost: true,
-        events: [],
+        events: [cleanSlug],
         createdAt: new Date().toISOString(),
       };
+      await eventService.getEvent(cleanSlug, displayName);
       this.updateState({ user: userProfile, isAuthenticated: true });
       return userProfile;
+    }
+  }
+
+  // Associate a created / edited event slug with current user
+  async addEventToUser(uid: string, slug: string): Promise<void> {
+    if (this.state.user && this.state.user.uid === uid) {
+      const updatedEvents = Array.from(new Set([slug, ...(this.state.user.events || [])]));
+      const updatedUser = { ...this.state.user, events: updatedEvents };
+      this.updateState({ user: updatedUser });
+      if (isRealFirebaseConfigured && db) {
+        try {
+          await setDoc(doc(db, 'users', uid), { events: updatedEvents }, { merge: true });
+        } catch (_) {}
+      }
     }
   }
 

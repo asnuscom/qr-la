@@ -323,8 +323,24 @@ export const PLAN_TIERS: PlanTierConfig[] = [
   },
 ];
 
-export function generateDefaultEvent(slug: string): EventModel {
-  const cleanSlug = (slug || 'etkinlik').toLowerCase().replace(/[^a-z0-9-]/g, '');
+export function slugify(text: string): string {
+  return (text || '')
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ı/g, 'i')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+}
+
+export function generateDefaultEvent(slug: string, hostDisplayName?: string): EventModel {
+  const cleanSlug = slugify(slug || 'etkinlik') || 'etkinlik';
   const parts = cleanSlug.split(/-ve-|-ile-|-and-|-/);
 
   const capitalize = (str: string) => (str ? str.charAt(0).toUpperCase() + str.slice(1) : '');
@@ -333,22 +349,35 @@ export function generateDefaultEvent(slug: string): EventModel {
   let groomName = 'Yavuz';
   let title = 'Özel Düğün Kutlaması';
 
-  if (parts.length >= 2) {
+  if (hostDisplayName && hostDisplayName.trim()) {
+    const trimmed = hostDisplayName.trim();
+    if (trimmed.includes('&')) {
+      const hParts = trimmed.split('&');
+      brideName = hParts[0].trim();
+      groomName = hParts[1]?.trim() || '';
+      title = `${brideName} & ${groomName} Düğünü`;
+    } else {
+      const hParts = trimmed.split(' ');
+      brideName = hParts[0] || 'Ev Sahibi';
+      groomName = hParts.slice(1).join(' ') || '';
+      title = `${trimmed} Etkinliği`;
+    }
+  } else if (parts.length >= 2) {
     brideName = capitalize(parts[0]);
     groomName = capitalize(parts[1]);
     title = `${brideName} & ${groomName} Düğünü`;
   } else if (parts.length === 1 && parts[0]) {
     brideName = capitalize(parts[0]);
-    title = `${brideName} Kutlaması`;
+    title = `${brideName} Etkinliği`;
   }
 
-  // 14 days from now as sensible default wedding date
+  // 30 days from now as sensible default event date
   const defaultDate = new Date();
-  defaultDate.setDate(defaultDate.getDate() + 14);
+  defaultDate.setDate(defaultDate.getDate() + 30);
   defaultDate.setHours(19, 0, 0, 0);
 
   return {
-    id: `event-${cleanSlug}`,
+    id: `event-${cleanSlug}-${Date.now()}`,
     slug: cleanSlug,
     title,
     subtitle: 'Bu mutlu anımıza ortak olduğunuz için teşekkür ederiz. Masanızdaki QR kodu okutarak anılarınızı hemen paylaşabilirsiniz.',
@@ -367,46 +396,46 @@ export function generateDefaultEvent(slug: string): EventModel {
       textColor: '#1A1817',
     },
     venue: {
-      name: 'Boğaz Kır Bahçesi / Sait Halim Paşa Yalısı',
-      address: 'Köybaşı Cad. No:83, Yeniköy, Sarıyer / İstanbul',
-      mapUrl: 'https://maps.google.com/?q=Sait+Halim+Pasa+Yalisi+Istanbul',
-      lat: 41.1197,
-      lng: 29.0601,
+      name: 'Etkinlik & Düğün Davet Salonu',
+      address: 'Merkez Mah. No:1, İstanbul / Türkiye',
+      mapUrl: 'https://maps.google.com/?q=Istanbul',
+      lat: 41.0082,
+      lng: 28.9784,
     },
     schedule: [
       {
         id: 'sch-1',
-        time: '18:30',
+        time: '19:00',
         title: 'Karşılama Kokteyli',
-        description: 'Giriş bahçesinde canlı caz müzik ve ikramlar eşliğinde karşılama.',
+        description: 'Canlı müzik ve ikramlar eşliğinde karşılama.',
         icon: 'glass-cocktail',
       },
       {
         id: 'sch-2',
-        time: '19:30',
+        time: '20:00',
         title: 'Nikah Töreni & İlk Dans',
-        description: 'Boğaz manzaralı terasta evlilik yemini ve ilk vals.',
+        description: 'Evlilik yemini ve ilk dans merasimi.',
         icon: 'ring',
       },
       {
         id: 'sch-3',
-        time: '20:30',
+        time: '20:45',
         title: 'Akşam Yemeği & Müzik',
-        description: 'Zengin düğün menüsü eşliğinde orkestra dinletisi.',
+        description: 'Zengin kutlama menüsü ve müzik dinletisi.',
         icon: 'silverware-fork-knife',
       },
       {
         id: 'sch-4',
         time: '22:00',
-        title: 'Düğün Pastası Kesimi',
-        description: 'Işık gösterisi ve şampanya eşliğinde pasta merasimi.',
+        title: 'Kutlama Pastası Kesimi',
+        description: 'Tebrikler ve pasta merasimi.',
         icon: 'cake-variant',
       },
       {
         id: 'sch-5',
         time: '23:00',
-        title: 'After Party & Canlı DJ',
-        description: 'Gece yarısına kadar sürecek dans ve eğlence.',
+        title: 'Eğlence & After Party',
+        description: 'Gece boyu sürecek müzik ve dans.',
         icon: 'music',
       },
     ],
@@ -421,10 +450,10 @@ export function generateDefaultEvent(slug: string): EventModel {
     },
     storage: {
       quotaBytes: 524288000, // 500 MB
-      usedBytes: 134217728,
-      photoCount: 6,
+      usedBytes: 0,          // Clean for new users
+      photoCount: 0,         // Clean for new users
       tier: 'free',
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
     },
     createdAt: new Date().toISOString(),
   };
