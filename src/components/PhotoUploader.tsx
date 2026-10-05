@@ -188,22 +188,42 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
       <View style={styles.switchRow}>
         <View style={{ flex: 1, paddingRight: 10 }}>
           <View style={styles.switchTitleRow}>
-            <Ionicons name="flash" size={16} color="#EAB308" />
-            <Text style={styles.switchLabel}>Akıllı Hızlı Sıkıştırma</Text>
+            <Ionicons
+              name={isCompressionEnabled ? "flash" : "image"}
+              size={16}
+              color={isCompressionEnabled ? "#EAB308" : "#F59E0B"}
+            />
+            <Text style={styles.switchLabel}>
+              {isCompressionEnabled ? 'Akıllı Hızlı Sıkıştırma (Önerilen)' : 'Orijinal Kalitede Yükle'}
+            </Text>
+            {!isCompressionEnabled && (
+              <View style={styles.warningBadge}>
+                <Text style={styles.warningBadgeText}>Kota Hızlı Dolar</Text>
+              </View>
+            )}
           </View>
           <Text style={styles.switchDesc}>
             {isCompressionEnabled
               ? 'Fotoğrafları kalitesini bozmadan ~%80 küçültür, internet harcamaz ve anında yüklenir.'
-              : 'Orijinal dosya boyutuyla yüklenir. Daha fazla internet harcayabilir.'}
+              : 'Orijinal ham dosya boyutuyla (3-8 MB) yüklenir.'}
           </Text>
         </View>
         <Switch
           value={isCompressionEnabled}
           onValueChange={setIsCompressionEnabled}
-          trackColor={{ false: '#D1D5DB', true: '#C5A059' }}
+          trackColor={{ false: '#F59E0B', true: '#C5A059' }}
           thumbColor="#FFFFFF"
         />
       </View>
+
+      {!isCompressionEnabled && (
+        <View style={styles.quotaWarningBox}>
+          <Ionicons name="warning" size={16} color="#D97706" />
+          <Text style={styles.quotaWarningText}>
+            Uyarı: Orijinal boyutta yüklerseniz etkinlik kotası daha çabuk dolar ve yükleme internet hızınıza bağlı olarak daha uzun sürebilir.
+          </Text>
+        </View>
+      )}
 
       {/* Album Selector */}
       <View style={styles.inputGroup}>
@@ -455,6 +475,37 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#6B7280',
     lineHeight: 15,
+  },
+  warningBadge: {
+    backgroundColor: '#FEF3C7',
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  warningBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#D97706',
+  },
+  quotaWarningBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FFFBEB',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+    marginBottom: 16,
+  },
+  quotaWarningText: {
+    flex: 1,
+    fontSize: 11,
+    color: '#92400E',
+    lineHeight: 16,
+    fontWeight: '600',
   },
   inputGroup: {
     marginBottom: 16,

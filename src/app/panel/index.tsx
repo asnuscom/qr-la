@@ -28,6 +28,7 @@ export default function HostPanelScreen() {
   const [pinCode, setPinCode] = useState('1923');
   const [allowDownloads, setAllowDownloads] = useState(true);
   const [isLiveFeedActive, setIsLiveFeedActive] = useState(true);
+  const [originalQuality, setOriginalQuality] = useState(false);
 
   const resolveActiveSlug = (user: UserModel | null): string => {
     if (!user) return 'demo-panel';
@@ -48,6 +49,7 @@ export default function HostPanelScreen() {
       setPinCode(ev.settings.pinCode || '1923');
       setAllowDownloads(ev.settings.allowGuestDownloads);
       setIsLiveFeedActive(ev.settings.isLiveFeedActive);
+      setOriginalQuality(Boolean((ev.settings as any).originalQuality || !ev.settings.enableCompression));
     }
     const ph = await eventService.getPhotos(activeSlug);
     setPhotos(ph);
@@ -314,6 +316,51 @@ export default function HostPanelScreen() {
               trackColor={{ false: '#D1D5DB', true: '#C5A059' }}
             />
           </View>
+
+          {/* Original Quality Upload Switch */}
+          <View style={styles.settingRow}>
+            <View style={{ flex: 1, paddingRight: 10 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={styles.settingLabel}>Orijinal Kalite Seçeneği</Text>
+                {originalQuality && (
+                  <View style={styles.warningBadge}>
+                    <Text style={styles.warningBadgeText}>Kota Hızlı Dolar</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.settingDesc}>
+                Fotoğraflar sıkıştırılmadan orijinal ham çözünürlüğünde (3-8 MB) yüklensin.
+              </Text>
+            </View>
+            <Switch
+              value={originalQuality}
+              onValueChange={async (val) => {
+                setOriginalQuality(val);
+                if (event) {
+                  await eventService.saveEvent(event.slug, {
+                    settings: {
+                      ...event.settings,
+                      enableCompression: !val,
+                      originalQuality: val,
+                    },
+                  });
+                }
+              }}
+              trackColor={{ false: '#D1D5DB', true: '#F59E0B' }}
+            />
+          </View>
+
+          {originalQuality && (
+            <View style={styles.quotaWarningBox}>
+              <View style={styles.quotaWarningHeader}>
+                <Ionicons name="warning" size={18} color="#D97706" />
+                <Text style={styles.quotaWarningTitle}>Depolama Kotası Uyarısı</Text>
+              </View>
+              <Text style={styles.quotaWarningDesc}>
+                ⚠️ Dikkat: Orijinal boyutta yüklerseniz 500 MB depolama kotanız çok daha çabuk dolar. Her bir görsel ortalama 3-8 MB yer kaplayacağı için toplam fotoğraf kapasiteniz düşebilir.
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Moderation section */}
@@ -792,5 +839,43 @@ const styles = StyleSheet.create({
     color: '#1A1817',
     fontSize: 13,
     fontWeight: '700',
+  },
+  warningBadge: {
+    backgroundColor: '#FEF3C7',
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  warningBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#D97706',
+  },
+  quotaWarningBox: {
+    backgroundColor: '#FFFBEB',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  quotaWarningHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  quotaWarningTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#B45309',
+  },
+  quotaWarningDesc: {
+    fontSize: 12,
+    color: '#92400E',
+    lineHeight: 18,
   },
 });

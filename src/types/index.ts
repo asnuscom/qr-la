@@ -30,6 +30,7 @@ export interface EventSettings {
   isPrivate: boolean;
   pinCode?: string;
   enableCompression: boolean;
+  originalQuality?: boolean;
   allowGuestDownloads: boolean;
   isLiveFeedActive: boolean;
   allowGuestbook: boolean;

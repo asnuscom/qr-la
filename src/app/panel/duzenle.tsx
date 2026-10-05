@@ -442,17 +442,40 @@ export default function EventFormScreen() {
 
           <View style={styles.switchRow}>
             <View style={{ flex: 1, paddingRight: 10 }}>
-              <Text style={styles.switchLabel}>Akıllı Hızlı Sıkıştırma Aktif</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={styles.switchLabel}>
+                  {enableCompression ? 'Akıllı Sıkıştırma Aktif' : 'Orijinal Kalitede Yükleme'}
+                </Text>
+                {!enableCompression && (
+                  <View style={styles.warningBadge}>
+                    <Text style={styles.warningBadgeText}>Kota Hızlı Dolar</Text>
+                  </View>
+                )}
+              </View>
               <Text style={styles.switchSub}>
-                Misafir fotoğrafları otomatik optimize edilerek anında yüklenir.
+                {enableCompression
+                  ? 'Fotoğraflar kalite kaybı olmadan optimize edilerek hızlı yüklenir.'
+                  : 'Fotoğraflar orijinal ham boyutuyla (3-8 MB) yüklenir.'}
               </Text>
             </View>
             <Switch
               value={enableCompression}
               onValueChange={setEnableCompression}
-              trackColor={{ false: '#D1D5DB', true: '#C5A059' }}
+              trackColor={{ false: '#F59E0B', true: '#C5A059' }}
             />
           </View>
+
+          {!enableCompression && (
+            <View style={styles.quotaWarningBox}>
+              <View style={styles.quotaWarningHeader}>
+                <Ionicons name="warning" size={18} color="#D97706" />
+                <Text style={styles.quotaWarningTitle}>Depolama Kotası Uyarısı</Text>
+              </View>
+              <Text style={styles.quotaWarningDesc}>
+                ⚠️ Dikkat: Orijinal boyutta yüklerseniz 500 MB depolama kotanız çok daha çabuk dolar. Her bir görsel ortalama 3-8 MB yer kaplayacağı için toplam fotoğraf kapasiteniz düşebilir.
+              </Text>
+            </View>
+          )}
 
           <View style={styles.switchRow}>
             <View style={{ flex: 1, paddingRight: 10 }}>
@@ -754,5 +777,43 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: '800',
+  },
+  warningBadge: {
+    backgroundColor: '#FEF3C7',
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  warningBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#D97706',
+  },
+  quotaWarningBox: {
+    backgroundColor: '#FFFBEB',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  quotaWarningHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  quotaWarningTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#B45309',
+  },
+  quotaWarningDesc: {
+    fontSize: 12,
+    color: '#92400E',
+    lineHeight: 18,
   },
 });
