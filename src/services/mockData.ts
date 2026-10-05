@@ -82,6 +82,40 @@ export const DEMO_EVENT: EventModel = {
   createdAt: '2026-10-01T10:00:00.000Z',
 };
 
+export const DEFAULT_ALBUMS: AlbumModel[] = [
+  {
+    id: 'alb-all',
+    slug: 'all',
+    name: 'Tüm Kareler',
+    order: 0,
+    photoCount: 0,
+  },
+  {
+    id: 'alb-1',
+    slug: 'nikah-ve-dans',
+    name: 'Nikah & İlk Dans',
+    order: 1,
+    photoCount: 0,
+    coverPhotoUrl: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=600&q=80',
+  },
+  {
+    id: 'alb-2',
+    slug: 'masalar-ve-misafirler',
+    name: 'Masalar & Misafirler',
+    order: 2,
+    photoCount: 0,
+    coverPhotoUrl: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=600&q=80',
+  },
+  {
+    id: 'alb-3',
+    slug: 'eglence-ve-dans',
+    name: 'Eğlence & Halay',
+    order: 3,
+    photoCount: 0,
+    coverPhotoUrl: 'https://images.unsplash.com/photo-1469371670807-013ccf25f16a?auto=format&fit=crop&w=600&q=80',
+  },
+];
+
 export const DEMO_ALBUMS: AlbumModel[] = [
   {
     id: 'alb-all',

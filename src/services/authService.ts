@@ -11,6 +11,9 @@ import { auth, db, isRealFirebaseConfigured } from './firebase';
 import { UserModel, AuthState } from '@/types';
 import { eventService } from './eventService';
 import { slugify } from './mockData';
+import { appStorage } from './storage';
+
+const SESSION_STORAGE_KEY = 'qr_la_host_session';
 
 const DEMO_USER: UserModel = {
   uid: 'demo-host-yavuz',
@@ -30,6 +33,21 @@ class AuthService {
   private subscribers: ((state: AuthState) => void)[] = [];
 
   constructor() {
+    // Immediately restore cached session from local-storage on startup!
+    const cachedSession = appStorage.getItem(SESSION_STORAGE_KEY);
+    if (cachedSession) {
+      try {
+        const parsed = JSON.parse(cachedSession) as UserModel;
+        if (parsed && parsed.uid) {
+          this.state = {
+            user: parsed,
+            isAuthenticated: true,
+            isLoading: false,
+          };
+        }
+      } catch (_) {}
+    }
+
     this.init();
   }
 
@@ -70,12 +88,38 @@ class AuthService {
             }
           }
 
+          appStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(userProfile));
+
           this.updateState({
             user: userProfile,
             isAuthenticated: true,
             isLoading: false,
           });
+        } else if (firebaseUser && firebaseUser.isAnonymous) {
+          // Anonymous login for guest should NOT clear the host's stored session!
+          const stored = appStorage.getItem(SESSION_STORAGE_KEY);
+          if (stored) {
+            try {
+              const parsed = JSON.parse(stored) as UserModel;
+              this.updateState({ user: parsed, isAuthenticated: true, isLoading: false });
+              return;
+            } catch (_) {}
+          }
+          this.updateState({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+          });
         } else {
+          // If Firebase reports signed out, verify if local-storage has a session
+          const stored = appStorage.getItem(SESSION_STORAGE_KEY);
+          if (stored) {
+            try {
+              const parsed = JSON.parse(stored) as UserModel;
+              this.updateState({ user: parsed, isAuthenticated: true, isLoading: false });
+              return;
+            } catch (_) {}
+          }
           this.updateState({
             user: null,
             isAuthenticated: false,
@@ -85,6 +129,14 @@ class AuthService {
       });
     } else {
       // By default in offline/demo mode, check if we have a simulated session
+      const stored = appStorage.getItem(SESSION_STORAGE_KEY);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored) as UserModel;
+          this.updateState({ user: parsed, isAuthenticated: true, isLoading: false });
+          return;
+        } catch (_) {}
+      }
       this.updateState({
         user: null,
         isAuthenticated: false,
@@ -143,6 +195,7 @@ class AuthService {
         }
       }
 
+      appStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(userProfile));
       this.updateState({ user: userProfile, isAuthenticated: true });
       return userProfile;
     } else {
@@ -158,6 +211,7 @@ class AuthService {
         createdAt: new Date().toISOString(),
       };
       await eventService.getEvent(cleanSlug, rawName);
+      appStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(userProfile));
       this.updateState({ user: userProfile, isAuthenticated: true });
       return userProfile;
     }
@@ -191,6 +245,7 @@ class AuthService {
         }
       }
 
+      appStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(userProfile));
       this.updateState({ user: userProfile, isAuthenticated: true });
       return userProfile;
     } else {
@@ -204,6 +259,7 @@ class AuthService {
         createdAt: new Date().toISOString(),
       };
       await eventService.getEvent(cleanSlug, displayName);
+      appStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(userProfile));
       this.updateState({ user: userProfile, isAuthenticated: true });
       return userProfile;
     }
@@ -214,6 +270,7 @@ class AuthService {
     if (this.state.user && this.state.user.uid === uid) {
       const updatedEvents = Array.from(new Set([slug, ...(this.state.user.events || [])]));
       const updatedUser = { ...this.state.user, events: updatedEvents };
+      appStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(updatedUser));
       this.updateState({ user: updatedUser });
       if (isRealFirebaseConfigured && db) {
         try {
@@ -225,6 +282,7 @@ class AuthService {
 
   // Instant 1-click Demo Host Sign In
   async signInAsDemoHost(): Promise<UserModel> {
+    appStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(DEMO_USER));
     this.updateState({
       user: { ...DEMO_USER },
       isAuthenticated: true,
@@ -235,6 +293,7 @@ class AuthService {
 
   // Sign Out
   async signOut(): Promise<void> {
+    appStorage.removeItem(SESSION_STORAGE_KEY);
     if (isRealFirebaseConfigured && auth) {
       await firebaseSignOut(auth);
     }

@@ -14,9 +14,11 @@ import { signInAnonymously } from 'firebase/auth';
 
 import { db, storage, auth, isRealFirebaseConfigured } from './firebase';
 import { EventModel, AlbumModel, PhotoModel, GuestbookEntryModel } from '@/types';
+import { appStorage } from './storage';
 import {
   DEMO_EVENT,
   DEMO_ALBUMS,
+  DEFAULT_ALBUMS,
   DEMO_PHOTOS,
   DEMO_GUESTBOOK,
   generateDefaultEvent,
@@ -53,15 +55,17 @@ class EventService {
     this.albums.set('yavuz-ve-merve', [...DEMO_ALBUMS]);
     this.photos.set('yavuz-ve-merve', [...DEMO_PHOTOS]);
     this.guestbooks.set('yavuz-ve-merve', [...DEMO_GUESTBOOK]);
-
-    this.ensureAuth();
   }
 
-  // Silent anonymous authentication for guests
+  // Silent anonymous authentication for guests (only when adding photos/guestbook)
   async ensureAuth() {
     if (this.authInitialized) return;
+    // If a host is already authenticated or stored in session, never overwrite with anonymous login!
+    if (appStorage.getItem('qr_la_host_session')) {
+      return;
+    }
     if (isRealFirebaseConfigured && auth) {
-      if (auth.currentUser) {
+      if (auth.currentUser && !auth.currentUser.isAnonymous) {
         this.authInitialized = true;
         return;
       }
@@ -88,8 +92,6 @@ class EventService {
 
   // Get or auto-generate event
   async getEvent(slug: string, hostDisplayName?: string): Promise<EventModel> {
-    await this.ensureAuth();
-
     // 1. If real Firebase is available, check Firestore first
     if (isRealFirebaseConfigured && db) {
       try {
@@ -112,9 +114,10 @@ class EventService {
           await setDoc(docRef, defaultEvent);
           this.events.set(slug, defaultEvent);
 
-          // Seed default albums for photo categorization
+          // Seed default albums for photo categorization (0 count for real users)
+          const albumsToSeed = isDemoSlug ? DEMO_ALBUMS : DEFAULT_ALBUMS;
           const albumsRef = collection(db, 'events', slug, 'albums');
-          for (const album of DEMO_ALBUMS) {
+          for (const album of albumsToSeed) {
             await setDoc(doc(albumsRef, album.id), album);
           }
 
@@ -156,7 +159,7 @@ class EventService {
       : generateDefaultEvent(slug, hostDisplayName);
 
     this.events.set(slug, generated);
-    this.albums.set(slug, [...DEMO_ALBUMS]);
+    this.albums.set(slug, isDemo ? [...DEMO_ALBUMS] : [...DEFAULT_ALBUMS]);
 
     if (isDemo) {
       this.photos.set(slug, DEMO_PHOTOS.map((p) => ({ ...p, eventSlug: slug })));
@@ -247,7 +250,9 @@ class EventService {
         console.warn('Firestore albums fetch failed:', err);
       }
     }
-    return this.albums.get(slug) || [...DEMO_ALBUMS];
+    const isDemo =
+      slug === DEMO_EVENT.slug || slug === 'demo' || slug === 'demo-panel' || slug === 'yavuz-ve-merve';
+    return this.albums.get(slug) || (isDemo ? [...DEMO_ALBUMS] : [...DEFAULT_ALBUMS]);
   }
 
   async getPhotos(slug: string, albumId?: string): Promise<PhotoModel[]> {

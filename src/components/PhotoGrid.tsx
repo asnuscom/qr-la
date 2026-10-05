@@ -36,6 +36,13 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ albums, photos, onLikePhot
   const availableWidth = Math.min(width, 1000) - padding * 2 - gap * (numColumns - 1);
   const itemWidth = availableWidth / numColumns;
 
+  const getAlbumCount = (albumId: string) => {
+    if (albumId === 'alb-all' || albumId === 'all') {
+      return photos.length;
+    }
+    return photos.filter((p) => p.albumId === albumId).length;
+  };
+
   return (
     <View style={styles.container}>
       {/* Albums Horizontal Scroll */}
@@ -46,6 +53,7 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ albums, photos, onLikePhot
       >
         {albums.map((album) => {
           const isSelected = selectedAlbumId === album.id || (album.slug === 'all' && selectedAlbumId === 'alb-all');
+          const count = getAlbumCount(album.id);
           return (
             <TouchableOpacity
               key={album.id}
@@ -58,7 +66,7 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ albums, photos, onLikePhot
               </Text>
               <View style={[styles.albumCountBadge, isSelected && styles.albumCountBadgeActive]}>
                 <Text style={[styles.albumCountText, isSelected && styles.albumCountTextActive]}>
-                  {album.photoCount}
+                  {count}
                 </Text>
               </View>
             </TouchableOpacity>
