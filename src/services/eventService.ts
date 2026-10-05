@@ -38,6 +38,11 @@ class EventService {
     this.photos.set(DEMO_EVENT.slug, [...DEMO_PHOTOS]);
     this.guestbooks.set(DEMO_EVENT.slug, [...DEMO_GUESTBOOK]);
 
+    this.events.set('demo', { ...DEMO_EVENT, slug: 'demo' });
+    this.albums.set('demo', [...DEMO_ALBUMS]);
+    this.photos.set('demo', [...DEMO_PHOTOS]);
+    this.guestbooks.set('demo', [...DEMO_GUESTBOOK]);
+
     this.ensureAuth();
   }
 
@@ -87,7 +92,7 @@ class EventService {
         } else {
           // Event does not exist in Firestore yet: Generate complete, filled default event
           const defaultEvent =
-            slug === DEMO_EVENT.slug ? { ...DEMO_EVENT } : generateDefaultEvent(slug);
+            slug === DEMO_EVENT.slug || slug === 'demo' ? { ...DEMO_EVENT, slug } : generateDefaultEvent(slug);
 
           // Save default event to Firestore so it is never empty
           await setDoc(docRef, defaultEvent);
@@ -130,7 +135,7 @@ class EventService {
 
     // Auto-generate rich default event if visiting a new slug
     const generated =
-      slug === DEMO_EVENT.slug ? { ...DEMO_EVENT } : generateDefaultEvent(slug);
+      slug === DEMO_EVENT.slug || slug === 'demo' ? { ...DEMO_EVENT, slug } : generateDefaultEvent(slug);
 
     this.events.set(slug, generated);
     this.albums.set(slug, [...DEMO_ALBUMS]);

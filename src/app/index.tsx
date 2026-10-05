@@ -42,9 +42,9 @@ export default function LandingScreen() {
 
             <TouchableOpacity
               style={styles.demoHeaderBtn}
-              onPress={() => router.push('/panel' as any)}
+              onPress={() => router.push('/yavuz-ve-merve' as any)}
             >
-              <Text style={styles.demoHeaderBtnText}>Ev Sahibi Paneli</Text>
+              <Text style={styles.demoHeaderBtnText}>Demo</Text>
             </TouchableOpacity>
           </View>
         </View>
