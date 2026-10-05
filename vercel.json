@@ -1,0 +1,28 @@
+{
+  "buildCommand": "npm run build:web",
+  "outputDirectory": "dist",
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "rewrites": [
+    {
+      "source": "/:slug/galeri",
+      "destination": "/[slug]/galeri.html"
+    },
+    {
+      "source": "/:slug/yukle",
+      "destination": "/[slug]/yukle.html"
+    },
+    {
+      "source": "/:slug/canli",
+      "destination": "/[slug]/canli.html"
+    },
+    {
+      "source": "/:slug/ani-defteri",
+      "destination": "/[slug]/ani-defteri.html"
+    },
+    {
+      "source": "/:slug",
+      "destination": "/[slug].html"
+    }
+  ]
+}
