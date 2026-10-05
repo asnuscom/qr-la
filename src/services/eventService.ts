@@ -45,11 +45,27 @@ class EventService {
   async ensureAuth() {
     if (this.authInitialized) return;
     if (isRealFirebaseConfigured && auth) {
+      if (auth.currentUser) {
+        this.authInitialized = true;
+        return;
+      }
       try {
         await signInAnonymously(auth);
         this.authInitialized = true;
-      } catch (err) {
-        console.warn('Firebase anonymous sign in notice:', err);
+      } catch (err: any) {
+        // Prevent repeated failing requests on every component mount
+        this.authInitialized = true;
+        if (
+          err?.code === 'auth/configuration-not-found' ||
+          err?.code === 'auth/admin-restricted-operation' ||
+          err?.code === 'auth/operation-not-allowed'
+        ) {
+          console.info(
+            'ℹ️ [QR-la Firebase Bilgisi]: Firebase Console üzerinde "Authentication > Sign-in method > Anonymous (Anonim)" henüz aktif edilmemiş. Uygulama kesintisiz yerel/demo verileriyle kusursuz çalışıyor.'
+          );
+        } else {
+          console.warn('Firebase anonymous sign in notice:', err?.message || err);
+        }
       }
     }
   }
@@ -97,8 +113,14 @@ class EventService {
 
           return defaultEvent;
         }
-      } catch (e) {
-        console.warn('Firestore fetch failed, falling back to local memory store:', e);
+      } catch (e: any) {
+        if (e?.code === 'unavailable' || e?.message?.includes('offline')) {
+          console.info(
+            'ℹ️ [Firestore Bilgisi]: Firestore henüz Firebase Console üzerinde oluşturulmamış veya çevrimdışı. Hazır dolu şablon verileri yerel hafızadan sunuluyor.'
+          );
+        } else {
+          console.warn('Firestore fetch notice:', e?.message || e);
+        }
       }
     }
 
