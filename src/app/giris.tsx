@@ -31,6 +31,7 @@ export default function LoginScreen() {
   const [isCheckingSlug, setIsCheckingSlug] = useState(false);
   const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'unavailable'>('idle');
   const [slugReason, setSlugReason] = useState<string>('');
+  const [authError, setAuthError] = useState<string | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [_authState, setAuthState] = useState<AuthState>(authService.getState());
@@ -38,6 +39,7 @@ export default function LoginScreen() {
   useEffect(() => {
     if (params.tab === 'register' || params.tab === 'login') {
       setTab(params.tab);
+      setAuthError(null);
     }
   }, [params.tab]);
 
@@ -55,6 +57,7 @@ export default function LoginScreen() {
   // Handle Display Name Change -> Auto-fill slug if not manually altered
   const handleDisplayNameChange = (text: string) => {
     setDisplayName(text);
+    setAuthError(null);
     if (!isSlugManuallyEdited) {
       const generated = slugify(text);
       setSlug(generated);
@@ -64,6 +67,7 @@ export default function LoginScreen() {
   // Handle manual slug input change
   const handleSlugChange = (text: string) => {
     setIsSlugManuallyEdited(true);
+    setAuthError(null);
     const cleaned = text
       .toLowerCase()
       .replace(/\s+/g, '-')
@@ -112,8 +116,11 @@ export default function LoginScreen() {
   }, [slug, tab]);
 
   const handleLogin = async () => {
+    setAuthError(null);
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Eksik Bilgi', 'Lütfen e-posta adresinizi ve şifrenizi girin.');
+      const msg = 'Lütfen e-posta adresinizi ve şifrenizi giriniz.';
+      setAuthError(msg);
+      Alert.alert('Eksik Bilgi', msg);
       return;
     }
 
@@ -124,24 +131,40 @@ export default function LoginScreen() {
       router.replace('/panel' as any);
     } catch (err: any) {
       setIsSubmitting(false);
-      Alert.alert('Giriş Başarısız', err?.message || 'E-posta veya şifre hatalı.');
+      const errMsg = err?.message || 'E-posta veya şifre hatalı. Lütfen tekrar deneyiniz.';
+      setAuthError(errMsg);
+      Alert.alert('Giriş Başarısız', errMsg);
     }
   };
 
   const handleRegister = async () => {
+    setAuthError(null);
     if (!email.trim() || !password.trim() || !displayName.trim()) {
-      Alert.alert('Eksik Bilgi', 'Lütfen adınızı, e-posta adresinizi ve şifrenizi girin.');
+      const msg = 'Lütfen adınızı, e-posta adresinizi ve şifrenizi giriniz.';
+      setAuthError(msg);
+      Alert.alert('Eksik Bilgi', msg);
+      return;
+    }
+
+    if (password.trim().length < 6) {
+      const msg = 'Şifreniz en az 6 karakterden oluşmalıdır.';
+      setAuthError(msg);
+      Alert.alert('Zayıf Şifre', msg);
       return;
     }
 
     const cleanSlug = slugify(slug || displayName);
     if (!cleanSlug || cleanSlug.length < 3) {
-      Alert.alert('Geçersiz Bağlantı', 'Lütfen en az 3 karakterden oluşan bir etkinlik bağlantı adı girin.');
+      const msg = 'Lütfen en az 3 karakterden oluşan bir etkinlik bağlantı adı girin.';
+      setAuthError(msg);
+      Alert.alert('Geçersiz Bağlantı', msg);
       return;
     }
 
     if (slugStatus === 'unavailable') {
-      Alert.alert('Bağlantı Adı Kullanımda', slugReason || 'Lütfen farklı bir etkinlik bağlantı adı seçin.');
+      const msg = slugReason || 'Lütfen farklı bir etkinlik bağlantı adı seçin.';
+      setAuthError(msg);
+      Alert.alert('Bağlantı Adı Kullanımda', msg);
       return;
     }
 
@@ -152,11 +175,14 @@ export default function LoginScreen() {
       router.replace('/panel' as any);
     } catch (err: any) {
       setIsSubmitting(false);
-      Alert.alert('Kayıt Başarısız', err?.message || 'Kayıt sırasında bir hata oluştu.');
+      const errMsg = err?.message || 'Kayıt sırasında bir hata oluştu.';
+      setAuthError(errMsg);
+      Alert.alert('Kayıt Başarısız', errMsg);
     }
   };
 
   const handleDemoLogin = async () => {
+    setAuthError(null);
     setIsSubmitting(true);
     await authService.signInAsDemoHost();
     setIsSubmitting(false);
@@ -228,7 +254,10 @@ export default function LoginScreen() {
           <View style={styles.tabSelector}>
             <TouchableOpacity
               style={[styles.tabBtn, tab === 'login' && styles.tabBtnActive]}
-              onPress={() => setTab('login')}
+              onPress={() => {
+                setTab('login');
+                setAuthError(null);
+              }}
             >
               <Text style={[styles.tabBtnText, tab === 'login' && styles.tabBtnTextActive]}>
                 Giriş Yap
@@ -237,13 +266,24 @@ export default function LoginScreen() {
 
             <TouchableOpacity
               style={[styles.tabBtn, tab === 'register' && styles.tabBtnActive]}
-              onPress={() => setTab('register')}
+              onPress={() => {
+                setTab('register');
+                setAuthError(null);
+              }}
             >
               <Text style={[styles.tabBtnText, tab === 'register' && styles.tabBtnTextActive]}>
                 Yeni Hesap Aç
               </Text>
             </TouchableOpacity>
           </View>
+
+          {/* Visual Auth Error Banner */}
+          {authError && (
+            <View style={styles.errorAlert}>
+              <Ionicons name="alert-circle" size={18} color="#DC2626" />
+              <Text style={styles.errorAlertText}>{authError}</Text>
+            </View>
+          )}
 
           {/* Form Fields */}
           {tab === 'register' && (
@@ -330,7 +370,10 @@ export default function LoginScreen() {
               placeholder="ornek@mail.com"
               placeholderTextColor="#9CA3AF"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(txt) => {
+                setEmail(txt);
+                setAuthError(null);
+              }}
               keyboardType="email-address"
               autoCapitalize="none"
             />
@@ -343,7 +386,10 @@ export default function LoginScreen() {
               placeholder="••••••••"
               placeholderTextColor="#9CA3AF"
               value={password}
-              onChangeText={setPassword}
+              onChangeText={(txt) => {
+                setPassword(txt);
+                setAuthError(null);
+              }}
               secureTextEntry
             />
           </View>
@@ -647,4 +693,25 @@ const styles = StyleSheet.create({
     lineHeight: 15,
     paddingHorizontal: 2,
   },
+  errorAlert: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1.5,
+    borderColor: '#FCA5A5',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 16,
+  },
+  errorAlertText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#B91C1C',
+    flex: 1,
+    lineHeight: 18,
+  },
 });
+

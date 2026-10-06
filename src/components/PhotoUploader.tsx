@@ -121,7 +121,7 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
       setIsUploading(false);
       setSelectedImages([]);
       setGuestNote('');
-      Alert.alert('Harika! 🎉', 'Fotoğraflarınız başarıyla yüklendi ve canlı ekrana yansıtıldı.');
+      Alert.alert('Başarılı! 🎉', 'Fotoğraf başarıyla yüklendi.');
       onUploadSuccess();
     } catch (err: any) {
       console.error('Upload failed:', err);

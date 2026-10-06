@@ -71,7 +71,7 @@ export default function UploadScreen() {
           slug={slug}
           albums={albums}
           onUploadSuccess={() => {
-            router.push(`/${slug}/galeri` as any);
+            router.push(`/${slug}` as any);
           }}
         />
       </ScrollView>

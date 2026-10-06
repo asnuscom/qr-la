@@ -16,6 +16,7 @@ export const StorageMeter: React.FC<StorageMeterProps> = ({ storage, onUpgradePr
 
   const isNearLimit = percentage >= 80;
   const isFull = percentage >= 95;
+  const isHighestTier = storage.tier === 'vip';
 
   const barColor = isFull ? '#EF4444' : isNearLimit ? '#F59E0B' : '#10B981';
 
@@ -24,20 +25,24 @@ export const StorageMeter: React.FC<StorageMeterProps> = ({ storage, onUpgradePr
       <View style={styles.header}>
         <View style={styles.titleCol}>
           <Text style={styles.title}>Depolama Durumu</Text>
-          <View style={styles.tierBadge}>
-            <Text style={styles.tierText}>
-              {storage.tier === 'free' ? 'Ücretsiz Paket (500 MB)' : `${storage.tier.toUpperCase()} PAKET`}
+          <View style={[styles.tierBadge, isHighestTier && { backgroundColor: '#EDE9FE', borderColor: '#DDD6FE' }]}>
+            <Text style={[styles.tierText, isHighestTier && { color: '#7C3AED' }]}>
+              {storage.tier === 'free'
+                ? 'Ücretsiz Paket (500 MB)'
+                : storage.tier === 'vip'
+                ? '👑 VIP EN YÜKSEK PAKET (15 GB)'
+                : `${storage.tier.toUpperCase()} PAKET`}
             </Text>
           </View>
         </View>
 
         <TouchableOpacity
-          style={styles.upgradeBtn}
+          style={[styles.upgradeBtn, isHighestTier && styles.vipBtn]}
           onPress={onUpgradePress || (() => router.push('/panel/tarifeler' as any))}
           activeOpacity={0.8}
         >
-          <Ionicons name="sparkles" size={14} color="#FFF" />
-          <Text style={styles.upgradeBtnText}>Yükselt</Text>
+          <Ionicons name={isHighestTier ? 'shield-checkmark' : 'sparkles'} size={14} color="#FFF" />
+          <Text style={styles.upgradeBtnText}>{isHighestTier ? 'Tarifeler' : 'Yükselt'}</Text>
         </TouchableOpacity>
       </View>
 
@@ -122,6 +127,9 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 14,
+  },
+  vipBtn: {
+    backgroundColor: '#8B5CF6',
   },
   upgradeBtnText: {
     color: '#FFF',

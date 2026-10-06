@@ -18,14 +18,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { eventService } from '@/services/eventService';
 import { authService } from '@/services/authService';
 import { slugify, DEMO_PHOTOS } from '@/services/mockData';
-import { EventModel, PhotoModel, UserModel, AlbumModel } from '@/types';
+import { EventModel, PhotoModel, UserModel } from '@/types';
 import { StorageMeter } from '@/components/StorageMeter';
 
 export default function HostPanelScreen() {
   const router = useRouter();
   const [event, setEvent] = useState<EventModel | null>(null);
   const [photos, setPhotos] = useState<PhotoModel[]>([]);
-  const [albums, setAlbums] = useState<AlbumModel[]>([]);
   const [currentUser, setCurrentUser] = useState<UserModel | null>(authService.getState().user);
   const [isPrivate, setIsPrivate] = useState(false);
   const [pinCode, setPinCode] = useState('1923');
@@ -37,8 +36,7 @@ export default function HostPanelScreen() {
   const [hasUnsavedSettings, setHasUnsavedSettings] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingSamples, setIsLoadingSamples] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState('');
-  const [isAddingCategory, setIsAddingCategory] = useState(false);
+
 
   const resolveActiveSlug = (user: UserModel | null): string => {
     if (!user) return 'demo-panel';
@@ -64,52 +62,9 @@ export default function HostPanelScreen() {
     }
     const ph = await eventService.getPhotos(activeSlug);
     setPhotos(ph);
-    const alb = await eventService.getAlbums(activeSlug);
-    setAlbums(alb);
   };
 
-  const handleAddCategory = async () => {
-    if (!event || !newCategoryName.trim()) return;
-    setIsAddingCategory(true);
-    try {
-      await eventService.addAlbum(event.slug, newCategoryName.trim());
-      const updated = await eventService.getAlbums(event.slug);
-      setAlbums(updated);
-      setNewCategoryName('');
-      Alert.alert('Kategori Eklendi! 🏷️', `"${newCategoryName.trim()}" kategorisi başarıyla eklendi.`);
-    } catch (e) {
-      console.error(e);
-      Alert.alert('Hata', 'Kategori eklenirken bir sorun oluştu.');
-    } finally {
-      setIsAddingCategory(false);
-    }
-  };
 
-  const handleDeleteCategory = async (album: AlbumModel) => {
-    if (!event) return;
-    if (album.id === 'alb-all' || album.id === 'alb-genel' || album.slug === 'all' || album.slug === 'genel') {
-      Alert.alert('Bilgi', 'Varsayılan sistem kategorisi silinemez.');
-      return;
-    }
-
-    Alert.alert(
-      'Kategoriyi Sil',
-      `"${album.name}" kategorisini silmek istediğinizden emin misiniz? (Bu kategorideki fotoğraflar "Genel" kategorisine aktarılacaktır.)`,
-      [
-        { text: 'Vazgeç', style: 'cancel' },
-        {
-          text: 'Sil',
-          style: 'destructive',
-          onPress: async () => {
-            await eventService.deleteAlbum(event.slug, album.id);
-            const updated = await eventService.getAlbums(event.slug);
-            setAlbums(updated);
-            Alert.alert('Silindi', `"${album.name}" kategorisi başarıyla silindi.`);
-          },
-        },
-      ]
-    );
-  };
 
   // Re-fetch data whenever user navigates back to this screen
   useFocusEffect(
@@ -391,11 +346,26 @@ export default function HostPanelScreen() {
             onPress={() => router.push('/panel/tarifeler' as any)}
             activeOpacity={0.8}
           >
-            <View style={[styles.actionIconWrap, { backgroundColor: '#FEF3C7' }]}>
-              <Ionicons name="flash-outline" size={24} color="#D97706" />
+            <View
+              style={[
+                styles.actionIconWrap,
+                { backgroundColor: event.storage.tier === 'vip' ? '#EDE9FE' : '#FEF3C7' },
+              ]}
+            >
+              <Ionicons
+                name={event.storage.tier === 'vip' ? 'shield-checkmark-outline' : 'flash-outline'}
+                size={24}
+                color={event.storage.tier === 'vip' ? '#8B5CF6' : '#D97706'}
+              />
             </View>
-            <Text style={styles.actionTitle}>Kota Yükselt</Text>
-            <Text style={styles.actionDesc}>2 GB, 5 GB veya VIP 15 GB depolamaya geç.</Text>
+            <Text style={styles.actionTitle}>
+              {event.storage.tier === 'vip' ? 'Tarifeler & Paket' : 'Kota Yükselt'}
+            </Text>
+            <Text style={styles.actionDesc}>
+              {event.storage.tier === 'vip'
+                ? 'VIP 15 GB en yüksek paket aktif.'
+                : '2 GB, 5 GB veya VIP 15 GB depolamaya geç.'}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -406,31 +376,6 @@ export default function HostPanelScreen() {
               <Text style={styles.sectionHeaderTitle}>Gizlilik & Etkinlik Ayarları</Text>
               <Text style={styles.sectionHeaderSub}>Misafir erişimi ve yükleme kuralları</Text>
             </View>
-            <TouchableOpacity
-              style={[
-                styles.saveSettingsHeaderBtn,
-                hasUnsavedSettings && styles.saveSettingsHeaderBtnActive,
-                isSavingSettings && { opacity: 0.6 },
-              ]}
-              onPress={handleSaveSettings}
-              disabled={isSavingSettings}
-              activeOpacity={0.8}
-            >
-              {isSavingSettings ? (
-                <ActivityIndicator color="#FFF" size="small" />
-              ) : (
-                <>
-                  <Ionicons
-                    name={settingsSaveSuccess ? 'checkmark-circle' : 'save-outline'}
-                    size={15}
-                    color="#FFF"
-                  />
-                  <Text style={styles.saveSettingsHeaderBtnText}>
-                    {settingsSaveSuccess ? 'Kaydedildi' : 'Kaydet'}
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
           </View>
 
           {/* Private Event Switch */}
@@ -572,103 +517,7 @@ export default function HostPanelScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Gallery Categories Management Section */}
-        <View style={styles.categoriesSection}>
-          <View style={styles.categoriesHeaderRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.sectionHeaderTitle}>Galeri Kategorileri (Albümler)</Text>
-              <Text style={styles.sectionHeaderSub}>
-                Misafirler fotoğrafları bu kategorilere göre yükler ve galeri içinde filtreler
-              </Text>
-            </View>
-            <View style={styles.catCountBadge}>
-              <Text style={styles.catCountBadgeText}>{albums.length} Kategori</Text>
-            </View>
-          </View>
 
-          <View style={styles.catListWrap}>
-            {albums.map((album) => {
-              const isAll = album.id === 'alb-all' || album.slug === 'all';
-              const isDefault = album.id === 'alb-genel' || album.slug === 'genel';
-              const isCustom = !isAll && !isDefault;
-              const photoCount = isAll
-                ? photos.length
-                : isDefault
-                ? photos.filter((p) => !p.albumId || p.albumId === 'alb-genel').length
-                : photos.filter((p) => p.albumId === album.id).length;
-
-              return (
-                <View key={album.id} style={styles.catItemRow}>
-                  <View style={styles.catItemInfo}>
-                    <View style={[styles.catIconWrap, isDefault && { backgroundColor: '#FEF3C7' }]}>
-                      <Ionicons
-                        name={isAll ? 'albums' : isDefault ? 'folder' : 'folder-outline'}
-                        size={18}
-                        color={isDefault ? '#D97706' : '#C5A059'}
-                      />
-                    </View>
-                    <View>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Text style={styles.catItemName}>{album.name}</Text>
-                        {isDefault && (
-                          <View style={styles.catDefaultBadge}>
-                            <Text style={styles.catDefaultBadgeText}>Varsayılan</Text>
-                          </View>
-                        )}
-                        {isAll && (
-                          <View style={styles.catSystemBadge}>
-                            <Text style={styles.catSystemBadgeText}>Filtre</Text>
-                          </View>
-                        )}
-                      </View>
-                      <Text style={styles.catItemSub}>{photoCount} Fotoğraf</Text>
-                    </View>
-                  </View>
-
-                  {isCustom && (
-                    <TouchableOpacity
-                      style={styles.catDeleteBtn}
-                      onPress={() => handleDeleteCategory(album)}
-                      activeOpacity={0.7}
-                    >
-                      <Ionicons name="trash-outline" size={16} color="#EF4444" />
-                    </TouchableOpacity>
-                  )}
-                </View>
-              );
-            })}
-          </View>
-
-          {/* Quick Add Category Input */}
-          <View style={styles.addCatRow}>
-            <TextInput
-              style={styles.addCatInput}
-              placeholder="Yeni Kategori (Örn: Aile, Pasta, Dans...)"
-              placeholderTextColor="#9CA3AF"
-              value={newCategoryName}
-              onChangeText={setNewCategoryName}
-              onSubmitEditing={handleAddCategory}
-            />
-            <TouchableOpacity
-              style={[
-                styles.addCatBtn,
-                (!newCategoryName.trim() || isAddingCategory) && styles.addCatBtnDisabled,
-              ]}
-              onPress={handleAddCategory}
-              disabled={!newCategoryName.trim() || isAddingCategory}
-              activeOpacity={0.8}
-            >
-              {isAddingCategory ? (
-                <ActivityIndicator color="#FFF" size="small" />
-              ) : (
-                <>
-                  <Ionicons name="add" size={18} color="#FFF" />
-                  <Text style={styles.addCatBtnText}>Ekle</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
 
         {/* Moderation section */}
         <View style={styles.moderationSection}>

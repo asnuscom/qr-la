@@ -48,6 +48,7 @@ export interface StorageInfo {
 export interface EventModel {
   id: string;
   slug: string;
+  hostId?: string;
   title: string;
   subtitle?: string;
   hosts: {

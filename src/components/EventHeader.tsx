@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Linking, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { EventModel } from '@/types';
+import { authService } from '@/services/authService';
+import { EventModel, UserModel } from '@/types';
 
 interface EventHeaderProps {
   event: EventModel;
@@ -11,12 +12,29 @@ interface EventHeaderProps {
 
 export const EventHeader: React.FC<EventHeaderProps> = ({ event, activeTab = 'home' }) => {
   const router = useRouter();
+  const [currentUser, setCurrentUser] = useState<UserModel | null>(authService.getState().user);
   const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number }>({
     days: 0,
     hours: 0,
     minutes: 0,
     seconds: 0,
   });
+
+  useEffect(() => {
+    const unsub = authService.subscribe((state) => {
+      setCurrentUser(state.user);
+    });
+    return () => unsub();
+  }, []);
+
+  const isHost = Boolean(
+    currentUser && (
+      currentUser.uid === event.hostId ||
+      currentUser.events?.includes(event.slug) ||
+      (currentUser.uid === 'demo-host-yavuz' && (event.slug === 'samet-ve-sule' || event.slug === 'demo-panel' || event.slug === 'yavuz-ve-merve')) ||
+      (currentUser.events && currentUser.events.length > 0)
+    )
+  );
 
   useEffect(() => {
     const calculateTime = () => {
@@ -79,20 +97,63 @@ export const EventHeader: React.FC<EventHeaderProps> = ({ event, activeTab = 'ho
           </Text>
         </View>
 
-        {/* Live Projector Quick Link */}
-        <TouchableOpacity
-          style={styles.liveBadge}
-          onPress={() => router.push(`/${event.slug}/canli` as any)}
-          activeOpacity={0.8}
-        >
-          <View style={styles.pulseDot} />
-          <Ionicons name="tv-outline" size={14} color="#FFF" style={{ marginRight: 5 }} />
-          <Text style={styles.liveBadgeText}>Canlı Projeksiyon</Text>
-        </TouchableOpacity>
+        {/* Top Right Floating Actions */}
+        <View style={styles.topRightActions}>
+          {isHost && (
+            <TouchableOpacity
+              style={styles.hostPanelBadge}
+              onPress={() => router.push(`/panel?slug=${event.slug}` as any)}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="shield-checkmark" size={13} color="#FFF" />
+              <Text style={styles.hostPanelBadgeText}>Yönetim Paneli</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Live Projector Quick Link */}
+          <TouchableOpacity
+            style={styles.liveBadge}
+            onPress={() => router.push(`/${event.slug}/canli` as any)}
+            activeOpacity={0.8}
+          >
+            <View style={styles.pulseDot} />
+            <Ionicons name="tv-outline" size={14} color="#FFF" style={{ marginRight: 5 }} />
+            <Text style={styles.liveBadgeText}>Canlı</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Main Details Card */}
       <View style={styles.detailsCard}>
+        {/* Host Banner */}
+        {isHost && (
+          <TouchableOpacity
+            style={styles.hostBanner}
+            onPress={() => router.push(`/panel?slug=${event.slug}` as any)}
+            activeOpacity={0.85}
+          >
+            <View style={styles.hostBannerLeft}>
+              <View style={styles.hostBannerIcon}>
+                <Ionicons name="shield-checkmark" size={16} color="#8A6D3B" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <View style={styles.hostBadgeRow}>
+                  <Text style={styles.hostBannerTitle}>Sayfa Sahibi (Yönetici)</Text>
+                  <View style={styles.hostLiveDot} />
+                  <Text style={styles.hostStatusText}>Oturum Açık</Text>
+                </View>
+                <Text style={styles.hostBannerSub}>
+                  QR kartları indir, fotoğrafları yönet veya ayarları düzenle
+                </Text>
+              </View>
+            </View>
+            <View style={styles.hostBannerBtn}>
+              <Text style={styles.hostBannerBtnText}>Panele Git</Text>
+              <Ionicons name="arrow-forward" size={12} color="#FFF" />
+            </View>
+          </TouchableOpacity>
+        )}
+
         <Text style={styles.title}>{event.title}</Text>
         {event.subtitle && <Text style={styles.subtitle}>{event.subtitle}</Text>}
 
@@ -223,10 +284,36 @@ const styles = StyleSheet.create({
     color: '#8A6D3B',
     letterSpacing: 0.5,
   },
-  liveBadge: {
+  topRightActions: {
     position: 'absolute',
     top: 20,
     right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  hostPanelBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(26, 24, 23, 0.92)',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#C5A059',
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  hostPanelBadgeText: {
+    color: '#FBF8F2',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  liveBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(197, 160, 89, 0.95)',
@@ -249,6 +336,76 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 12,
     fontWeight: '700',
+  },
+  hostBanner: {
+    width: '100%',
+    backgroundColor: '#FAF5EA',
+    borderWidth: 1.5,
+    borderColor: '#EAD7BB',
+    borderRadius: 16,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    gap: 10,
+  },
+  hostBannerLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  hostBannerIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+  },
+  hostBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  hostBannerTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#1A1817',
+  },
+  hostLiveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10B981',
+  },
+  hostStatusText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#059669',
+  },
+  hostBannerSub: {
+    fontSize: 11,
+    color: '#6B7280',
+    lineHeight: 14,
+    marginTop: 2,
+  },
+  hostBannerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#8A6D3B',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+  },
+  hostBannerBtnText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '800',
   },
   detailsCard: {
     backgroundColor: '#FFFFFF',

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -13,24 +13,34 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { PLAN_TIERS } from '@/services/mockData';
 import { authService } from '@/services/authService';
+import { UserModel } from '@/types';
 
 export default function LandingScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isDesktop = width > 768;
 
+  const [currentUser, setCurrentUser] = useState<UserModel | null>(authService.getState().user);
+
+  useEffect(() => {
+    const unsub = authService.subscribe((state) => {
+      setCurrentUser(state.user);
+    });
+    return () => unsub();
+  }, []);
+
+  const isUserLoggedIn = Boolean(currentUser && currentUser.uid !== 'demo-host-yavuz');
+
   const handleStartEvent = () => {
-    const user = authService.getState().user;
-    if (user && user.uid !== 'demo-host-yavuz') {
-      router.push('/panel/duzenle' as any);
+    if (isUserLoggedIn) {
+      router.push('/panel' as any);
     } else {
       router.push({ pathname: '/giris', params: { tab: 'register' } } as any);
     }
   };
 
   const handleSelectPlan = () => {
-    const user = authService.getState().user;
-    if (user && user.uid !== 'demo-host-yavuz') {
+    if (isUserLoggedIn) {
       router.push('/panel/tarifeler' as any);
     } else {
       router.push({ pathname: '/giris', params: { tab: 'register' } } as any);
@@ -52,26 +62,39 @@ export default function LandingScreen() {
           </View>
 
           <View style={styles.navActions}>
-            <TouchableOpacity
-              style={styles.navLinkBtn}
-              onPress={() => router.push({ pathname: '/giris', params: { tab: 'login' } } as any)}
-            >
-              <Text style={styles.navLinkText}>Giriş Yap</Text>
-            </TouchableOpacity>
+            {isUserLoggedIn ? (
+              <TouchableOpacity
+                style={styles.navPanelBtn}
+                onPress={() => router.push('/panel' as any)}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="shield-checkmark" size={15} color="#FFF" />
+                <Text style={styles.navPanelBtnText}>Yönetim Paneli</Text>
+              </TouchableOpacity>
+            ) : (
+              <>
+                <TouchableOpacity
+                  style={styles.navLinkBtn}
+                  onPress={() => router.push({ pathname: '/giris', params: { tab: 'login' } } as any)}
+                >
+                  <Text style={styles.navLinkText}>Giriş Yap</Text>
+                </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.navRegisterBtn}
-              onPress={() => router.push({ pathname: '/giris', params: { tab: 'register' } } as any)}
-            >
-              <Text style={styles.navRegisterBtnText}>Ücretsiz Başla</Text>
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.navRegisterBtn}
+                  onPress={() => router.push({ pathname: '/giris', params: { tab: 'register' } } as any)}
+                >
+                  <Text style={styles.navRegisterBtnText}>Ücretsiz Başla</Text>
+                </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.demoHeaderBtn}
-              onPress={() => router.push('/demo-panel' as any)}
-            >
-              <Text style={styles.demoHeaderBtnText}>Demo</Text>
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.demoHeaderBtn}
+                  onPress={() => router.push('/demo-panel' as any)}
+                >
+                  <Text style={styles.demoHeaderBtnText}>Demo</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </View>
 
@@ -341,6 +364,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#9E7A36',
+  },
+  navPanelBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#C5A059',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    shadowColor: '#C5A059',
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  navPanelBtnText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '800',
   },
   demoHeaderBtn: {
     backgroundColor: '#C5A059',

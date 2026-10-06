@@ -47,12 +47,24 @@ export default function PricingUpgradeScreen() {
     const text = encodeURIComponent(customText || defaultText);
     const url = `https://wa.me/${WHATSAPP_PHONE}?text=${text}`;
 
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      window.open(url, '_blank');
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof document !== 'undefined') {
+      try {
+        const link = document.createElement('a');
+        link.href = url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch {
+        Linking.openURL(url).catch(() => {});
+      }
     } else {
       Linking.openURL(url).catch((err) => {
         console.warn('WhatsApp açılamadı:', err);
-        Alert.alert('İletişim', `WhatsApp üzerinden bize ulaşabilirsiniz: ${WHATSAPP_DISPLAY}`);
+        Linking.openURL(`https://api.whatsapp.com/send?phone=${WHATSAPP_PHONE}&text=${text}`).catch(() => {
+          Alert.alert('WhatsApp İletişim', `Bize WhatsApp üzerinden ulaşabilirsiniz: ${WHATSAPP_DISPLAY}`);
+        });
       });
     }
   };
@@ -89,19 +101,8 @@ export default function PricingUpgradeScreen() {
 
     const coupon = COUPON_CODES[cleanCode];
     if (!coupon) {
-      Alert.alert(
-        'Geçersiz Kupon Kodu',
-        `"${cleanCode}" kupon kodu geçerli değil.\n\nÖzel kupon kodu edinmek veya paketinizi yükseltmek için WhatsApp destek hattımızdan bize ulaşabilirsiniz.`,
-        [
-          {
-            text: 'WhatsApp ile İletişim',
-            onPress: () =>
-              openWhatsApp(
-                `Merhaba, qr-la.com/${activeSlug} etkinliğim için geçerli bir kupon kodu almak veya paket satın almak istiyorum.`
-              ),
-          },
-          { text: 'Kapat', style: 'cancel' },
-        ]
+      openWhatsApp(
+        `Merhaba, qr-la.com/${activeSlug} etkinliğim için "${cleanCode}" kuponunu kullanmak veya indirimli paket satın almak istiyorum.`
       );
       return;
     }
@@ -131,10 +132,30 @@ export default function PricingUpgradeScreen() {
     }
   };
 
+  const currentTier = event?.storage.tier || 'free';
+
+  const TIER_RANKS: Record<StorageTier, number> = {
+    free: 0,
+    standart: 1,
+    premium: 2,
+    vip: 3,
+  };
+
   const handleSelectPlan = (tier: PlanTierConfig) => {
-    const isCurrent = event?.storage.tier === tier.tier;
+    const isCurrent = currentTier === tier.tier;
     if (isCurrent) {
       Alert.alert('Mevcut Paketiniz', `Zaten ${tier.name} paketini kullanmaktasınız.`);
+      return;
+    }
+
+    const currentRank = TIER_RANKS[currentTier] ?? 0;
+    const selectedRank = TIER_RANKS[tier.tier] ?? 0;
+
+    if (selectedRank < currentRank) {
+      Alert.alert(
+        'Mevcut Paketiniz Daha Yüksek',
+        `Zaten daha üst seviye olan "${getTierDisplay(currentTier).name}" paketini kullanmaktasınız.`
+      );
       return;
     }
 
@@ -143,23 +164,11 @@ export default function PricingUpgradeScreen() {
       return;
     }
 
-    Alert.alert(
-      `${tier.name} (${tier.priceTL} ₺)`,
-      `Bu paketi satın almak veya kupon kodu talep etmek için WhatsApp destek hattımız (${WHATSAPP_DISPLAY}) üzerinden hemen iletişime geçebilirsiniz.`,
-      [
-        {
-          text: 'WhatsApp ile Satın Al',
-          onPress: () =>
-            openWhatsApp(
-              `Merhaba, qr-la.com/${activeSlug} etkinliğim için ${tier.name} (${tier.priceTL} ₺) paketini satın almak istiyorum.`
-            ),
-        },
-        { text: 'Vazgeç', style: 'cancel' },
-      ]
+    openWhatsApp(
+      `Merhaba, qr-la.com/${activeSlug} etkinliğim için ${tier.name} (${tier.priceTL} ₺) depolama paketini satın almak ve yükseltmek istiyorum.`
     );
   };
 
-  const currentTier = event?.storage.tier || 'free';
   const getTierDisplay = (tier: StorageTier) => {
     switch (tier) {
       case 'vip':
@@ -305,15 +314,33 @@ export default function PricingUpgradeScreen() {
             )}
           </View>
 
-          <Text style={styles.headerTitle}>Düğün Anılarınız Asla Yarıda Kalmasın</Text>
+          <Text style={styles.headerTitle}>
+            {currentTier === 'vip'
+              ? '👑 En Yüksek VIP Pakettesiniz'
+              : 'Düğün Anılarınız Asla Yarıda Kalmasın'}
+          </Text>
           <Text style={styles.headerSubtitle}>
-            Ücretsiz 500 MB kotanız dolmak üzereyse veya salonda canlı projeksiyon özelliğini açmak istiyorsanız uygun paketi seçin.
+            {currentTier === 'vip'
+              ? 'Etkinliğiniz için en üst düzey 15 GB depolama alanı ve tüm ayrıcalıklar sınırsız olarak tanımlanmıştır.'
+              : 'Ücretsiz 500 MB kotanız dolmak üzereyse veya salonda canlı projeksiyon özelliğini açmak istiyorsanız uygun paketi seçin.'}
           </Text>
 
           {/* Pricing Plans Grid */}
           <View style={styles.plansContainer}>
             {PLAN_TIERS.map((tier) => {
               const isCurrent = currentTier === tier.tier;
+              const currentRank = TIER_RANKS[currentTier] ?? 0;
+              const tierRank = TIER_RANKS[tier.tier] ?? 0;
+              const isLower = tierRank < currentRank;
+              const isDisabled = isCurrent || isLower;
+
+              let btnText = 'WhatsApp ile Satın Al / Yükselt';
+              if (isCurrent) {
+                btnText = 'Şu Anki Aktif Paketiniz';
+              } else if (isLower) {
+                btnText = 'Mevcut Paketinizin Altında';
+              }
+
               return (
                 <View
                   key={tier.tier}
@@ -321,13 +348,14 @@ export default function PricingUpgradeScreen() {
                     styles.planCard,
                     tier.isPopular && styles.planCardPopular,
                     isCurrent && styles.planCardCurrent,
+                    isLower && styles.planCardLower,
                   ]}
                 >
                   {isCurrent ? (
                     <View style={styles.currentBadge}>
                       <Text style={styles.currentBadgeText}>AKTİF PAKETİNİZ</Text>
                     </View>
-                  ) : tier.isPopular ? (
+                  ) : tier.isPopular && !isLower ? (
                     <View style={styles.badge}>
                       <Text style={styles.badgeText}>EN ÇOK TERCİH EDİLEN</Text>
                     </View>
@@ -360,21 +388,23 @@ export default function PricingUpgradeScreen() {
                   <TouchableOpacity
                     style={[
                       styles.chooseBtn,
-                      tier.isPopular && styles.chooseBtnPopular,
+                      tier.isPopular && !isLower && styles.chooseBtnPopular,
                       isCurrent && styles.chooseBtnCurrent,
+                      isLower && styles.chooseBtnLower,
                     ]}
                     onPress={() => handleSelectPlan(tier)}
                     activeOpacity={0.8}
-                    disabled={isCurrent}
+                    disabled={isDisabled}
                   >
                     <Text
                       style={[
                         styles.chooseBtnText,
-                        tier.isPopular && styles.chooseBtnTextPopular,
+                        tier.isPopular && !isLower && styles.chooseBtnTextPopular,
                         isCurrent && styles.chooseBtnTextCurrent,
+                        isLower && styles.chooseBtnTextLower,
                       ]}
                     >
-                      {isCurrent ? 'Şu Anki Paketiniz' : 'WhatsApp ile Satın Al / Yükselt'}
+                      {btnText}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -746,6 +776,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#ECFDF5',
     borderColor: '#A7F3D0',
   },
+  chooseBtnLower: {
+    backgroundColor: '#F3F4F6',
+    borderColor: '#E5E7EB',
+    opacity: 0.7,
+  },
   chooseBtnText: {
     fontSize: 14,
     fontWeight: '700',
@@ -756,6 +791,14 @@ const styles = StyleSheet.create({
   },
   chooseBtnTextCurrent: {
     color: '#059669',
+  },
+  chooseBtnTextLower: {
+    color: '#9CA3AF',
+    fontWeight: '600',
+  },
+  planCardLower: {
+    opacity: 0.85,
+    backgroundColor: '#FAFAFA',
   },
   centerLoading: {
     flex: 1,

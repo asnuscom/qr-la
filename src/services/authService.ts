@@ -15,6 +15,57 @@ import { appStorage } from './storage';
 
 const SESSION_STORAGE_KEY = 'qr_la_host_session';
 
+export function formatAuthError(err: any): string {
+  const code = err?.code || '';
+  const msg = err?.message || '';
+
+  if (
+    code === 'auth/wrong-password' ||
+    code === 'auth/invalid-credential' ||
+    code === 'auth/invalid-login-credentials'
+  ) {
+    return 'Girdiğiniz şifre veya e-posta hatalı. Lütfen kontrol edip tekrar deneyiniz.';
+  }
+  if (code === 'auth/user-not-found') {
+    return 'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı. Lütfen önce "Kayıt Ol" sekmesinden hesap oluşturun.';
+  }
+  if (code === 'auth/email-already-in-use') {
+    return 'Bu e-posta adresi zaten kullanımda. Lütfen "Giriş Yap" sekmesini kullanarak giriş yapınız.';
+  }
+  if (code === 'auth/weak-password') {
+    return 'Şifreniz çok zayıf. Lütfen en az 6 karakterli bir şifre belirleyin.';
+  }
+  if (code === 'auth/invalid-email') {
+    return 'Lütfen geçerli bir e-posta adresi giriniz.';
+  }
+  if (code === 'auth/too-many-requests') {
+    return 'Çok fazla hatalı giriş denemesi yapıldı. Güvenliğiniz için lütfen birkaç dakika sonra tekrar deneyiniz.';
+  }
+  if (code === 'auth/network-request-failed') {
+    return 'İnternet bağlantısı kurulamadı. Lütfen bağlantınızı kontrol edip tekrar deneyiniz.';
+  }
+
+  if (
+    msg.includes('şifre') ||
+    msg.includes('Giriş') ||
+    msg.includes('E-posta') ||
+    msg.includes('hesap') ||
+    msg.includes('kayıt')
+  ) {
+    return msg;
+  }
+
+  return 'E-posta adresi veya şifre hatalı. Lütfen tekrar deneyiniz.';
+}
+
+const LOCAL_USERS_STORAGE_KEY = 'qr_la_local_registered_users';
+
+interface LocalUserRecord {
+  email: string;
+  pass: string;
+  userProfile: UserModel;
+}
+
 const DEMO_USER: UserModel = {
   uid: 'demo-host-yavuz',
   email: 'samet@qr-la.com',
@@ -162,103 +213,147 @@ class AuthService {
     this.subscribers.forEach((cb) => cb({ ...this.state }));
   }
 
+  private getLocalUsers(): LocalUserRecord[] {
+    try {
+      const data = appStorage.getItem(LOCAL_USERS_STORAGE_KEY);
+      if (data) {
+        return JSON.parse(data);
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  private saveLocalUsers(users: LocalUserRecord[]) {
+    try {
+      appStorage.setItem(LOCAL_USERS_STORAGE_KEY, JSON.stringify(users));
+    } catch (_) {}
+  }
+
   // Sign In with Email & Password
   async signIn(email: string, pass: string): Promise<UserModel> {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPass = pass.trim();
+
     if (isRealFirebaseConfigured && auth) {
-      const cred = await signInWithEmailAndPassword(auth, email, pass);
-      const user = cred.user;
-      let userProfile: UserModel = {
-        uid: user.uid,
-        email: user.email || email,
-        displayName: user.displayName || email.split('@')[0],
-        isHost: true,
-        events: [],
-        createdAt: new Date().toISOString(),
-      };
+      try {
+        const cred = await signInWithEmailAndPassword(auth, cleanEmail, cleanPass);
+        const user = cred.user;
+        let userProfile: UserModel = {
+          uid: user.uid,
+          email: user.email || cleanEmail,
+          displayName: user.displayName || cleanEmail.split('@')[0],
+          isHost: true,
+          events: [],
+          createdAt: new Date().toISOString(),
+        };
 
-      if (db) {
-        try {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          if (userDoc.exists()) {
-            userProfile = { ...userProfile, ...(userDoc.data() as UserModel) };
-          }
-        } catch (_) {}
-      }
-
-      const personalSlug = await eventService.ensureUserEvent(userProfile);
-      if (!userProfile.events || userProfile.events.length === 0 || userProfile.events.includes('demo-panel')) {
-        userProfile.events = [personalSlug];
         if (db) {
           try {
-            await setDoc(doc(db, 'users', user.uid), userProfile, { merge: true });
+            const userDoc = await getDoc(doc(db, 'users', user.uid));
+            if (userDoc.exists()) {
+              userProfile = { ...userProfile, ...(userDoc.data() as UserModel) };
+            }
           } catch (_) {}
         }
-      }
 
-      appStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(userProfile));
-      this.updateState({ user: userProfile, isAuthenticated: true });
-      return userProfile;
+        const personalSlug = await eventService.ensureUserEvent(userProfile);
+        if (!userProfile.events || userProfile.events.length === 0 || userProfile.events.includes('demo-panel')) {
+          userProfile.events = [personalSlug];
+          if (db) {
+            try {
+              await setDoc(doc(db, 'users', user.uid), userProfile, { merge: true });
+            } catch (_) {}
+          }
+        }
+
+        appStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(userProfile));
+        this.updateState({ user: userProfile, isAuthenticated: true });
+        return userProfile;
+      } catch (err: any) {
+        const formatted = formatAuthError(err);
+        throw new Error(formatted);
+      }
     } else {
-      // Fallback/demo authentication
-      const rawName = email.split('@')[0];
-      const cleanSlug = slugify(rawName);
-      const userProfile: UserModel = {
-        uid: `user-${Date.now()}`,
-        email,
-        displayName: rawName,
-        isHost: true,
-        events: [cleanSlug],
-        createdAt: new Date().toISOString(),
-      };
-      await eventService.getEvent(cleanSlug, rawName);
-      appStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(userProfile));
-      this.updateState({ user: userProfile, isAuthenticated: true });
-      return userProfile;
+      // Local / Offline authentication validation
+      const localUsers = this.getLocalUsers();
+      const existing = localUsers.find((u) => u.email.toLowerCase() === cleanEmail);
+
+      if (existing) {
+        if (existing.pass !== cleanPass) {
+          throw new Error('Girdiğiniz şifre hatalı. Lütfen kontrol edip tekrar deneyiniz.');
+        }
+        appStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(existing.userProfile));
+        this.updateState({ user: existing.userProfile, isAuthenticated: true });
+        return existing.userProfile;
+      } else {
+        throw new Error('Bu e-posta adresiyle kayıtlı bir hesap bulunamadı. Lütfen önce "Kayıt Ol" sekmesinden hesap oluşturun.');
+      }
     }
   }
 
   // Register / Sign Up
   async signUp(email: string, pass: string, displayName: string, customSlug?: string): Promise<UserModel> {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPass = pass.trim();
+
+    if (cleanPass.length < 6) {
+      throw new Error('Şifreniz en az 6 karakterden oluşmalıdır.');
+    }
+
     if (isRealFirebaseConfigured && auth) {
-      const cred = await createUserWithEmailAndPassword(auth, email, pass);
-      const user = cred.user;
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, cleanEmail, cleanPass);
+        const user = cred.user;
 
-      await updateProfile(user, { displayName });
+        await updateProfile(user, { displayName });
 
-      const userProfile: UserModel = {
-        uid: user.uid,
-        email: user.email || email,
-        displayName: displayName || email.split('@')[0],
-        isHost: true,
-        events: [],
-        createdAt: new Date().toISOString(),
-      };
+        const userProfile: UserModel = {
+          uid: user.uid,
+          email: user.email || cleanEmail,
+          displayName: displayName || cleanEmail.split('@')[0],
+          isHost: true,
+          events: [],
+          createdAt: new Date().toISOString(),
+        };
 
-      const personalSlug = await eventService.ensureUserEvent(userProfile, customSlug);
-      userProfile.events = [personalSlug];
+        const personalSlug = await eventService.ensureUserEvent(userProfile, customSlug);
+        userProfile.events = [personalSlug];
 
-      if (db) {
-        try {
-          await setDoc(doc(db, 'users', user.uid), userProfile);
-        } catch (err) {
-          console.warn('Save user doc error:', err);
+        if (db) {
+          try {
+            await setDoc(doc(db, 'users', user.uid), userProfile);
+          } catch (err) {
+            console.warn('Save user doc error:', err);
+          }
         }
+
+        appStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(userProfile));
+        this.updateState({ user: userProfile, isAuthenticated: true });
+        return userProfile;
+      } catch (err: any) {
+        const formatted = formatAuthError(err);
+        throw new Error(formatted);
+      }
+    } else {
+      const localUsers = this.getLocalUsers();
+      if (localUsers.some((u) => u.email.toLowerCase() === cleanEmail)) {
+        throw new Error('Bu e-posta adresi zaten kullanımda. Lütfen "Giriş Yap" sekmesini kullanarak giriş yapınız.');
       }
 
-      appStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(userProfile));
-      this.updateState({ user: userProfile, isAuthenticated: true });
-      return userProfile;
-    } else {
-      const cleanSlug = customSlug ? slugify(customSlug) : slugify(displayName || email.split('@')[0]);
+      const cleanSlug = customSlug ? slugify(customSlug) : slugify(displayName || cleanEmail.split('@')[0]);
       const userProfile: UserModel = {
         uid: `user-${Date.now()}`,
-        email,
+        email: cleanEmail,
         displayName,
         isHost: true,
         events: [cleanSlug],
         createdAt: new Date().toISOString(),
       };
+
       await eventService.getEvent(cleanSlug, displayName);
+      localUsers.push({ email: cleanEmail, pass: cleanPass, userProfile });
+      this.saveLocalUsers(localUsers);
+
       appStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(userProfile));
       this.updateState({ user: userProfile, isAuthenticated: true });
       return userProfile;
