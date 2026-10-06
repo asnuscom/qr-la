@@ -16,12 +16,27 @@ import { formatBytes } from '@/services/compression';
 
 interface LightboxModalProps {
   photo: PhotoModel | null;
+  isLiked?: boolean;
   onClose: () => void;
   onLike: (photoId: string) => void;
 }
 
-export const LightboxModal: React.FC<LightboxModalProps> = ({ photo, onClose, onLike }) => {
+export const LightboxModal: React.FC<LightboxModalProps> = ({ photo, isLiked = false, onClose, onLike }) => {
+  const [lastTap, setLastTap] = React.useState<number>(0);
+  const [showHeartBurst, setShowHeartBurst] = React.useState(false);
+
   if (!photo) return null;
+
+  const handleDoubleTap = () => {
+    const now = Date.now();
+    if (now - lastTap < 350) {
+      // Double tap detected
+      onLike(photo.id);
+      setShowHeartBurst(true);
+      setTimeout(() => setShowHeartBurst(false), 800);
+    }
+    setLastTap(now);
+  };
 
   const handleDownload = () => {
     if (Platform.OS === 'web') {
@@ -69,14 +84,24 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({ photo, onClose, on
           </View>
         </View>
 
-        {/* Main Image */}
-        <View style={styles.imageContainer}>
+        {/* Main Image with Double Tap */}
+        <TouchableOpacity
+          style={styles.imageContainer}
+          activeOpacity={1}
+          onPress={handleDoubleTap}
+        >
           <Image
             source={{ uri: photo.originalUrl || photo.thumbnailUrl }}
             style={styles.fullImage}
             resizeMode="contain"
           />
-        </View>
+
+          {showHeartBurst && (
+            <View style={styles.heartBurstOverlay}>
+              <Ionicons name="heart" size={90} color="#FF2D55" />
+            </View>
+          )}
+        </TouchableOpacity>
 
         {/* Bottom Details Drawer */}
         <View style={styles.bottomDrawer}>
@@ -101,12 +126,21 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({ photo, onClose, on
 
             {/* Like Button */}
             <TouchableOpacity
-              style={styles.likeBtn}
+              style={[
+                styles.likeBtn,
+                isLiked && styles.likeBtnActive,
+              ]}
               onPress={() => onLike(photo.id)}
               activeOpacity={0.8}
             >
-              <Ionicons name="heart" size={20} color="#FF3366" />
-              <Text style={styles.likeCount}>{photo.likes}</Text>
+              <Ionicons
+                name={isLiked ? 'heart' : 'heart-outline'}
+                size={20}
+                color={isLiked ? '#FF2D55' : '#FFFFFF'}
+              />
+              <Text style={[styles.likeCount, isLiked && styles.likeCountActive]}>
+                {photo.likes || 0}
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -214,17 +248,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255, 51, 102, 0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 51, 102, 0.3)',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  likeBtnActive: {
+    backgroundColor: 'rgba(255, 45, 85, 0.25)',
+    borderColor: '#FF2D55',
   },
   likeCount: {
     color: '#FFF',
     fontSize: 14,
     fontWeight: '700',
+  },
+  likeCountActive: {
+    color: '#FF4D6D',
+    fontWeight: '800',
   },
   guestNote: {
     color: '#E5E7EB',
@@ -233,4 +275,15 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginTop: 6,
   },
+  heartBurstOverlay: {
+    position: 'absolute',
+    alignSelf: 'center',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#FF2D55',
+    shadowOpacity: 0.8,
+    shadowRadius: 20,
+    elevation: 10,
+  },
 });
+

@@ -25,6 +25,24 @@ import {
   slugify,
 } from './mockData';
 
+export const RESERVED_SLUGS = new Set([
+  'demo',
+  'demo-panel',
+  'canli',
+  'panel',
+  'giris',
+  'login',
+  'register',
+  'auth',
+  'admin',
+  'api',
+  'settings',
+  'null',
+  'undefined',
+  'yavuz-ve-merve',
+  'samet-ve-sule',
+]);
+
 class EventService {
   private events: Map<string, EventModel> = new Map();
   private albums: Map<string, AlbumModel[]> = new Map();
@@ -51,6 +69,11 @@ class EventService {
     this.albums.set('demo', [...DEMO_ALBUMS]);
     this.photos.set('demo', [...DEMO_PHOTOS]);
     this.guestbooks.set('demo', [...DEMO_GUESTBOOK]);
+
+    this.events.set('samet-ve-sule', { ...DEMO_EVENT, slug: 'samet-ve-sule' });
+    this.albums.set('samet-ve-sule', [...DEMO_ALBUMS]);
+    this.photos.set('samet-ve-sule', [...DEMO_PHOTOS]);
+    this.guestbooks.set('samet-ve-sule', [...DEMO_GUESTBOOK]);
 
     this.events.set('yavuz-ve-merve', { ...DEMO_EVENT, slug: 'yavuz-ve-merve' });
     this.albums.set('yavuz-ve-merve', [...DEMO_ALBUMS]);
@@ -106,7 +129,7 @@ class EventService {
         } else {
           // Event does not exist in Firestore yet: Generate complete event
           const isDemoSlug =
-            slug === DEMO_EVENT.slug || slug === 'demo' || slug === 'demo-panel' || slug === 'yavuz-ve-merve';
+            slug === DEMO_EVENT.slug || slug === 'demo' || slug === 'demo-panel' || slug === 'samet-ve-sule' || slug === 'yavuz-ve-merve';
           const defaultEvent = isDemoSlug
             ? { ...DEMO_EVENT, slug }
             : generateDefaultEvent(slug, hostDisplayName);
@@ -160,7 +183,7 @@ class EventService {
 
     // Auto-generate rich default event if visiting a new slug
     const isDemo =
-      slug === DEMO_EVENT.slug || slug === 'demo' || slug === 'demo-panel' || slug === 'yavuz-ve-merve';
+      slug === DEMO_EVENT.slug || slug === 'demo' || slug === 'demo-panel' || slug === 'samet-ve-sule' || slug === 'yavuz-ve-merve';
     const generated = isDemo
       ? { ...DEMO_EVENT, slug }
       : generateDefaultEvent(slug, hostDisplayName);
@@ -179,29 +202,88 @@ class EventService {
     return generated;
   }
 
+  // Check if a desired slug is available
+  async checkSlugAvailability(
+    rawSlug: string,
+    currentUserId?: string
+  ): Promise<{ available: boolean; formattedSlug: string; reason?: string }> {
+    const formattedSlug = slugify(rawSlug);
+
+    if (!formattedSlug || formattedSlug.length < 3) {
+      return {
+        available: false,
+        formattedSlug,
+        reason: 'Bağlantı adı en az 3 karakterden oluşmalıdır.',
+      };
+    }
+
+    if (RESERVED_SLUGS.has(formattedSlug)) {
+      return {
+        available: false,
+        formattedSlug,
+        reason: 'Bu bağlantı adı sistem / demo kullanımı için ayrılmıştır.',
+      };
+    }
+
+    // 1. Check Firestore if real Firebase is configured
+    if (isRealFirebaseConfigured && db) {
+      try {
+        const docRef = doc(db, 'events', formattedSlug);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          return {
+            available: false,
+            formattedSlug,
+            reason: `"${formattedSlug}" bağlantısı başka bir çift tarafından alınmış.`,
+          };
+        }
+      } catch (err) {
+        console.warn('Slug check firestore error:', err);
+      }
+    }
+
+    // 2. Check local memory / storage
+    const localEvent = this.events.get(formattedSlug) || this.loadSavedEventFromStorage(formattedSlug);
+    if (localEvent) {
+      const isDemo =
+        formattedSlug === DEMO_EVENT.slug ||
+        formattedSlug === 'demo' ||
+        formattedSlug === 'demo-panel' ||
+        formattedSlug === 'samet-ve-sule' ||
+        formattedSlug === 'yavuz-ve-merve';
+      if (isDemo || (localEvent.id && !localEvent.id.includes(currentUserId || 'none'))) {
+        return {
+          available: false,
+          formattedSlug,
+          reason: `"${formattedSlug}" bağlantısı daha önce kullanılmış.`,
+        };
+      }
+    }
+
+    return {
+      available: true,
+      formattedSlug,
+      reason: undefined,
+    };
+  }
+
   // Ensure real registered user has a personalized event with 0 photos / 0 bytes
-  async ensureUserEvent(user: { uid: string; displayName?: string; email?: string; events?: string[] }): Promise<string> {
+  async ensureUserEvent(
+    user: { uid: string; displayName?: string; email?: string; events?: string[] },
+    customSlug?: string
+  ): Promise<string> {
     if (user.uid === 'demo-host-yavuz') return 'demo-panel';
 
-    const existing = user.events?.find((s) => s && s !== 'demo-panel' && s !== 'yavuz-ve-merve');
-    if (existing) {
+    const existing = user.events?.find(
+      (s) => s && s !== 'demo-panel' && s !== 'samet-ve-sule' && s !== 'yavuz-ve-merve'
+    );
+    if (existing && !customSlug) {
       await this.getEvent(existing, user.displayName);
       return existing;
     }
 
-    const rawName = user.displayName || user.email?.split('@')[0] || 'etkinlik';
-    const cleanSlug = rawName
-      .toLowerCase()
-      .trim()
-      .replace(/ğ/g, 'g')
-      .replace(/ü/g, 'u')
-      .replace(/ş/g, 's')
-      .replace(/ı/g, 'i')
-      .replace(/ö/g, 'o')
-      .replace(/ç/g, 'c')
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-') || 'etkinlik';
+    const targetSlug = customSlug ? slugify(customSlug) : slugify(user.displayName || user.email?.split('@')[0] || 'etkinlik');
+    const cleanSlug = targetSlug || 'etkinlik';
 
     await this.getEvent(cleanSlug, user.displayName);
     return cleanSlug;
@@ -334,7 +416,7 @@ class EventService {
     }
 
     const isDemo =
-      slug === DEMO_EVENT.slug || slug === 'demo' || slug === 'demo-panel' || slug === 'yavuz-ve-merve';
+      slug === DEMO_EVENT.slug || slug === 'demo' || slug === 'demo-panel' || slug === 'samet-ve-sule' || slug === 'yavuz-ve-merve';
     const defaults = isDemo ? [...DEMO_ALBUMS] : [...DEFAULT_ALBUMS];
     this.albums.set(slug, defaults);
     this.saveAlbumsToStorage(slug, defaults);
@@ -458,7 +540,7 @@ class EventService {
     saved.forEach((p) => combinedMap.set(p.id, p));
 
     const isDemo =
-      slug === DEMO_EVENT.slug || slug === 'demo' || slug === 'demo-panel' || slug === 'yavuz-ve-merve';
+      slug === DEMO_EVENT.slug || slug === 'demo' || slug === 'demo-panel' || slug === 'samet-ve-sule' || slug === 'yavuz-ve-merve';
     if (combinedMap.size === 0 && isDemo) {
       DEMO_PHOTOS.forEach((p) => combinedMap.set(p.id, p));
     }
@@ -557,12 +639,21 @@ class EventService {
   }
 
   async likePhoto(slug: string, photoId: string): Promise<number> {
-    const list = this.photos.get(slug) || [];
+    return this.toggleLikePhoto(slug, photoId, true);
+  }
+
+  async toggleLikePhoto(slug: string, photoId: string, shouldLike: boolean): Promise<number> {
+    const list = this.photos.get(slug) || this.loadSavedPhotosFromStorage(slug);
     const target = list.find((p) => p.id === photoId);
     let newLikes = 0;
     if (target) {
-      target.likes += 1;
+      if (shouldLike) {
+        target.likes = (target.likes || 0) + 1;
+      } else {
+        target.likes = Math.max(0, (target.likes || 0) - 1);
+      }
       newLikes = target.likes;
+      this.savePhotosToStorage(slug, list);
       this.notifyPhotoSubscribers(slug, [...list]);
     }
 
@@ -576,6 +667,7 @@ class EventService {
     }
     return newLikes;
   }
+
 
   async deletePhoto(slug: string, photoId: string): Promise<boolean> {
     const list = this.photos.get(slug) || this.loadSavedPhotosFromStorage(slug);

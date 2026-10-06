@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Linking,
+  Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,6 +19,9 @@ import { eventService } from '@/services/eventService';
 import { authService } from '@/services/authService';
 import { EventModel, PlanTierConfig, StorageTier } from '@/types';
 
+const WHATSAPP_PHONE = '905415779166';
+const WHATSAPP_DISPLAY = '+90 541 577 91 66';
+
 export default function PricingUpgradeScreen() {
   const router = useRouter();
   const { slug: paramSlug } = useLocalSearchParams<{ slug?: string }>();
@@ -25,7 +30,7 @@ export default function PricingUpgradeScreen() {
   const userSlug =
     (currentUser &&
       currentUser.uid !== 'demo-host-yavuz' &&
-      currentUser.events?.find((s) => s && s !== 'demo-panel' && s !== 'yavuz-ve-merve')) ||
+      currentUser.events?.find((s) => s && s !== 'demo-panel' && s !== 'samet-ve-sule' && s !== 'yavuz-ve-merve')) ||
     currentUser?.events?.[0];
 
   const activeSlug = paramSlug || userSlug || 'demo-panel';
@@ -35,6 +40,22 @@ export default function PricingUpgradeScreen() {
   const [couponInput, setCouponInput] = useState('');
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [couponSuccessMessage, setCouponSuccessMessage] = useState<string | null>(null);
+
+  // Helper to open WhatsApp for purchasing / requesting coupons
+  const openWhatsApp = (customText?: string) => {
+    const defaultText = `Merhaba, qr-la.com/${activeSlug} etkinliğim için depolama paketi satın almak veya kupon kodu edinmek istiyorum.`;
+    const text = encodeURIComponent(customText || defaultText);
+    const url = `https://wa.me/${WHATSAPP_PHONE}?text=${text}`;
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.open(url, '_blank');
+    } else {
+      Linking.openURL(url).catch((err) => {
+        console.warn('WhatsApp açılamadı:', err);
+        Alert.alert('İletişim', `WhatsApp üzerinden bize ulaşabilirsiniz: ${WHATSAPP_DISPLAY}`);
+      });
+    }
+  };
 
   // Load active event data
   useEffect(() => {
@@ -70,7 +91,17 @@ export default function PricingUpgradeScreen() {
     if (!coupon) {
       Alert.alert(
         'Geçersiz Kupon Kodu',
-        `"${cleanCode}" geçerli bir kupon veya promosyon kodu değil.\n\nGeçerli Kodlar:\n• ASNUSVIP (15 GB VIP Paket)\n• ASNUSPREMIUM (5 GB Premium Paket)`
+        `"${cleanCode}" kupon kodu geçerli değil.\n\nÖzel kupon kodu edinmek veya paketinizi yükseltmek için WhatsApp destek hattımızdan bize ulaşabilirsiniz.`,
+        [
+          {
+            text: 'WhatsApp ile İletişim',
+            onPress: () =>
+              openWhatsApp(
+                `Merhaba, qr-la.com/${activeSlug} etkinliğim için geçerli bir kupon kodu almak veya paket satın almak istiyorum.`
+              ),
+          },
+          { text: 'Kapat', style: 'cancel' },
+        ]
       );
       return;
     }
@@ -107,62 +138,25 @@ export default function PricingUpgradeScreen() {
       return;
     }
 
-    // Direct user to coupon option or payment
-    if (tier.tier === 'vip') {
-      Alert.alert(
-        'VIP Masalsı Düğün Paketi',
-        'VIP paket için özel bir promosyon kodunuz var mı? "ASNUSVIP" kodunu kullanarak anında ücretsiz yükseltebilirsiniz.',
-        [
-          {
-            text: 'ASNUSVIP Kuponunu Uygula',
-            onPress: () => {
-              setCouponInput('ASNUSVIP');
-              applyCouponCode('ASNUSVIP');
-            },
-          },
-          {
-            text: 'Ödeme Adımı (899 ₺)',
-            onPress: () => {
-              Alert.alert('Güvenli Ödeme', 'Ödeme altyapısına yönlendiriliyorsunuz...');
-            },
-          },
-          { text: 'Vazgeç', style: 'cancel' },
-        ]
-      );
-    } else if (tier.tier === 'premium') {
-      Alert.alert(
-        'Premium Düğün Paketi',
-        'Premium paket için "ASNUSPREMIUM" kupon kodunu kullanarak anında ücretsiz yükseltebilirsiniz.',
-        [
-          {
-            text: 'ASNUSPREMIUM Kuponunu Uygula',
-            onPress: () => {
-              setCouponInput('ASNUSPREMIUM');
-              applyCouponCode('ASNUSPREMIUM');
-            },
-          },
-          {
-            text: 'Ödeme Adımı (499 ₺)',
-            onPress: () => {
-              Alert.alert('Güvenli Ödeme', 'Ödeme altyapısına yönlendiriliyorsunuz...');
-            },
-          },
-          { text: 'Vazgeç', style: 'cancel' },
-        ]
-      );
-    } else {
-      Alert.alert(
-        `${tier.name}`,
-        `${tier.priceTL} ₺ karşılığında paketinizi yükseltebilirsiniz.`,
-        [
-          {
-            text: 'Ödeme Adımına Geç',
-            onPress: () => Alert.alert('Güvenli Ödeme', 'Ödeme altyapısına yönlendiriliyorsunuz...'),
-          },
-          { text: 'Vazgeç', style: 'cancel' },
-        ]
-      );
+    if (tier.priceTL === 0) {
+      Alert.alert('Başlangıç Paketi', 'Ücretsiz başlangıç paketi tüm etkinliklerde varsayılan olarak etkindir.');
+      return;
     }
+
+    Alert.alert(
+      `${tier.name} (${tier.priceTL} ₺)`,
+      `Bu paketi satın almak veya kupon kodu talep etmek için WhatsApp destek hattımız (${WHATSAPP_DISPLAY}) üzerinden hemen iletişime geçebilirsiniz.`,
+      [
+        {
+          text: 'WhatsApp ile Satın Al',
+          onPress: () =>
+            openWhatsApp(
+              `Merhaba, qr-la.com/${activeSlug} etkinliğim için ${tier.name} (${tier.priceTL} ₺) paketini satın almak istiyorum.`
+            ),
+        },
+        { text: 'Vazgeç', style: 'cancel' },
+      ]
+    );
   };
 
   const currentTier = event?.storage.tier || 'free';
@@ -240,7 +234,7 @@ export default function PricingUpgradeScreen() {
             </View>
           )}
 
-          {/* Luxury Coupon Code Card */}
+          {/* Luxury Coupon Code & WhatsApp Card */}
           <View style={styles.couponCard}>
             <View style={styles.couponHeader}>
               <View style={styles.couponIconBox}>
@@ -249,7 +243,7 @@ export default function PricingUpgradeScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.couponTitle}>Kupon / Promosyon Kodu</Text>
                 <Text style={styles.couponSubtitle}>
-                  Ajans veya özel etkinlik kodunuzu girerek paketinizi anında ücretsiz yükseltin.
+                  Size tanımlanan özel etkinlik veya kupon kodunu girerek paketinizi anında etkinleştirin.
                 </Text>
               </View>
             </View>
@@ -260,7 +254,7 @@ export default function PricingUpgradeScreen() {
                 style={styles.couponInput}
                 value={couponInput}
                 onChangeText={(val) => setCouponInput(val.toUpperCase())}
-                placeholder="Örn: ASNUSVIP veya ASNUSPREMIUM"
+                placeholder="Kupon kodunuzu giriniz..."
                 placeholderTextColor="#9CA3AF"
                 autoCapitalize="characters"
                 autoCorrect={false}
@@ -285,33 +279,23 @@ export default function PricingUpgradeScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Quick Test Chips */}
-            <View style={styles.chipsSection}>
-              <Text style={styles.chipsLabel}>Hızlı Kuponlar (Tek Tıkla Uygula):</Text>
-              <View style={styles.chipsRow}>
-                <TouchableOpacity
-                  style={[styles.chip, { borderColor: '#8B5CF6' }]}
-                  onPress={() => {
-                    setCouponInput('ASNUSVIP');
-                    applyCouponCode('ASNUSVIP');
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.chipText, { color: '#8B5CF6' }]}>👑 ASNUSVIP (15 GB VIP)</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.chip, { borderColor: '#C5A059' }]}
-                  onPress={() => {
-                    setCouponInput('ASNUSPREMIUM');
-                    applyCouponCode('ASNUSPREMIUM');
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.chipText, { color: '#B45309' }]}>✨ ASNUSPREMIUM (5 GB)</Text>
-                </TouchableOpacity>
+            {/* WhatsApp Support & Purchase Banner */}
+            <TouchableOpacity
+              style={styles.whatsappBanner}
+              onPress={() => openWhatsApp()}
+              activeOpacity={0.85}
+            >
+              <View style={styles.whatsappIconCircle}>
+                <Ionicons name="logo-whatsapp" size={22} color="#25D366" />
               </View>
-            </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.whatsappBannerTitle}>Kupon veya Satın Alma İçin İletişime Geçin</Text>
+                <Text style={styles.whatsappBannerSubtitle}>
+                  WhatsApp ({WHATSAPP_DISPLAY}) üzerinden anında kupon kodu talep edebilir ya da paketinizi yükseltebilirsiniz.
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#059669" />
+            </TouchableOpacity>
 
             {couponSuccessMessage && (
               <View style={styles.successAlert}>
@@ -390,7 +374,7 @@ export default function PricingUpgradeScreen() {
                         isCurrent && styles.chooseBtnTextCurrent,
                       ]}
                     >
-                      {isCurrent ? 'Şu Anki Paketiniz' : 'Hemen Yükselt'}
+                      {isCurrent ? 'Şu Anki Paketiniz' : 'WhatsApp ile Satın Al / Yükselt'}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -577,30 +561,34 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
   },
-  chipsSection: {
-    marginTop: 2,
-  },
-  chipsLabel: {
-    fontSize: 11,
-    color: '#6B7280',
-    fontWeight: '600',
-    marginBottom: 6,
-  },
-  chipsRow: {
+  whatsappBanner: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  chip: {
-    backgroundColor: '#FAF7F2',
+    alignItems: 'center',
+    backgroundColor: '#F0FDF4',
     borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    borderColor: '#BBF7D0',
+    borderRadius: 12,
+    padding: 12,
+    gap: 10,
   },
-  chipText: {
+  whatsappIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#DCFCE7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  whatsappBannerTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#166534',
+    marginBottom: 2,
+  },
+  whatsappBannerSubtitle: {
     fontSize: 11,
-    fontWeight: '700',
+    color: '#15803D',
+    lineHeight: 15,
   },
   successAlert: {
     flexDirection: 'row',
@@ -782,3 +770,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+

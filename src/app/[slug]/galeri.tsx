@@ -70,9 +70,11 @@ export default function GalleryScreen() {
     }
   };
 
-  const handleLike = async (photoId: string) => {
-    await eventService.likePhoto(slug, photoId);
+  const handleLike = async (photoId: string, shouldLike = true) => {
+    if (!slug) return;
+    await eventService.toggleLikePhoto(slug, photoId, shouldLike);
   };
+
 
   if (isLoading || !event) {
     return (

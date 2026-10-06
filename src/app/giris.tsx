@@ -9,32 +9,107 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { authService } from '@/services/authService';
+import { eventService } from '@/services/eventService';
+import { slugify } from '@/services/mockData';
 import { AuthState } from '@/types';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const [tab, setTab] = useState<'login' | 'register'>('login');
+  const params = useLocalSearchParams<{ tab?: string }>();
+  const initialTab = params.tab === 'register' ? 'register' : 'login';
+  const [tab, setTab] = useState<'login' | 'register'>(initialTab);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [slug, setSlug] = useState('');
+  const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
+  const [isCheckingSlug, setIsCheckingSlug] = useState(false);
+  const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'unavailable'>('idle');
+  const [slugReason, setSlugReason] = useState<string>('');
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [_authState, setAuthState] = useState<AuthState>(authService.getState());
 
   useEffect(() => {
+    if (params.tab === 'register' || params.tab === 'login') {
+      setTab(params.tab);
+    }
+  }, [params.tab]);
+
+  useEffect(() => {
     const unsub = authService.subscribe((state) => {
       setAuthState(state);
-      if (state.isAuthenticated && state.user) {
-        // Redirect if already logged in
+      if (state.isAuthenticated && state.user && state.user.uid !== 'demo-host-yavuz') {
+        // Redirect if already logged in with real user
         router.replace('/panel' as any);
       }
     });
     return () => unsub();
   }, [router]);
+
+  // Handle Display Name Change -> Auto-fill slug if not manually altered
+  const handleDisplayNameChange = (text: string) => {
+    setDisplayName(text);
+    if (!isSlugManuallyEdited) {
+      const generated = slugify(text);
+      setSlug(generated);
+    }
+  };
+
+  // Handle manual slug input change
+  const handleSlugChange = (text: string) => {
+    setIsSlugManuallyEdited(true);
+    const cleaned = text
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '');
+    setSlug(cleaned);
+  };
+
+  // Debounced slug availability checker
+  useEffect(() => {
+    if (tab !== 'register') return;
+
+    if (!slug || slug.trim().length === 0) {
+      setSlugStatus('idle');
+      setSlugReason('');
+      return;
+    }
+
+    if (slug.length < 3) {
+      setSlugStatus('unavailable');
+      setSlugReason('Bağlantı adı en az 3 karakterden oluşmalıdır.');
+      return;
+    }
+
+    setIsCheckingSlug(true);
+    setSlugStatus('checking');
+
+    const timer = setTimeout(async () => {
+      try {
+        const check = await eventService.checkSlugAvailability(slug);
+        if (check.available) {
+          setSlugStatus('available');
+          setSlugReason('');
+        } else {
+          setSlugStatus('unavailable');
+          setSlugReason(check.reason || 'Bu bağlantı adı daha önce alınmış.');
+        }
+      } catch (_err) {
+        setSlugStatus('idle');
+        setSlugReason('');
+      } finally {
+        setIsCheckingSlug(false);
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [slug, tab]);
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -59,9 +134,20 @@ export default function LoginScreen() {
       return;
     }
 
+    const cleanSlug = slugify(slug || displayName);
+    if (!cleanSlug || cleanSlug.length < 3) {
+      Alert.alert('Geçersiz Bağlantı', 'Lütfen en az 3 karakterden oluşan bir etkinlik bağlantı adı girin.');
+      return;
+    }
+
+    if (slugStatus === 'unavailable') {
+      Alert.alert('Bağlantı Adı Kullanımda', slugReason || 'Lütfen farklı bir etkinlik bağlantı adı seçin.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      await authService.signUp(email.trim(), password.trim(), displayName.trim());
+      await authService.signUp(email.trim(), password.trim(), displayName.trim(), cleanSlug);
       setIsSubmitting(false);
       router.replace('/panel' as any);
     } catch (err: any) {
@@ -104,9 +190,13 @@ export default function LoginScreen() {
             <Ionicons name="person-circle-outline" size={38} color="#C5A059" />
           </View>
 
-          <Text style={styles.title}>Ev Sahibi Girişi</Text>
+          <Text style={styles.title}>
+            {tab === 'register' ? 'Etkinliğinizi Başlatın' : 'Ev Sahibi Girişi'}
+          </Text>
           <Text style={styles.subtitle}>
-            Düğün ve etkinliklerinizi yönetmek, fotoğrafları indirmek ve canlı projeksiyonu başlatmak için giriş yapın.
+            {tab === 'register'
+              ? 'Kendi düğün veya özel etkinliğinizi oluşturun, QR masa kartınızı bastırın ve fotoğrafları toplayın.'
+              : 'Düğün ve etkinliklerinizi yönetmek, fotoğrafları indirmek ve canlı projeksiyonu başlatmak için giriş yapın.'}
           </Text>
 
           {/* Guest Notice Callout */}
@@ -157,17 +247,80 @@ export default function LoginScreen() {
 
           {/* Form Fields */}
           {tab === 'register' && (
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Adınız & Soyadınız (veya Çift İsimleri)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Örn: Merve & Yavuz"
-                placeholderTextColor="#9CA3AF"
-                value={displayName}
-                onChangeText={setDisplayName}
-                autoCapitalize="words"
-              />
-            </View>
+            <>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Adınız & Soyadınız (veya Çift İsimleri)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Örn: Şule & Samet"
+                  placeholderTextColor="#9CA3AF"
+                  value={displayName}
+                  onChangeText={handleDisplayNameChange}
+                  autoCapitalize="words"
+                />
+              </View>
+
+              {/* Event Link Customization & Availability */}
+              <View style={styles.inputGroup}>
+                <View style={styles.slugHeaderRow}>
+                  <Text style={styles.label}>Etkinlik QR Bağlantınız</Text>
+                  <Text style={styles.slugHint}>Değiştirebilirsiniz</Text>
+                </View>
+
+                <View
+                  style={[
+                    styles.slugInputContainer,
+                    slugStatus === 'available' && styles.slugInputSuccess,
+                    slugStatus === 'unavailable' && styles.slugInputError,
+                  ]}
+                >
+                  <Text style={styles.slugPrefix}>qr-la.com/</Text>
+                  <TextInput
+                    style={styles.slugInput}
+                    placeholder="sule-ve-samet"
+                    placeholderTextColor="#9CA3AF"
+                    value={slug}
+                    onChangeText={handleSlugChange}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  {isCheckingSlug && (
+                    <ActivityIndicator size="small" color="#C5A059" style={{ marginRight: 8 }} />
+                  )}
+                  {!isCheckingSlug && slugStatus === 'available' && (
+                    <Ionicons name="checkmark-circle" size={18} color="#10B981" style={{ marginRight: 8 }} />
+                  )}
+                  {!isCheckingSlug && slugStatus === 'unavailable' && (
+                    <Ionicons name="close-circle" size={18} color="#EF4444" style={{ marginRight: 8 }} />
+                  )}
+                </View>
+
+                {/* Slug Status Feedback */}
+                {slugStatus === 'available' && (
+                  <View style={styles.slugFeedbackRow}>
+                    <Ionicons name="sparkles" size={13} color="#10B981" />
+                    <Text style={styles.slugFeedbackSuccess}>
+                      Harika! qr-la.com/{slug} kullanılabilir ve size özel ayrılacak.
+                    </Text>
+                  </View>
+                )}
+
+                {slugStatus === 'unavailable' && (
+                  <View style={styles.slugFeedbackRow}>
+                    <Ionicons name="alert-circle" size={13} color="#EF4444" />
+                    <Text style={styles.slugFeedbackError}>
+                      {slugReason || 'Bu bağlantı adı alınmış, lütfen farklı bir isim seçin.'}
+                    </Text>
+                  </View>
+                )}
+
+                {slugStatus === 'idle' && (
+                  <Text style={styles.slugHelperText}>
+                    Misafirleriniz fotoğraflarını bu bağlantı üzerinden ve masa kartlarındaki QR kod ile yükleyecek.
+                  </Text>
+                )}
+              </View>
+            </>
           )}
 
           <View style={styles.inputGroup}>
@@ -197,9 +350,12 @@ export default function LoginScreen() {
 
           {/* Submit Action */}
           <TouchableOpacity
-            style={[styles.submitBtn, isSubmitting && styles.submitBtnDisabled]}
+            style={[
+              styles.submitBtn,
+              (isSubmitting || (tab === 'register' && slugStatus === 'unavailable')) && styles.submitBtnDisabled,
+            ]}
             onPress={tab === 'login' ? handleLogin : handleRegister}
-            disabled={isSubmitting}
+            disabled={isSubmitting || (tab === 'register' && slugStatus === 'unavailable')}
             activeOpacity={0.85}
           >
             {isSubmitting ? (
@@ -422,5 +578,73 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
+  },
+  slugHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  slugHint: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#9E7A36',
+  },
+  slugInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FAF7F2',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingLeft: 12,
+  },
+  slugInputSuccess: {
+    borderColor: '#10B981',
+    backgroundColor: '#ECFDF5',
+  },
+  slugInputError: {
+    borderColor: '#EF4444',
+    backgroundColor: '#FEF2F2',
+  },
+  slugPrefix: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#9E7A36',
+    marginRight: 2,
+  },
+  slugInput: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1A1817',
+  },
+  slugFeedbackRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+    paddingHorizontal: 2,
+  },
+  slugFeedbackSuccess: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#059669',
+    flex: 1,
+  },
+  slugFeedbackError: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#DC2626',
+    flex: 1,
+  },
+  slugHelperText: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginTop: 6,
+    lineHeight: 15,
+    paddingHorizontal: 2,
   },
 });

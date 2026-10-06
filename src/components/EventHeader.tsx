@@ -48,6 +48,16 @@ export const EventHeader: React.FC<EventHeaderProps> = ({ event, activeTab = 'ho
     }
   };
 
+  const openInvitation = () => {
+    if (event.invitationUrl) {
+      if (Platform.OS === 'web') {
+        window.open(event.invitationUrl, '_blank');
+      } else {
+        Linking.openURL(event.invitationUrl);
+      }
+    }
+  };
+
   const formattedDate = new Date(event.eventDate).toLocaleDateString('tr-TR', {
     day: 'numeric',
     month: 'long',
@@ -96,6 +106,16 @@ export const EventHeader: React.FC<EventHeaderProps> = ({ event, activeTab = 'ho
             <Ionicons name="location-outline" size={16} color="#C5A059" />
             <Text style={[styles.metaText, styles.mapLink]}>{event.venue?.name || 'Düğün Mekanı'}</Text>
           </TouchableOpacity>
+          {event.invitationUrl ? (
+            <TouchableOpacity
+              style={[styles.metaItem, { backgroundColor: '#FAF5EA', borderWidth: 1, borderColor: '#EFE7DA' }]}
+              onPress={openInvitation}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="mail-open-outline" size={15} color="#8A6D3B" />
+              <Text style={[styles.metaText, { color: '#8A6D3B', fontWeight: '700' }]}>Dijital Davetiye</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
 
         {/* Countdown Box */}

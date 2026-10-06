@@ -66,9 +66,9 @@
 | Paket | Fiyat | Kota & Saklama | Özellikler |
 | :--- | :--- | :--- | :--- |
 | **Ücretsiz** | 0 TL | 500 MB (~500 Fotoğraf), 30 Gün Saklama | Temel QR Kart Şablonu, ZIP İndirme |
-| **Standart** | 249 TL | 2 GB (~2500 Fotoğraf), 90 Gün Saklama | Özel QR Masa Kartı Tasarımları, ZIP İndirme |
-| **Premium** | 499 TL | 5 GB (~6000 Fotoğraf), 180 Gün Saklama | Canlı Projeksiyon Modu, Şık QR Kartları, Öncelikli Destek |
-| **VIP** | 899 TL | 15 GB, Orijinal Kalite İndirme, 1 Yıl Arşiv | Tüm Özellikler + WhatsApp Davet Entegrasyonu |
+| **Standart** | 1.490 TL | 2 GB (~2500 Fotoğraf), 90 Gün Saklama | Özel QR Masa Kartı Tasarımları, ZIP İndirme |
+| **Premium** | 3.990 TL | 5 GB (~6000 Fotoğraf), 180 Gün Saklama | Canlı Projeksiyon Modu, Şık QR Kartları, Öncelikli Destek |
+| **VIP** | 5.990 TL | 15 GB, Orijinal Kalite İndirme, 1 Yıl Arşiv | Tüm Özellikler + WhatsApp Davet Entegrasyonu |
 
 ---
 

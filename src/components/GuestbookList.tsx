@@ -152,7 +152,7 @@ export const GuestbookList: React.FC<GuestbookListProps> = ({
             </View>
 
             <Text style={styles.modalSubtitle}>
-              Merve & Yavuz çifti bu notları ömür boyu saklayacak.
+              Şule & Samet çifti bu notları ömür boyu saklayacak.
             </Text>
 
             {/* Author Name */}

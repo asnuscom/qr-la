@@ -43,7 +43,7 @@ export default function HostPanelScreen() {
   const resolveActiveSlug = (user: UserModel | null): string => {
     if (!user) return 'demo-panel';
     if (user.uid === 'demo-host-yavuz') return 'demo-panel';
-    const personal = user.events?.find((s) => s && s !== 'demo-panel' && s !== 'yavuz-ve-merve');
+    const personal = user.events?.find((s) => s && s !== 'demo-panel' && s !== 'samet-ve-sule' && s !== 'yavuz-ve-merve');
     if (personal) return personal;
     const rawName = user.displayName || user.email?.split('@')[0] || 'etkinlik';
     return slugify(rawName);

@@ -16,7 +16,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { eventService } from '@/services/eventService';
 import { authService } from '@/services/authService';
-import { EventModel, ScheduleItem, AlbumModel } from '@/types';
+import { EventModel, ScheduleItem, AlbumModel, EventType } from '@/types';
+import { slugify } from '@/services/mockData';
 
 // Curated luxury cover photo presets so user can pick with one tap
 const COVER_PRESETS = [
@@ -49,13 +50,27 @@ const THEME_PRESETS = [
   { name: 'Asil Gece', color: '#1E293B' },
 ];
 
+const EVENT_TYPES: { id: EventType; label: string; icon: any }[] = [
+  { id: 'dugun', label: 'Düğün', icon: 'heart' },
+  { id: 'nisan', label: 'Nişan & Söz', icon: 'heart-half' },
+  { id: 'kina', label: 'Kına Gecesi', icon: 'sparkles' },
+  { id: 'dogumgunu', label: 'Doğum Günü', icon: 'gift' },
+  { id: 'sunnet', label: 'Sünnet', icon: 'ribbon' },
+  { id: 'parti', label: 'Parti & Kutlama', icon: 'musical-notes' },
+  { id: 'diger', label: 'Özel Gün', icon: 'calendar' },
+];
+
 export default function EventFormScreen() {
   const router = useRouter();
   const { slug: paramSlug } = useLocalSearchParams<{ slug?: string }>();
 
   const user = authService.getState().user;
   const userSlug =
-    (user && user.uid !== 'demo-host-yavuz' && user.events?.find((s) => s && s !== 'demo-panel' && s !== 'yavuz-ve-merve')) ||
+    (user &&
+      user.uid !== 'demo-host-yavuz' &&
+      user.events?.find(
+        (s) => s && s !== 'demo-panel' && s !== 'samet-ve-sule' && s !== 'yavuz-ve-merve'
+      )) ||
     user?.events?.[0];
   const currentSlug = paramSlug || userSlug || 'demo-panel';
 
@@ -64,26 +79,36 @@ export default function EventFormScreen() {
 
   // Form State initialized with rich defaults
   const [slug, setSlug] = useState(currentSlug);
-  const [brideName, setBrideName] = useState('Merve');
-  const [groomName, setGroomName] = useState('Yavuz');
-  const [title, setTitle] = useState('Yavuz & Merve Düğünü');
+  const [eventType, setEventType] = useState<EventType>('dugun');
+  const [brideName, setBrideName] = useState('Şule');
+  const [groomName, setGroomName] = useState('Samet');
+  const [title, setTitle] = useState('Samet & Şule Düğünü');
   const [subtitle, setSubtitle] = useState(
     'Bu mutlu anımıza ortak olduğunuz için teşekkür ederiz. Masanızdaki QR kodu okutarak anılarınızı hemen paylaşabilirsiniz.'
   );
-  const [eventDate, setEventDate] = useState('2026-10-18T19:00:00.000Z');
+  const [eventDateStr, setEventDateStr] = useState('2026-10-18');
+  const [eventTimeStr, setEventTimeStr] = useState('19:00');
+  const [invitationUrl, setInvitationUrl] = useState('');
   const [coverPhotoUrl, setCoverPhotoUrl] = useState(COVER_PRESETS[0].url);
   const [primaryColor, setPrimaryColor] = useState('#C5A059');
 
   const [venueName, setVenueName] = useState('Sait Halim Paşa Yalısı');
-  const [venueAddress, setVenueAddress] = useState('Köybaşı Cad. No:83, Yeniköy, Sarıyer / İstanbul');
-  const [mapUrl, setMapUrl] = useState('https://maps.google.com/?q=Sait+Halim+Pasa+Yalisi+Istanbul');
+  const [venueAddress, setVenueAddress] = useState(
+    'Köybaşı Cad. No:83, Yeniköy, Sarıyer / İstanbul'
+  );
+  const [mapUrl, setMapUrl] = useState(
+    'https://maps.google.com/?q=Sait+Halim+Pasa+Yalisi+Istanbul'
+  );
 
   const [isPrivate, setIsPrivate] = useState(false);
   const [pinCode, setPinCode] = useState('1923');
   const [enableCompression, setEnableCompression] = useState(true);
   const [allowGuestDownloads, setAllowGuestDownloads] = useState(true);
   const [isLiveFeedActive, setIsLiveFeedActive] = useState(true);
+  const [allowGuestbook, setAllowGuestbook] = useState(true);
+  const [autoApprovePhotos, setAutoApprovePhotos] = useState(true);
 
+  // Schedule Timeline State
   const [schedule, setSchedule] = useState<ScheduleItem[]>([
     { id: '1', time: '18:30', title: 'Karşılama Kokteyli', description: 'Canlı müzik ve ikramlar' },
     { id: '2', time: '19:30', title: 'Nikah Töreni & İlk Dans', description: 'İlk vals' },
@@ -91,6 +116,17 @@ export default function EventFormScreen() {
     { id: '4', time: '22:00', title: 'Düğün Pastası Kesimi', description: 'Pasta merasimi' },
     { id: '5', time: '23:00', title: 'After Party & Canlı DJ', description: 'Kapanış partisi' },
   ]);
+
+  // New Schedule Item Inputs
+  const [newScheduleTime, setNewScheduleTime] = useState('');
+  const [newScheduleTitle, setNewScheduleTitle] = useState('');
+  const [newScheduleDesc, setNewScheduleDesc] = useState('');
+
+  // Editing Existing Schedule Item
+  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
+  const [editScheduleTime, setEditScheduleTime] = useState('');
+  const [editScheduleTitle, setEditScheduleTitle] = useState('');
+  const [editScheduleDesc, setEditScheduleDesc] = useState('');
 
   const [albums, setAlbums] = useState<AlbumModel[]>([]);
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -103,24 +139,43 @@ export default function EventFormScreen() {
         const ev = await eventService.getEvent(currentSlug, user?.displayName);
         if (ev) {
           setSlug(ev.slug);
-          setBrideName(ev.hosts.brideOrPrimary || 'Merve');
-          setGroomName(ev.hosts.groomOrSecondary || 'Yavuz');
+          setEventType(ev.eventType || 'dugun');
+          setBrideName(ev.hosts.brideOrPrimary || 'Şule');
+          setGroomName(ev.hosts.groomOrSecondary || 'Samet');
           setTitle(ev.title);
           setSubtitle(ev.subtitle || '');
-          setEventDate(ev.eventDate);
           setCoverPhotoUrl(ev.coverPhotoUrl);
           setPrimaryColor(ev.theme.primaryColor || '#C5A059');
           setVenueName(ev.venue.name);
           setVenueAddress(ev.venue.address);
           setMapUrl(ev.venue.mapUrl);
+          setInvitationUrl(ev.invitationUrl || '');
+
           setIsPrivate(ev.settings.isPrivate);
           setPinCode(ev.settings.pinCode || '1923');
           setEnableCompression(ev.settings.enableCompression);
           setAllowGuestDownloads(ev.settings.allowGuestDownloads);
           setIsLiveFeedActive(ev.settings.isLiveFeedActive);
+          setAllowGuestbook(ev.settings.allowGuestbook ?? true);
+          setAutoApprovePhotos(ev.settings.autoApprovePhotos ?? true);
+
           if (ev.schedule && ev.schedule.length > 0) {
             setSchedule(ev.schedule);
           }
+
+          // Parse date and time cleanly
+          try {
+            const d = new Date(ev.eventDate);
+            if (!isNaN(d.getTime())) {
+              const year = d.getFullYear();
+              const month = String(d.getMonth() + 1).padStart(2, '0');
+              const day = String(d.getDate()).padStart(2, '0');
+              setEventDateStr(`${year}-${month}-${day}`);
+              const hours = String(d.getHours()).padStart(2, '0');
+              const mins = String(d.getMinutes()).padStart(2, '0');
+              setEventTimeStr(`${hours}:${mins}`);
+            }
+          } catch (_e) {}
         }
 
         const alb = await eventService.getAlbums(currentSlug);
@@ -133,7 +188,7 @@ export default function EventFormScreen() {
     };
 
     load();
-  }, [currentSlug]);
+  }, [currentSlug, user?.displayName]);
 
   // When bride or groom names change, automatically update suggested title and slug
   const handleNameChange = (newBride: string, newGroom: string) => {
@@ -142,17 +197,68 @@ export default function EventFormScreen() {
 
     if (newBride && newGroom) {
       setTitle(`${newBride.trim()} & ${newGroom.trim()} Düğünü`);
-      const generatedSlug = `${newBride.trim()}-ve-${newGroom.trim()}`
-        .toLowerCase()
-        .replace(/[^a-z0-9-]/g, '')
-        .replace(/ç/g, 'c')
-        .replace(/ğ/g, 'g')
-        .replace(/ı/g, 'i')
-        .replace(/ö/g, 'o')
-        .replace(/ş/g, 's')
-        .replace(/ü/g, 'u');
+      const generatedSlug = slugify(`${newBride.trim()} & ${newGroom.trim()}`);
       setSlug(generatedSlug);
     }
+  };
+
+  // Schedule Management Handlers
+  const handleAddScheduleItem = () => {
+    if (!newScheduleTitle.trim()) {
+      Alert.alert('Eksik Bilgi', 'Lütfen akış başlığını girin.');
+      return;
+    }
+    const newItem: ScheduleItem = {
+      id: `sch-${Date.now().toString(36)}`,
+      time: newScheduleTime.trim() || '19:00',
+      title: newScheduleTitle.trim(),
+      description: newScheduleDesc.trim() || undefined,
+    };
+    setSchedule([...schedule, newItem]);
+    setNewScheduleTime('');
+    setNewScheduleTitle('');
+    setNewScheduleDesc('');
+  };
+
+  const handleQuickAddSchedule = (time: string, quickTitle: string, quickDesc?: string) => {
+    const newItem: ScheduleItem = {
+      id: `sch-${Date.now().toString(36)}-${Math.floor(Math.random() * 100)}`,
+      time,
+      title: quickTitle,
+      description: quickDesc,
+    };
+    setSchedule([...schedule, newItem]);
+  };
+
+  const handleDeleteScheduleItem = (id: string) => {
+    setSchedule(schedule.filter((s) => s.id !== id));
+  };
+
+  const handleStartEditSchedule = (item: ScheduleItem) => {
+    setEditingScheduleId(item.id);
+    setEditScheduleTime(item.time);
+    setEditScheduleTitle(item.title);
+    setEditScheduleDesc(item.description || '');
+  };
+
+  const handleSaveEditSchedule = () => {
+    if (!editScheduleTitle.trim()) {
+      Alert.alert('Eksik Bilgi', 'Lütfen başlık girin.');
+      return;
+    }
+    setSchedule(
+      schedule.map((item) =>
+        item.id === editingScheduleId
+          ? {
+              ...item,
+              time: editScheduleTime.trim() || item.time,
+              title: editScheduleTitle.trim(),
+              description: editScheduleDesc.trim() || undefined,
+            }
+          : item
+      )
+    );
+    setEditingScheduleId(null);
   };
 
   // Category Management Handlers
@@ -163,7 +269,7 @@ export default function EventFormScreen() {
     const newAlbum: AlbumModel = {
       id: newId,
       name,
-      slug: name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+      slug: slugify(name) || `cat-${Date.now()}`,
       order: albums.length + 1,
       photoCount: 0,
     };
@@ -187,20 +293,28 @@ export default function EventFormScreen() {
 
     setIsSaving(true);
     try {
-      const cleanSlug = slug
-        .toLowerCase()
-        .replace(/\s+/g, '-')
-        .replace(/[^a-z0-9-]/g, '');
+      const cleanSlug = slugify(slug);
+
+      // Compute final ISO eventDate
+      let finalEventDate = new Date().toISOString();
+      try {
+        const combined = new Date(`${eventDateStr}T${eventTimeStr || '19:00'}:00.000Z`);
+        if (!isNaN(combined.getTime())) {
+          finalEventDate = combined.toISOString();
+        }
+      } catch (_e) {}
 
       const updatedData: Partial<EventModel> = {
         slug: cleanSlug,
+        eventType,
         title: title.trim(),
         subtitle: subtitle.trim(),
         hosts: {
           brideOrPrimary: brideName.trim(),
           groomOrSecondary: groomName.trim(),
         },
-        eventDate,
+        eventDate: finalEventDate,
+        invitationUrl: invitationUrl.trim() || undefined,
         coverPhotoUrl,
         theme: {
           primaryColor,
@@ -220,8 +334,8 @@ export default function EventFormScreen() {
           enableCompression,
           allowGuestDownloads,
           isLiveFeedActive,
-          allowGuestbook: true,
-          autoApprovePhotos: true,
+          allowGuestbook,
+          autoApprovePhotos,
         },
       };
 
@@ -232,7 +346,7 @@ export default function EventFormScreen() {
       }
 
       setIsSaving(false);
-      Alert.alert('Harika! 🎉', 'Etkinliğiniz başarıyla oluşturuldu ve Firebase ile senkronize edildi!', [
+      Alert.alert('Harika! 🎉', 'Etkinliğiniz başarıyla güncellendi ve kaydedildi!', [
         {
           text: 'Panele Dön',
           onPress: () => router.push('/panel' as any),
@@ -251,66 +365,88 @@ export default function EventFormScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#C5A059" />
-        <Text style={styles.loadingText}>Etkinlik bilgileri yükleniyor...</Text>
-      </View>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#C5A059" />
+          <Text style={styles.loadingText}>Etkinlik ayarları yükleniyor...</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
+  // Formatted date preview for UX
+  let formattedDatePreview = '';
+  try {
+    const d = new Date(`${eventDateStr}T${eventTimeStr || '19:00'}:00`);
+    if (!isNaN(d.getTime())) {
+      formattedDatePreview = d.toLocaleDateString('tr-TR', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        weekday: 'long',
+      });
+    }
+  } catch (_e) {}
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        {/* Top Navbar */}
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {/* Navigation Bar */}
         <View style={styles.navbar}>
           <TouchableOpacity
             style={styles.backBtn}
-            onPress={() => router.push('/panel' as any)}
+            onPress={() => router.back()}
             activeOpacity={0.7}
           >
             <Ionicons name="arrow-back" size={20} color="#1A1817" />
           </TouchableOpacity>
-          <View style={styles.navTitleBox}>
-            <Text style={styles.navTitle}>Etkinlik Bilgileri & Kurulum</Text>
-            <Text style={styles.navSub}>qr-la.com/{slug}</Text>
-          </View>
+          <Text style={styles.navTitle}>Etkinlik Bilgilerini Düzenle</Text>
           <TouchableOpacity
-            style={[styles.saveBtn, isSaving && { opacity: 0.6 }]}
+            style={styles.saveHeaderBtn}
             onPress={handleSave}
             disabled={isSaving}
           >
-            {isSaving ? (
-              <ActivityIndicator color="#FFF" size="small" />
-            ) : (
-              <>
-                <Ionicons name="checkmark-done" size={16} color="#FFF" />
-                <Text style={styles.saveBtnText}>Kaydet</Text>
-              </>
-            )}
+            <Text style={styles.saveHeaderBtnText}>{isSaving ? '...' : 'Kaydet'}</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Live Link Callout Banner */}
-        <View style={styles.slugBanner}>
-          <Ionicons name="link-outline" size={20} color="#C5A059" />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.slugBannerLabel}>ÖZEL ETKİNLİK LİNKİNİZ</Text>
-            <Text style={styles.slugBannerUrl}>qr-la.com/{slug}</Text>
-          </View>
-        </View>
-
-        {/* Section 1: Couple Names & Title */}
+        {/* Section 1: Event Type, Names & Date */}
         <View style={styles.formCard}>
-          <Text style={styles.cardHeader}>1. Çift İsimleri & Başlık</Text>
+          <Text style={styles.cardHeader}>1. Etkinlik Türü & Temel Bilgiler</Text>
+
+          {/* Event Type Chips */}
+          <Text style={styles.label}>Etkinlik Türü</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.typeChipsScroll}>
+            {EVENT_TYPES.map((t) => {
+              const isSelected = eventType === t.id;
+              return (
+                <TouchableOpacity
+                  key={t.id}
+                  style={[styles.typeChip, isSelected && styles.typeChipActive]}
+                  onPress={() => setEventType(t.id)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons
+                    name={t.icon}
+                    size={16}
+                    color={isSelected ? '#FFF' : '#8A6D3B'}
+                  />
+                  <Text style={[styles.typeChipText, isSelected && styles.typeChipTextActive]}>
+                    {t.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
 
           <View style={styles.row}>
             <View style={[styles.inputGroup, { flex: 1 }]}>
-              <Text style={styles.label}>Gelin / Ev Sahibi</Text>
+              <Text style={styles.label}>Gelin / 1. Ev Sahibi</Text>
               <TextInput
                 style={styles.input}
                 value={brideName}
                 onChangeText={(val) => handleNameChange(val, groomName)}
-                placeholder="Örn: Merve"
+                placeholder="Örn: Şule"
               />
             </View>
 
@@ -320,7 +456,7 @@ export default function EventFormScreen() {
                 style={styles.input}
                 value={groomName}
                 onChangeText={(val) => handleNameChange(brideName, val)}
-                placeholder="Örn: Yavuz"
+                placeholder="Örn: Samet"
               />
             </View>
           </View>
@@ -331,7 +467,7 @@ export default function EventFormScreen() {
               style={styles.input}
               value={title}
               onChangeText={setTitle}
-              placeholder="Örn: Merve & Yavuz Düğünü"
+              placeholder="Örn: Samet & Şule Düğünü"
             />
           </View>
 
@@ -343,6 +479,49 @@ export default function EventFormScreen() {
               onChangeText={setSubtitle}
               multiline
               numberOfLines={2}
+            />
+          </View>
+
+          {/* Date & Time Row */}
+          <View style={styles.row}>
+            <View style={[styles.inputGroup, { flex: 1.3 }]}>
+              <Text style={styles.label}>Etkinlik Tarihi (YIL-AY-GÜN)</Text>
+              <TextInput
+                style={styles.input}
+                value={eventDateStr}
+                onChangeText={setEventDateStr}
+                placeholder="2026-10-18"
+              />
+            </View>
+
+            <View style={[styles.inputGroup, { flex: 0.9 }]}>
+              <Text style={styles.label}>Saat (SS:DD)</Text>
+              <TextInput
+                style={styles.input}
+                value={eventTimeStr}
+                onChangeText={setEventTimeStr}
+                placeholder="19:00"
+              />
+            </View>
+          </View>
+
+          {formattedDatePreview ? (
+            <View style={styles.datePreviewBox}>
+              <Ionicons name="calendar" size={14} color="#C5A059" />
+              <Text style={styles.datePreviewText}>
+                {formattedDatePreview} — Saat {eventTimeStr}
+              </Text>
+            </View>
+          ) : null}
+
+          {/* Digital Invitation Link */}
+          <View style={[styles.inputGroup, { marginTop: 8 }]}>
+            <Text style={styles.label}>Dijital Davetiye Görseli / PDF Bağlantısı (İsteğe Bağlı)</Text>
+            <TextInput
+              style={styles.input}
+              value={invitationUrl}
+              onChangeText={setInvitationUrl}
+              placeholder="https://..."
             />
           </View>
         </View>
@@ -374,7 +553,7 @@ export default function EventFormScreen() {
           </ScrollView>
 
           <View style={[styles.inputGroup, { marginTop: 14 }]}>
-            <Text style={styles.label}>Veya Kendi Görsel Linkinizi Girin:</Text>
+            <Text style={styles.label}>Veya Özel Kapak Görseli Linkinizi Girin:</Text>
             <TextInput
               style={styles.input}
               value={coverPhotoUrl}
@@ -402,11 +581,25 @@ export default function EventFormScreen() {
               );
             })}
           </View>
+
+          {/* Custom Hex Color */}
+          <View style={[styles.row, { marginTop: 10, alignItems: 'center' }]}>
+            <View style={[styles.colorCircle, { backgroundColor: primaryColor, width: 32, height: 32, marginRight: 8 }]} />
+            <View style={{ flex: 1 }}>
+              <TextInput
+                style={styles.input}
+                value={primaryColor}
+                onChangeText={setPrimaryColor}
+                placeholder="#C5A059"
+                autoCapitalize="none"
+              />
+            </View>
+          </View>
         </View>
 
         {/* Section 3: Venue Details */}
         <View style={styles.formCard}>
-          <Text style={styles.cardHeader}>3. Düğün / Etkinlik Mekanı</Text>
+          <Text style={styles.cardHeader}>3. Düğün / Etkinlik Mekanı & Ulaşım</Text>
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Mekan Adı</Text>
@@ -439,10 +632,195 @@ export default function EventFormScreen() {
           </View>
         </View>
 
-        {/* Section 4: Privacy & Settings */}
+        {/* Section 4: Event Schedule & Timeline (Program Akışı) */}
         <View style={styles.formCard}>
-          <Text style={styles.cardHeader}>4. Gizlilik & Kurallar</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <Text style={styles.cardHeader}>4. Etkinlik Akışı & Zaman Çizelgesi</Text>
+            <View style={styles.categoryCountBadge}>
+              <Text style={styles.categoryCountBadgeText}>{schedule.length} Madde</Text>
+            </View>
+          </View>
+          <Text style={styles.cardSub}>
+            Misafirlerinizin etkinlik boyunca programı (kokteyl, nikah, yemek, pasta vb.) saatleriyle takip etmesini sağlayın.
+          </Text>
 
+          {/* Quick Schedule Templates */}
+          <Text style={[styles.label, { marginTop: 6 }]}>Hızlı Şablon Ekle:</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickScheduleScroll}>
+            <TouchableOpacity
+              style={styles.quickScheduleChip}
+              onPress={() => handleQuickAddSchedule('18:30', 'Karşılama Kokteyli', 'Canlı müzik ve ikramlar')}
+            >
+              <Text style={styles.quickScheduleChipText}>+ Kokteyl (18:30)</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.quickScheduleChip}
+              onPress={() => handleQuickAddSchedule('19:30', 'Nikah Töreni & İlk Dans', 'İlk vals')}
+            >
+              <Text style={styles.quickScheduleChipText}>+ Nikah & Vals (19:30)</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.quickScheduleChip}
+              onPress={() => handleQuickAddSchedule('20:30', 'Akşam Yemeği & Müzik', 'Yemek servisi')}
+            >
+              <Text style={styles.quickScheduleChipText}>+ Akşam Yemeği (20:30)</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.quickScheduleChip}
+              onPress={() => handleQuickAddSchedule('22:00', 'Düğün Pastası Kesimi', 'Pasta merasimi')}
+            >
+              <Text style={styles.quickScheduleChipText}>+ Pasta Kesimi (22:00)</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.quickScheduleChip}
+              onPress={() => handleQuickAddSchedule('23:00', 'After Party & Canlı DJ', 'Gece eğlencesi')}
+            >
+              <Text style={styles.quickScheduleChipText}>+ After Party (23:00)</Text>
+            </TouchableOpacity>
+          </ScrollView>
+
+          {/* Existing Schedule Items List */}
+          <View style={styles.scheduleList}>
+            {schedule.map((item, index) => {
+              const isEditing = editingScheduleId === item.id;
+
+              if (isEditing) {
+                return (
+                  <View key={item.id} style={styles.scheduleEditCard}>
+                    <Text style={styles.scheduleEditTitle}>Akış Maddesini Düzenle</Text>
+                    <View style={styles.row}>
+                      <View style={{ width: 80, marginRight: 8 }}>
+                        <Text style={styles.label}>Saat</Text>
+                        <TextInput
+                          style={styles.input}
+                          value={editScheduleTime}
+                          onChangeText={setEditScheduleTime}
+                          placeholder="19:00"
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.label}>Başlık</Text>
+                        <TextInput
+                          style={styles.input}
+                          value={editScheduleTitle}
+                          onChangeText={setEditScheduleTitle}
+                          placeholder="Nikah & Dans"
+                        />
+                      </View>
+                    </View>
+                    <View style={[styles.inputGroup, { marginTop: 8 }]}>
+                      <Text style={styles.label}>Açıklama (İsteğe Bağlı)</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={editScheduleDesc}
+                        onChangeText={setEditScheduleDesc}
+                        placeholder="Kısa açıklama..."
+                      />
+                    </View>
+                    <View style={styles.scheduleEditActions}>
+                      <TouchableOpacity
+                        style={styles.cancelEditBtn}
+                        onPress={() => setEditingScheduleId(null)}
+                      >
+                        <Text style={styles.cancelEditBtnText}>Vazgeç</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.saveEditBtn}
+                        onPress={handleSaveEditSchedule}
+                      >
+                        <Text style={styles.saveEditBtnText}>Tamamla</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              }
+
+              return (
+                <View key={item.id} style={styles.scheduleItemRow}>
+                  <View style={styles.scheduleIndexBadge}>
+                    <Text style={styles.scheduleIndexText}>{index + 1}</Text>
+                  </View>
+                  <View style={styles.scheduleTimeBadge}>
+                    <Text style={styles.scheduleTimeText}>{item.time}</Text>
+                  </View>
+                  <View style={styles.scheduleInfoCol}>
+                    <Text style={styles.scheduleTitleText}>{item.title}</Text>
+                    {item.description ? (
+                      <Text style={styles.scheduleDescText}>{item.description}</Text>
+                    ) : null}
+                  </View>
+                  <View style={styles.scheduleActionBtns}>
+                    <TouchableOpacity
+                      style={styles.scheduleEditBtn}
+                      onPress={() => handleStartEditSchedule(item)}
+                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    >
+                      <Ionicons name="pencil" size={16} color="#8A6D3B" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.scheduleDeleteBtn}
+                      onPress={() => handleDeleteScheduleItem(item.id)}
+                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    >
+                      <Ionicons name="trash-outline" size={16} color="#DC2626" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+
+          {/* Add New Schedule Item Form */}
+          <View style={styles.addScheduleCard}>
+            <Text style={styles.addScheduleHeader}>+ Yeni Akış / Program Maddesi Ekle</Text>
+            <View style={styles.row}>
+              <View style={{ width: 85, marginRight: 8 }}>
+                <Text style={styles.label}>Saat</Text>
+                <TextInput
+                  style={styles.input}
+                  value={newScheduleTime}
+                  onChangeText={setNewScheduleTime}
+                  placeholder="20:00"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.label}>Başlık</Text>
+                <TextInput
+                  style={styles.input}
+                  value={newScheduleTitle}
+                  onChangeText={setNewScheduleTitle}
+                  placeholder="Örn: Takı Töreni & Eğlence"
+                />
+              </View>
+            </View>
+            <View style={[styles.inputGroup, { marginTop: 8 }]}>
+              <Text style={styles.label}>Açıklama (İsteğe Bağlı)</Text>
+              <TextInput
+                style={styles.input}
+                value={newScheduleDesc}
+                onChangeText={setNewScheduleDesc}
+                placeholder="Örn: Sahne önünde tebrik ve fotoğraf çekimi"
+              />
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.addScheduleBtn,
+                !newScheduleTitle.trim() && { opacity: 0.6 },
+              ]}
+              onPress={handleAddScheduleItem}
+              disabled={!newScheduleTitle.trim()}
+            >
+              <Ionicons name="add-circle" size={18} color="#FFF" />
+              <Text style={styles.addScheduleBtnText}>Akışa Ekle</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Section 5: Privacy, Moderation & Live Feed */}
+        <View style={styles.formCard}>
+          <Text style={styles.cardHeader}>5. Gizlilik, Kurallar & Canlı Yayın</Text>
+
+          {/* PIN Protection */}
           <View style={styles.switchRow}>
             <View style={{ flex: 1, paddingRight: 10 }}>
               <Text style={styles.switchLabel}>PIN Kodu ile Galeriyi Koru</Text>
@@ -470,6 +848,7 @@ export default function EventFormScreen() {
             </View>
           )}
 
+          {/* Smart Compression */}
           <View style={styles.switchRow}>
             <View style={{ flex: 1, paddingRight: 10 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -495,23 +874,12 @@ export default function EventFormScreen() {
             />
           </View>
 
-          {!enableCompression && (
-            <View style={styles.quotaWarningBox}>
-              <View style={styles.quotaWarningHeader}>
-                <Ionicons name="warning" size={18} color="#D97706" />
-                <Text style={styles.quotaWarningTitle}>Depolama Kotası Uyarısı</Text>
-              </View>
-              <Text style={styles.quotaWarningDesc}>
-                ⚠️ Dikkat: Orijinal boyutta yüklerseniz 500 MB depolama kotanız çok daha çabuk dolar. Her bir görsel ortalama 3-8 MB yer kaplayacağı için toplam fotoğraf kapasiteniz düşebilir.
-              </Text>
-            </View>
-          )}
-
+          {/* Guest Download Permission */}
           <View style={styles.switchRow}>
             <View style={{ flex: 1, paddingRight: 10 }}>
               <Text style={styles.switchLabel}>Misafirler Fotoğraf İndirebilsin</Text>
               <Text style={styles.switchSub}>
-                Misafirler galerideki fotoğrafları telefonlarına indirebilir.
+                Misafirler galerideki fotoğrafları telefonlarına tek tek veya topluca indirebilir.
               </Text>
             </View>
             <Switch
@@ -520,14 +888,59 @@ export default function EventFormScreen() {
               trackColor={{ false: '#D1D5DB', true: '#C5A059' }}
             />
           </View>
+
+          {/* Live Feed Projector Toggle */}
+          <View style={styles.switchRow}>
+            <View style={{ flex: 1, paddingRight: 10 }}>
+              <Text style={styles.switchLabel}>Canlı Projeksiyon & Slayt Modu</Text>
+              <Text style={styles.switchSub}>
+                Salondaki dev ekranda yeni yüklenen fotoğraflar canlı olarak yansıtılsın.
+              </Text>
+            </View>
+            <Switch
+              value={isLiveFeedActive}
+              onValueChange={setIsLiveFeedActive}
+              trackColor={{ false: '#D1D5DB', true: '#C5A059' }}
+            />
+          </View>
+
+          {/* Guestbook Toggle */}
+          <View style={styles.switchRow}>
+            <View style={{ flex: 1, paddingRight: 10 }}>
+              <Text style={styles.switchLabel}>Ziyaretçi Anı Defteri & Tebrik Notları</Text>
+              <Text style={styles.switchSub}>
+                Misafirleriniz çiftinize özel tebrik ve iyi dilek notları bırakabilsin.
+              </Text>
+            </View>
+            <Switch
+              value={allowGuestbook}
+              onValueChange={setAllowGuestbook}
+              trackColor={{ false: '#D1D5DB', true: '#C5A059' }}
+            />
+          </View>
+
+          {/* Auto Approve Photos */}
+          <View style={styles.switchRow}>
+            <View style={{ flex: 1, paddingRight: 10 }}>
+              <Text style={styles.switchLabel}>Fotoğrafları Otomatik Onayla</Text>
+              <Text style={styles.switchSub}>
+                Yüklenen fotoğraflar moderasyon beklemeden anında galeride ve canlı yayında görünsün.
+              </Text>
+            </View>
+            <Switch
+              value={autoApprovePhotos}
+              onValueChange={setAutoApprovePhotos}
+              trackColor={{ false: '#D1D5DB', true: '#C5A059' }}
+            />
+          </View>
         </View>
 
-        {/* Section 5: Gallery Categories (Albums) */}
+        {/* Section 6: Gallery Categories (Albums) */}
         <View style={styles.formCard}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-            <Text style={styles.cardHeader}>5. Fotoğraf Galerisi Kategorileri</Text>
+            <Text style={styles.cardHeader}>6. Fotoğraf Galerisi Kategorileri</Text>
             <View style={styles.categoryCountBadge}>
-              <Text style={styles.categoryCountBadgeText}>{albums.filter(a => a.id !== 'alb-all').length} Kategori</Text>
+              <Text style={styles.categoryCountBadgeText}>{albums.filter((a) => a.id !== 'alb-all').length} Kategori</Text>
             </View>
           </View>
           <Text style={styles.cardSub}>
@@ -602,7 +1015,7 @@ export default function EventFormScreen() {
           ) : (
             <>
               <Ionicons name="sparkles" size={20} color="#FFF" />
-              <Text style={styles.bigSaveBtnText}>Etkinliği Kaydet & Hemen Aç</Text>
+              <Text style={styles.bigSaveBtnText}>Etkinliği Kaydet & Hemen Yayınla</Text>
             </>
           )}
         </TouchableOpacity>
@@ -651,67 +1064,32 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#EFE7DA',
   },
-  navTitleBox: {
-    alignItems: 'center',
-  },
   navTitle: {
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#1A1817',
   },
-  navSub: {
-    fontSize: 11,
-    color: '#8A6D3B',
-    fontWeight: '600',
-  },
-  saveBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#10B981',
+  saveHeaderBtn: {
+    backgroundColor: '#C5A059',
+    paddingHorizontal: 16,
     paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 12,
+    borderRadius: 10,
   },
-  saveBtnText: {
+  saveHeaderBtnText: {
     color: '#FFF',
     fontSize: 13,
     fontWeight: '700',
-  },
-  slugBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: '#FFF',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#EFE7DA',
-  },
-  slugBannerLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#8A6D3B',
-    letterSpacing: 0.5,
-  },
-  slugBannerUrl: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#1A1817',
-    marginTop: 2,
   },
   formCard: {
     backgroundColor: '#FFF',
     borderRadius: 20,
     padding: 20,
     marginHorizontal: 16,
-    marginBottom: 16,
+    marginBottom: 18,
     borderWidth: 1,
     borderColor: '#F3EFE6',
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
+    shadowColor: '#C5A059',
+    shadowOpacity: 0.08,
     shadowRadius: 10,
     elevation: 2,
   },
@@ -719,13 +1097,41 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     color: '#1A1817',
-    marginBottom: 16,
+    marginBottom: 14,
+    letterSpacing: -0.3,
   },
   cardSub: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#6B7280',
     marginBottom: 12,
-    lineHeight: 18,
+    lineHeight: 16,
+  },
+  typeChipsScroll: {
+    gap: 8,
+    paddingBottom: 14,
+  },
+  typeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: '#FAF7F2',
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+  },
+  typeChipActive: {
+    backgroundColor: '#C5A059',
+    borderColor: '#C5A059',
+  },
+  typeChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#8A6D3B',
+  },
+  typeChipTextActive: {
+    color: '#FFF',
   },
   row: {
     flexDirection: 'row',
@@ -735,9 +1141,9 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   label: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
-    color: '#4B5563',
+    color: '#6B7280',
     marginBottom: 6,
     textTransform: 'uppercase',
   },
@@ -752,21 +1158,38 @@ const styles = StyleSheet.create({
     color: '#1A1817',
   },
   textArea: {
-    minHeight: 60,
+    height: 70,
     textAlignVertical: 'top',
+  },
+  datePreviewBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FAF7F2',
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    marginBottom: 6,
+  },
+  datePreviewText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#8A6D3B',
   },
   presetsScroll: {
     gap: 12,
-    paddingVertical: 6,
+    paddingVertical: 4,
   },
   presetCard: {
     width: 140,
-    height: 100,
+    height: 90,
     borderRadius: 14,
     overflow: 'hidden',
-    position: 'relative',
     borderWidth: 2,
     borderColor: 'transparent',
+    position: 'relative',
   },
   presetCardActive: {
     borderColor: '#C5A059',
@@ -777,40 +1200,42 @@ const styles = StyleSheet.create({
   },
   presetTag: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0,0,0,0.65)',
+    bottom: 6,
+    left: 6,
+    right: 6,
+    backgroundColor: 'rgba(26,24,23,0.75)',
     paddingVertical: 3,
+    paddingHorizontal: 6,
+    borderRadius: 6,
     alignItems: 'center',
   },
   presetTagActive: {
-    backgroundColor: 'rgba(197, 160, 89, 0.95)',
+    backgroundColor: '#C5A059',
   },
   presetTagText: {
     color: '#FFF',
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   presetTagTextActive: {
-    fontWeight: '800',
+    color: '#FFF',
   },
   themeRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 6,
+    gap: 10,
+    marginTop: 4,
   },
   themeChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     backgroundColor: '#FAF7F2',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#EFE7DA',
+    borderColor: '#E5E7EB',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
   },
   colorCircle: {
     width: 14,
@@ -820,15 +1245,166 @@ const styles = StyleSheet.create({
   themeChipText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#374151',
+    color: '#1A1817',
+  },
+  quickScheduleScroll: {
+    gap: 8,
+    paddingBottom: 10,
+  },
+  quickScheduleChip: {
+    backgroundColor: '#FAF7F2',
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  quickScheduleChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#8A6D3B',
+  },
+  scheduleList: {
+    marginTop: 10,
+    gap: 8,
+  },
+  scheduleItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FAF7F2',
+    borderWidth: 1,
+    borderColor: '#F3EFE6',
+    borderRadius: 14,
+    padding: 12,
+    gap: 10,
+  },
+  scheduleIndexBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#EFE7DA',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scheduleIndexText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#8A6D3B',
+  },
+  scheduleTimeBadge: {
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#C5A059',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  scheduleTimeText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#C5A059',
+  },
+  scheduleInfoCol: {
+    flex: 1,
+  },
+  scheduleTitleText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1A1817',
+  },
+  scheduleDescText: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  scheduleActionBtns: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  scheduleEditBtn: {
+    padding: 4,
+  },
+  scheduleDeleteBtn: {
+    padding: 4,
+  },
+  scheduleEditCard: {
+    backgroundColor: '#FFF',
+    borderWidth: 1.5,
+    borderColor: '#C5A059',
+    borderRadius: 14,
+    padding: 14,
+  },
+  scheduleEditTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#C5A059',
+    marginBottom: 10,
+  },
+  scheduleEditActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+    marginTop: 10,
+  },
+  cancelEditBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+  },
+  cancelEditBtnText: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '600',
+  },
+  saveEditBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#C5A059',
+  },
+  saveEditBtnText: {
+    fontSize: 12,
+    color: '#FFF',
+    fontWeight: '700',
+  },
+  addScheduleCard: {
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+    borderRadius: 14,
+    padding: 14,
+    marginTop: 12,
+  },
+  addScheduleHeader: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#8A6D3B',
+    marginBottom: 10,
+  },
+  addScheduleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#C5A059',
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginTop: 8,
+  },
+  addScheduleBtnText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
   switchRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 10,
+    justifyContent: 'space-between',
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: '#F3EFE6',
   },
   switchLabel: {
     fontSize: 14,
@@ -837,96 +1413,53 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   switchSub: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#6B7280',
-    lineHeight: 15,
+    lineHeight: 16,
+  },
+  warningBadge: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  warningBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#D97706',
   },
   pinBox: {
     backgroundColor: '#FAF7F2',
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
     padding: 12,
     borderRadius: 12,
-    marginVertical: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    marginTop: 10,
+    marginBottom: 6,
   },
   pinInput: {
     backgroundColor: '#FFF',
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
+    borderColor: '#C5A059',
+    borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 4,
-    fontSize: 16,
-    fontWeight: '700',
-    width: 70,
+    paddingVertical: 8,
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: 4,
     textAlign: 'center',
-  },
-  bigSaveBtn: {
-    backgroundColor: '#C5A059',
-    marginHorizontal: 16,
-    borderRadius: 16,
-    paddingVertical: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    shadowColor: '#C5A059',
-    shadowOpacity: 0.35,
-    shadowRadius: 15,
-    elevation: 4,
-    marginTop: 8,
-  },
-  bigSaveBtnText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  warningBadge: {
-    backgroundColor: '#FEF3C7',
-    paddingVertical: 2,
-    paddingHorizontal: 8,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-  },
-  warningBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#D97706',
-  },
-  quotaWarningBox: {
-    backgroundColor: '#FFFBEB',
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#FCD34D',
-    marginTop: 8,
-    marginBottom: 12,
-  },
-  quotaWarningHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 6,
-  },
-  quotaWarningTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#B45309',
-  },
-  quotaWarningDesc: {
-    fontSize: 12,
-    color: '#92400E',
-    lineHeight: 18,
+    color: '#1A1817',
+    width: 120,
+    alignSelf: 'center',
+    marginTop: 4,
   },
   categoryCountBadge: {
-    backgroundColor: '#FAF5EA',
+    backgroundColor: '#FAF7F2',
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#EFE7DA',
   },
   categoryCountBadgeText: {
     fontSize: 11,
@@ -936,28 +1469,27 @@ const styles = StyleSheet.create({
   addCategoryRow: {
     flexDirection: 'row',
     gap: 8,
-    marginTop: 12,
     marginBottom: 12,
   },
   addCategoryInput: {
     flex: 1,
     backgroundColor: '#FAF7F2',
     borderWidth: 1,
-    borderColor: '#EFE7DA',
-    borderRadius: 10,
-    paddingHorizontal: 12,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 13,
     color: '#1A1817',
   },
   addCategoryBtn: {
-    backgroundColor: '#C5A059',
-    borderRadius: 10,
-    paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: 4,
+    backgroundColor: '#C5A059',
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    justifyContent: 'center',
   },
   addCategoryBtnText: {
     color: '#FFF',
@@ -972,11 +1504,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: '#FAF7F2',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#F3EFE6',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
   },
   categoryInfo: {
     flexDirection: 'row',
@@ -984,24 +1516,41 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   categoryNameText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#1A1817',
   },
   defaultBadge: {
-    backgroundColor: '#EAD7BB',
+    backgroundColor: '#EFE7DA',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
   defaultBadgeText: {
     fontSize: 10,
-    fontWeight: '700',
-    color: '#654B1A',
+    fontWeight: '600',
+    color: '#8A6D3B',
   },
   deleteCategoryBtn: {
-    padding: 6,
-    borderRadius: 6,
-    backgroundColor: '#FEE2E2',
+    padding: 4,
+  },
+  bigSaveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#C5A059',
+    paddingVertical: 16,
+    marginHorizontal: 16,
+    borderRadius: 16,
+    shadowColor: '#C5A059',
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  bigSaveBtnText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '800',
   },
 });

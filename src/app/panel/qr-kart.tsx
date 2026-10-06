@@ -28,7 +28,7 @@ export default function QRCardScreen() {
       let activeSlug = 'demo-panel';
       if (user && user.uid !== 'demo-host-yavuz') {
         activeSlug =
-          user.events?.find((s) => s && s !== 'demo-panel' && s !== 'yavuz-ve-merve') ||
+          user.events?.find((s) => s && s !== 'demo-panel' && s !== 'samet-ve-sule' && s !== 'yavuz-ve-merve') ||
           slugify(user.displayName || user.email?.split('@')[0] || 'etkinlik');
       }
       const ev = await eventService.getEvent(activeSlug, user?.displayName);
@@ -59,8 +59,8 @@ export default function QRCardScreen() {
             <Ionicons name="arrow-back" size={20} color="#1A1817" />
           </TouchableOpacity>
           <View style={styles.navTitleBox}>
-            <Text style={styles.navTitle}>Masa Kartı Şablonu</Text>
-            <Text style={styles.navSub}>A6 / A5 Baskıya Hazır</Text>
+            <Text style={styles.navTitle}>Masa & Stand QR Kartı</Text>
+            <Text style={styles.navSub}>Masanosuz / Masa Standı & Baskı</Text>
           </View>
           <View style={{ width: 40 }} />
         </View>

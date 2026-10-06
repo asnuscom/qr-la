@@ -12,11 +12,30 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { PLAN_TIERS } from '@/services/mockData';
+import { authService } from '@/services/authService';
 
 export default function LandingScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isDesktop = width > 768;
+
+  const handleStartEvent = () => {
+    const user = authService.getState().user;
+    if (user && user.uid !== 'demo-host-yavuz') {
+      router.push('/panel/duzenle' as any);
+    } else {
+      router.push({ pathname: '/giris', params: { tab: 'register' } } as any);
+    }
+  };
+
+  const handleSelectPlan = () => {
+    const user = authService.getState().user;
+    if (user && user.uid !== 'demo-host-yavuz') {
+      router.push('/panel/tarifeler' as any);
+    } else {
+      router.push({ pathname: '/giris', params: { tab: 'register' } } as any);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -35,9 +54,16 @@ export default function LandingScreen() {
           <View style={styles.navActions}>
             <TouchableOpacity
               style={styles.navLinkBtn}
-              onPress={() => router.push('/giris' as any)}
+              onPress={() => router.push({ pathname: '/giris', params: { tab: 'login' } } as any)}
             >
               <Text style={styles.navLinkText}>Giriş Yap</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.navRegisterBtn}
+              onPress={() => router.push({ pathname: '/giris', params: { tab: 'register' } } as any)}
+            >
+              <Text style={styles.navRegisterBtnText}>Ücretsiz Başla</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -70,7 +96,7 @@ export default function LandingScreen() {
           <View style={styles.ctaRow}>
             <TouchableOpacity
               style={styles.primaryCta}
-              onPress={() => router.push('/panel/duzenle' as any)}
+              onPress={handleStartEvent}
               activeOpacity={0.85}
             >
               <Ionicons name="sparkles" size={20} color="#FFF" />
@@ -127,7 +153,7 @@ export default function LandingScreen() {
                 <Text style={styles.mockupLiveText}>Salonda Canlı Yayında</Text>
               </View>
               <Text style={styles.mockupCaption}>
-                "Merve & Yavuz'un Boğaz manzaralı masalsı gecesinden 42 anı paylaşıldı!"
+                "Şule & Samet'in Boğaz manzaralı masalsı gecesinden 42 anı paylaşıldı!"
               </Text>
             </View>
           </View>
@@ -226,7 +252,7 @@ export default function LandingScreen() {
 
                 <TouchableOpacity
                   style={[styles.planBtn, tier.isPopular && styles.planBtnPopular]}
-                  onPress={() => router.push('/panel' as any)}
+                  onPress={handleSelectPlan}
                 >
                   <Text style={[styles.planBtnText, tier.isPopular && styles.planBtnTextPopular]}>
                     {tier.priceTL === 0 ? 'Hemen Başla' : 'Paketi Seç'}
@@ -296,18 +322,31 @@ const styles = StyleSheet.create({
   },
   navLinkBtn: {
     paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
   },
   navLinkText: {
     fontSize: 14,
     fontWeight: '600',
     color: '#4B5563',
   },
+  navRegisterBtn: {
+    backgroundColor: '#FAF7F2',
+    borderWidth: 1,
+    borderColor: '#C5A059',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+  },
+  navRegisterBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#9E7A36',
+  },
   demoHeaderBtn: {
     backgroundColor: '#C5A059',
     paddingVertical: 8,
     paddingHorizontal: 14,
-    borderRadius: 12,
+    borderRadius: 10,
   },
   demoHeaderBtnText: {
     color: '#FFF',

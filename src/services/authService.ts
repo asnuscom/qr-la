@@ -17,10 +17,10 @@ const SESSION_STORAGE_KEY = 'qr_la_host_session';
 
 const DEMO_USER: UserModel = {
   uid: 'demo-host-yavuz',
-  email: 'yavuz@qr-la.com',
-  displayName: 'Yavuz & Merve (Ev Sahibi)',
+  email: 'samet@qr-la.com',
+  displayName: 'Samet & Şule (Ev Sahibi)',
   isHost: true,
-  events: ['demo-panel', 'yavuz-ve-merve'],
+  events: ['demo-panel', 'samet-ve-sule', 'yavuz-ve-merve'],
   createdAt: '2026-10-01T00:00:00.000Z',
 };
 
@@ -218,7 +218,7 @@ class AuthService {
   }
 
   // Register / Sign Up
-  async signUp(email: string, pass: string, displayName: string): Promise<UserModel> {
+  async signUp(email: string, pass: string, displayName: string, customSlug?: string): Promise<UserModel> {
     if (isRealFirebaseConfigured && auth) {
       const cred = await createUserWithEmailAndPassword(auth, email, pass);
       const user = cred.user;
@@ -234,7 +234,7 @@ class AuthService {
         createdAt: new Date().toISOString(),
       };
 
-      const personalSlug = await eventService.ensureUserEvent(userProfile);
+      const personalSlug = await eventService.ensureUserEvent(userProfile, customSlug);
       userProfile.events = [personalSlug];
 
       if (db) {
@@ -249,7 +249,7 @@ class AuthService {
       this.updateState({ user: userProfile, isAuthenticated: true });
       return userProfile;
     } else {
-      const cleanSlug = slugify(displayName || email.split('@')[0]);
+      const cleanSlug = customSlug ? slugify(customSlug) : slugify(displayName || email.split('@')[0]);
       const userProfile: UserModel = {
         uid: `user-${Date.now()}`,
         email,

@@ -1,13 +1,13 @@
 import { EventModel, AlbumModel, PhotoModel, GuestbookEntryModel, PlanTierConfig, CouponDefinition } from '@/types';
 
 export const DEMO_EVENT: EventModel = {
-  id: 'event-yavuz-merve-2026',
+  id: 'event-samet-sule-2026',
   slug: 'demo-panel',
-  title: 'Yavuz & Merve Düğünü',
+  title: 'Samet & Şule Düğünü',
   subtitle: 'Bu mutlu anımıza ortak olduğunuz için teşekkür ederiz.',
   hosts: {
-    brideOrPrimary: 'Merve',
-    groomOrSecondary: 'Yavuz',
+    brideOrPrimary: 'Şule',
+    groomOrSecondary: 'Samet',
   },
   eventType: 'dugun',
   eventDate: '2026-10-18T18:30:00.000Z',
@@ -205,7 +205,7 @@ export const DEMO_PHOTOS: PhotoModel[] = [
     thumbnailUrl: 'https://images.unsplash.com/photo-1520854221256-17451cc331bf?auto=format&fit=crop&w=600&q=80',
     uploaderName: 'Kuzenler Grubu',
     tableNumber: 'Masa 3',
-    guestNote: 'Mervemiz gelin oldu, gururluyuz ❤️',
+    guestNote: 'Şulemiz gelin oldu, gururluyuz ❤️',
     sizeBytes: 670000,
     width: 1400,
     height: 933,
@@ -238,7 +238,7 @@ export const DEMO_GUESTBOOK: GuestbookEntryModel[] = [
     authorName: 'Selin & Burak Özkan',
     tableNumber: 'Masa 4',
     relationship: 'Lise Dostları',
-    message: 'Canımız Merve ve Yavuz! Yıllar süren güzel hikayenizin bu muhteşem taçlanışında yanınızda olmak tarifsiz bir mutluluk. Yuvanızdan neşe, sevgi ve huzur hiç eksik olmasın!',
+    message: 'Canımız Şule ve Samet! Yıllar süren güzel hikayenizin bu muhteşem taçlanışında yanınızda olmak tarifsiz bir mutluluk. Yuvanızdan neşe, sevgi ve huzur hiç eksik olmasın!',
     attachedPhotoUrl: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=400&q=80',
     likes: 12,
     createdAt: '2026-10-18T20:15:00.000Z',
@@ -259,7 +259,7 @@ export const DEMO_GUESTBOOK: GuestbookEntryModel[] = [
     authorName: 'Yazılım & Şirket Ekibi',
     tableNumber: 'Masa 8',
     relationship: 'İş Arkadaşları',
-    message: 'Yavuz’u ilk defa bu kadar duygusal ve heyecanlı görüyoruz! Harika bir çiftsiniz. Merve’ye bol sabır, Yavuz’a ömür boyu mutluluklar dileriz! 🚀🎉',
+    message: 'Samet’i ilk defa bu kadar duygusal ve heyecanlı görüyoruz! Harika bir çiftsiniz. Şule’ye bol sabır, Samet’e ömür boyu mutluluklar dileriz! 🚀🎉',
     likes: 19,
     createdAt: '2026-10-18T21:20:00.000Z',
   },
@@ -269,7 +269,7 @@ export const DEMO_GUESTBOOK: GuestbookEntryModel[] = [
     authorName: 'Zeynep Kaya',
     tableNumber: 'Masa 6',
     relationship: 'Nedime',
-    message: 'Merveciğim hayatımın en güzel gelini oldun. İkinizi de çok ama çok seviyorum, balayı fotoğraflarını sabırsızlıkla bekliyoruz!',
+    message: 'Şuleciğim hayatımın en güzel gelini oldun. İkinizi de çok ama çok seviyorum, balayı fotoğraflarını sabırsızlıkla bekliyoruz!',
     likes: 14,
     createdAt: '2026-10-18T21:50:00.000Z',
   },
@@ -294,7 +294,7 @@ export const PLAN_TIERS: PlanTierConfig[] = [
   {
     tier: 'standart',
     name: 'Standart Kutlama',
-    priceTL: 249,
+    priceTL: 1490,
     quotaMB: 2048,
     retentionDays: 90,
     features: [
@@ -309,7 +309,7 @@ export const PLAN_TIERS: PlanTierConfig[] = [
   {
     tier: 'premium',
     name: 'Premium Düğün',
-    priceTL: 499,
+    priceTL: 3990,
     quotaMB: 5120,
     retentionDays: 180,
     isPopular: true,
@@ -325,7 +325,7 @@ export const PLAN_TIERS: PlanTierConfig[] = [
   {
     tier: 'vip',
     name: 'VIP Masalsı Düğün',
-    priceTL: 899,
+    priceTL: 5990,
     quotaMB: 15360,
     retentionDays: 365,
     features: [
@@ -387,6 +387,8 @@ export function slugify(text: string): string {
     .toString()
     .toLowerCase()
     .trim()
+    .replace(/&/g, '-ve-')
+    .replace(/\+/g, '-ve-')
     .replace(/ğ/g, 'g')
     .replace(/ü/g, 'u')
     .replace(/ş/g, 's')
@@ -395,7 +397,8 @@ export function slugify(text: string): string {
     .replace(/ç/g, 'c')
     .replace(/[^a-z0-9\s-]/g, '')
     .replace(/\s+/g, '-')
-    .replace(/-+/g, '-');
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 export function generateDefaultEvent(slug: string, hostDisplayName?: string): EventModel {
@@ -404,8 +407,8 @@ export function generateDefaultEvent(slug: string, hostDisplayName?: string): Ev
 
   const capitalize = (str: string) => (str ? str.charAt(0).toUpperCase() + str.slice(1) : '');
 
-  let brideName = 'Merve';
-  let groomName = 'Yavuz';
+  let brideName = 'Şule';
+  let groomName = 'Samet';
   let title = 'Özel Düğün Kutlaması';
 
   if (hostDisplayName && hostDisplayName.trim()) {
