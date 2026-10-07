@@ -514,32 +514,66 @@ export default function EventFormScreen() {
               <View style={styles.labelRowWithBadge}>
                 <Text style={styles.label}>Gelin / 1. Ev Sahibi</Text>
                 {isDemo && (
-                  <Ionicons name="lock-closed" size={12} color="#B45309" />
+                  <View style={styles.lockedBadge}>
+                    <Ionicons name="lock-closed" size={10} color="#B45309" />
+                    <Text style={styles.lockedBadgeText}>Kilitli</Text>
+                  </View>
                 )}
               </View>
-              <TextInput
-                style={[styles.input, isDemo && styles.inputLocked]}
-                value={brideName}
-                onChangeText={(val) => handleNameChange(val, groomName)}
-                placeholder="Örn: Şule"
-                editable={!isDemo}
-              />
+              {isDemo ? (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => showDemoLockedNotice('Gelin / Ev Sahibi İsmi')}
+                >
+                  <TextInput
+                    style={[styles.input, styles.inputLocked]}
+                    value={brideName}
+                    placeholder="Örn: Şule"
+                    editable={false}
+                    pointerEvents="none"
+                  />
+                </TouchableOpacity>
+              ) : (
+                <TextInput
+                  style={styles.input}
+                  value={brideName}
+                  onChangeText={(val) => handleNameChange(val, groomName)}
+                  placeholder="Örn: Şule"
+                />
+              )}
             </View>
 
             <View style={[styles.inputGroup, { flex: 1 }]}>
               <View style={styles.labelRowWithBadge}>
                 <Text style={styles.label}>Damat / 2. İsim</Text>
                 {isDemo && (
-                  <Ionicons name="lock-closed" size={12} color="#B45309" />
+                  <View style={styles.lockedBadge}>
+                    <Ionicons name="lock-closed" size={10} color="#B45309" />
+                    <Text style={styles.lockedBadgeText}>Kilitli</Text>
+                  </View>
                 )}
               </View>
-              <TextInput
-                style={[styles.input, isDemo && styles.inputLocked]}
-                value={groomName}
-                onChangeText={(val) => handleNameChange(brideName, val)}
-                placeholder="Örn: Samet"
-                editable={!isDemo}
-              />
+              {isDemo ? (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => showDemoLockedNotice('Damat / 2. İsim')}
+                >
+                  <TextInput
+                    style={[styles.input, styles.inputLocked]}
+                    value={groomName}
+                    placeholder="Örn: Samet"
+                    editable={false}
+                    pointerEvents="none"
+                  />
+                </TouchableOpacity>
+              ) : (
+                <TextInput
+                  style={styles.input}
+                  value={groomName}
+                  onChangeText={(val) => handleNameChange(brideName, val)}
+                  placeholder="Örn: Samet"
+                />
+              )}
             </View>
           </View>
 
@@ -547,16 +581,33 @@ export default function EventFormScreen() {
             <View style={styles.labelRowWithBadge}>
               <Text style={styles.label}>Etkinlik Başlığı</Text>
               {isDemo && (
-                <Ionicons name="lock-closed" size={12} color="#B45309" />
+                <View style={styles.lockedBadge}>
+                  <Ionicons name="lock-closed" size={10} color="#B45309" />
+                  <Text style={styles.lockedBadgeText}>Kilitli</Text>
+                </View>
               )}
             </View>
-            <TextInput
-              style={[styles.input, isDemo && styles.inputLocked]}
-              value={title}
-              onChangeText={setTitle}
-              placeholder="Örn: Samet & Şule Düğünü"
-              editable={!isDemo}
-            />
+            {isDemo ? (
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => showDemoLockedNotice('Etkinlik Başlığı')}
+              >
+                <TextInput
+                  style={[styles.input, styles.inputLocked]}
+                  value={title}
+                  placeholder="Örn: Samet & Şule Düğünü"
+                  editable={false}
+                  pointerEvents="none"
+                />
+              </TouchableOpacity>
+            ) : (
+              <TextInput
+                style={styles.input}
+                value={title}
+                onChangeText={setTitle}
+                placeholder="Örn: Samet & Şule Düğünü"
+              />
+            )}
           </View>
 
           {/* Custom Slug / URL */}
@@ -570,11 +621,15 @@ export default function EventFormScreen() {
                 </View>
               )}
             </View>
-            <View style={[styles.slugLockedBox, isDemo && styles.inputLocked]}>
+            <TouchableOpacity
+              activeOpacity={isDemo ? 0.7 : 1}
+              onPress={isDemo ? () => showDemoLockedNotice('Özel Bağlantı Linki (Slug)') : undefined}
+              style={[styles.slugLockedBox, isDemo && styles.inputLocked]}
+            >
               <Ionicons name={isDemo ? "lock-closed" : "link"} size={16} color={isDemo ? "#B45309" : "#C5A059"} />
               <Text style={styles.slugPrefixText}>qr-la.com/</Text>
               <Text style={styles.slugValueText}>{slug || 'demo-panel'}</Text>
-            </View>
+            </TouchableOpacity>
             {isDemo && (
               <Text style={styles.helperText}>
                 Demo linki diğer misafirlerin incelemesi için sabittir. Kendi özel kısa linkinizi oluşturmak için ücretsiz hesap açabilirsiniz.
@@ -1663,5 +1718,105 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: '800',
+  },
+  demoWarningBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 16,
+    padding: 14,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    gap: 12,
+    flexWrap: 'wrap',
+  },
+  demoWarningIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FDE68A',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  demoWarningTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#92400E',
+    marginBottom: 2,
+  },
+  demoWarningText: {
+    fontSize: 12,
+    color: '#B45309',
+    lineHeight: 16,
+  },
+  demoRegisterBtn: {
+    backgroundColor: '#B45309',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  demoRegisterBtnText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  labelRowWithBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  lockedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  lockedBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#B45309',
+  },
+  inputLocked: {
+    backgroundColor: '#F3F4F6',
+    borderColor: '#E5E7EB',
+    color: '#6B7280',
+  },
+  slugLockedBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FAF7F2',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+  },
+  slugPrefixText: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    fontWeight: '500',
+  },
+  slugValueText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1A1817',
+  },
+  helperText: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    marginTop: 6,
+    lineHeight: 15,
+  },
+  typeChipDisabled: {
+    opacity: 0.5,
   },
 });
