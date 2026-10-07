@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -34,6 +35,12 @@ export default function GuestbookScreen() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      document.title = event?.title ? `${event.title} - Dijital Anı Defteri | QR-la` : 'Dijital Anı Defteri | QR-la';
+    }
+  }, [event?.title]);
 
   if (isLoading || !event) {
     return (

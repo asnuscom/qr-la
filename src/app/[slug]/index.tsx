@@ -43,6 +43,12 @@ export default function EventHomeScreen() {
     fetchDetails();
   }, [fetchDetails]);
 
+  useEffect(() => {
+    if (event?.title && Platform.OS === 'web' && typeof document !== 'undefined') {
+      document.title = `${event.title} | QR-la`;
+    }
+  }, [event?.title]);
+
   useFocusEffect(
     useCallback(() => {
       if (!slug) return;

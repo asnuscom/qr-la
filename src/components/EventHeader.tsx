@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Linking, Platform } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { authService } from '@/services/authService';
 import { EventModel, UserModel } from '@/types';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { Image, Linking, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface EventHeaderProps {
   event: EventModel;
@@ -31,7 +31,7 @@ export const EventHeader: React.FC<EventHeaderProps> = ({ event, activeTab = 'ho
     currentUser && (
       currentUser.uid === event.hostId ||
       currentUser.events?.includes(event.slug) ||
-      (currentUser.uid === 'demo-host-yavuz' && (event.slug === 'samet-ve-sule' || event.slug === 'demo-panel' || event.slug === 'yavuz-ve-merve')) ||
+      (currentUser.uid === 'demo-host-yavuz' && (event.slug === 'samet-ve-sule' || event.slug === 'demo-panel')) ||
       (currentUser.events && currentUser.events.length > 0)
     )
   );

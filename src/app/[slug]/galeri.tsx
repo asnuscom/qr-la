@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   TextInput,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -58,6 +59,12 @@ export default function GalleryScreen() {
     });
     return () => unsubscribe();
   }, [loadData, slug]);
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      document.title = event?.title ? `${event.title} - Galeri | QR-la` : 'Fotoğraf Galerisi | QR-la';
+    }
+  }, [event?.title]);
 
   const handleVerifyPin = () => {
     if (!event) return;

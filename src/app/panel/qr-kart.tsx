@@ -1,25 +1,32 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { eventService } from '@/services/eventService';
-import { EventModel } from '@/types';
 import { QRCardTemplate } from '@/components/QRCardTemplate';
 import { authService } from '@/services/authService';
+import { eventService } from '@/services/eventService';
 import { slugify } from '@/services/mockData';
+import { EventModel } from '@/types';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function QRCardScreen() {
   const router = useRouter();
   const [event, setEvent] = useState<EventModel | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      document.title = 'Masa QR Kartı Şablonu | QR-la';
+    }
+  }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -28,7 +35,7 @@ export default function QRCardScreen() {
       let activeSlug = 'demo-panel';
       if (user && user.uid !== 'demo-host-yavuz') {
         activeSlug =
-          user.events?.find((s) => s && s !== 'demo-panel' && s !== 'samet-ve-sule' && s !== 'yavuz-ve-merve') ||
+          user.events?.find((s) => s && s !== 'demo-panel' && s !== 'samet-ve-sule') ||
           slugify(user.displayName || user.email?.split('@')[0] || 'etkinlik');
       }
       const ev = await eventService.getEvent(activeSlug, user?.displayName);

@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,6 +21,12 @@ export default function UploadScreen() {
   const [event, setEvent] = useState<EventModel | null>(null);
   const [albums, setAlbums] = useState<AlbumModel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      document.title = event?.title ? `${event.title} - Fotoğraf Yükle | QR-la` : 'Fotoğraf Yükle | QR-la';
+    }
+  }, [event?.title]);
 
   useEffect(() => {
     if (!slug) return;
@@ -70,9 +77,6 @@ export default function UploadScreen() {
         <PhotoUploader
           slug={slug}
           albums={albums}
-          onUploadSuccess={() => {
-            router.push(`/${slug}` as any);
-          }}
         />
       </ScrollView>
     </SafeAreaView>

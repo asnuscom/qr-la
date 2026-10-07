@@ -1,23 +1,23 @@
-import React, { useEffect, useState } from 'react';
+import { authService } from '@/services/authService';
+import { eventService } from '@/services/eventService';
+import { COUPON_CODES, PLAN_TIERS } from '@/services/mockData';
+import { EventModel, PlanTierConfig, StorageTier } from '@/types';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TextInput,
-  TouchableOpacity,
-  Alert,
   ActivityIndicator,
+  Alert,
   Linking,
   Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { PLAN_TIERS, COUPON_CODES } from '@/services/mockData';
-import { eventService } from '@/services/eventService';
-import { authService } from '@/services/authService';
-import { EventModel, PlanTierConfig, StorageTier } from '@/types';
 
 const WHATSAPP_PHONE = '905415779166';
 const WHATSAPP_DISPLAY = '+90 541 577 91 66';
@@ -30,7 +30,7 @@ export default function PricingUpgradeScreen() {
   const userSlug =
     (currentUser &&
       currentUser.uid !== 'demo-host-yavuz' &&
-      currentUser.events?.find((s) => s && s !== 'demo-panel' && s !== 'samet-ve-sule' && s !== 'yavuz-ve-merve')) ||
+      currentUser.events?.find((s) => s && s !== 'demo-panel' && s !== 'samet-ve-sule')) ||
     currentUser?.events?.[0];
 
   const activeSlug = paramSlug || userSlug || 'demo-panel';
@@ -40,6 +40,12 @@ export default function PricingUpgradeScreen() {
   const [couponInput, setCouponInput] = useState('');
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [couponSuccessMessage, setCouponSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      document.title = 'Kota ve Paket Yükseltme | QR-la';
+    }
+  }, []);
 
   // Helper to open WhatsApp for purchasing / requesting coupons
   const openWhatsApp = (customText?: string) => {
@@ -57,7 +63,7 @@ export default function PricingUpgradeScreen() {
         link.click();
         document.body.removeChild(link);
       } catch {
-        Linking.openURL(url).catch(() => {});
+        Linking.openURL(url).catch(() => { });
       }
     } else {
       Linking.openURL(url).catch((err) => {

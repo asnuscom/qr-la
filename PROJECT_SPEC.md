@@ -16,7 +16,7 @@
 * Misafirlere "Uygulama indirin" dendiğinde indirme bariyeri nedeniyle katılım oranı %10'lara kadar düşer.
 
 ### 1.2. QR-la Çözümü
-* Masalara konulan şık **QR Masa Kartı** sayesinde misafir telefonunun kamerasını tuttuğu an **uygulama indirmeden, saniyeler içinde** `qr-la.com/yavuz-ve-merve` sayfasına girer.
+* Masalara konulan şık **QR Masa Kartı** sayesinde misafir telefonunun kamerasını tuttuğu an **uygulama indirmeden, saniyeler içinde** `qr-la.com/yavuz-ve-ruveyda` sayfasına girer.
 * Sayfa üzerinden:
   1. **Toplu Fotoğraf Yükler** (istemcide otomatik sıkıştırılır, 10-20 fotoğraf tek tıkla yüklenir).
   2. **Ziyaretçi Defteri**ne çifte özel tebrik ve iyi dilek notu bırakır.
@@ -88,9 +88,9 @@
 
 ```typescript
 export interface EventModel {
-  id: string;                     // "yavuz-ve-merve"
-  slug: string;                   // "yavuz-ve-merve"
-  title: string;                  // "Yavuz & Merve Düğünü"
+  id: string;                     // "yavuz-ve-ruveyda"
+  slug: string;                   // "yavuz-ve-ruveyda"
+  title: string;                  // "Yavuz & ruveyda Düğünü"
   subtitle?: string;              // "En mutlu günümüzden kareler"
   eventType: 'dugun' | 'nisan' | 'kina' | 'dogumgunu' | 'diger';
   eventDate: string;              // ISO string: "2026-10-15T19:00:00.000Z"

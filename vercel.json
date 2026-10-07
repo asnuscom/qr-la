@@ -22,7 +22,7 @@
     },
     {
       "source": "/:slug",
-      "destination": "/[slug].html"
+      "destination": "/[slug]/index.html"
     }
   ]
 }

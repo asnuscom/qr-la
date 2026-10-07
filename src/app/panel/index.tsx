@@ -1,25 +1,26 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Switch,
-  TextInput,
-  Image,
-  Alert,
-  ActivityIndicator,
-  RefreshControl,
-} from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { eventService } from '@/services/eventService';
-import { authService } from '@/services/authService';
-import { slugify, DEMO_PHOTOS } from '@/services/mockData';
-import { EventModel, PhotoModel, UserModel } from '@/types';
 import { StorageMeter } from '@/components/StorageMeter';
+import { authService } from '@/services/authService';
+import { eventService } from '@/services/eventService';
+import { DEMO_PHOTOS, slugify } from '@/services/mockData';
+import { EventModel, PhotoModel, UserModel } from '@/types';
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function HostPanelScreen() {
   const router = useRouter();
@@ -37,11 +38,17 @@ export default function HostPanelScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingSamples, setIsLoadingSamples] = useState(false);
 
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      document.title = 'Yönetim Paneli | QR-la';
+    }
+  }, []);
+
 
   const resolveActiveSlug = (user: UserModel | null): string => {
     if (!user) return 'demo-panel';
     if (user.uid === 'demo-host-yavuz') return 'demo-panel';
-    const personal = user.events?.find((s) => s && s !== 'demo-panel' && s !== 'samet-ve-sule' && s !== 'yavuz-ve-merve');
+    const personal = user.events?.find((s) => s && s !== 'demo-panel' && s !== 'samet-ve-sule');
     if (personal) return personal;
     const rawName = user.displayName || user.email?.split('@')[0] || 'etkinlik';
     return slugify(rawName);
@@ -509,8 +516,8 @@ export default function HostPanelScreen() {
                   {settingsSaveSuccess
                     ? 'Ayarlar Kaydedildi!'
                     : hasUnsavedSettings
-                    ? 'Değişiklikleri Kaydet'
-                    : 'Ayarları Kaydet'}
+                      ? 'Değişiklikleri Kaydet'
+                      : 'Ayarları Kaydet'}
                 </Text>
               </>
             )}

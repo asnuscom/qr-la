@@ -1,29 +1,29 @@
+import { signInAnonymously } from 'firebase/auth';
 import {
+  collection,
   doc,
   getDoc,
+  getDocs,
+  onSnapshot,
+  orderBy,
+  query,
   setDoc,
   updateDoc,
-  collection,
-  onSnapshot,
-  query,
-  orderBy,
-  getDocs,
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { signInAnonymously } from 'firebase/auth';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 
-import { db, storage, auth, isRealFirebaseConfigured } from './firebase';
-import { EventModel, AlbumModel, PhotoModel, GuestbookEntryModel, StorageTier, StorageInfo } from '@/types';
-import { appStorage } from './storage';
+import { AlbumModel, EventModel, GuestbookEntryModel, PhotoModel, StorageInfo, StorageTier } from '@/types';
+import { auth, db, isRealFirebaseConfigured, storage } from './firebase';
 import {
-  DEMO_EVENT,
-  DEMO_ALBUMS,
   DEFAULT_ALBUMS,
-  DEMO_PHOTOS,
+  DEMO_ALBUMS,
+  DEMO_EVENT,
   DEMO_GUESTBOOK,
+  DEMO_PHOTOS,
   generateDefaultEvent,
   slugify,
 } from './mockData';
+import { appStorage } from './storage';
 
 export const RESERVED_SLUGS = new Set([
   'demo',
@@ -39,7 +39,6 @@ export const RESERVED_SLUGS = new Set([
   'settings',
   'null',
   'undefined',
-  'yavuz-ve-merve',
   'samet-ve-sule',
 ]);
 
@@ -75,10 +74,6 @@ class EventService {
     this.photos.set('samet-ve-sule', [...DEMO_PHOTOS]);
     this.guestbooks.set('samet-ve-sule', [...DEMO_GUESTBOOK]);
 
-    this.events.set('yavuz-ve-merve', { ...DEMO_EVENT, slug: 'yavuz-ve-merve' });
-    this.albums.set('yavuz-ve-merve', [...DEMO_ALBUMS]);
-    this.photos.set('yavuz-ve-merve', [...DEMO_PHOTOS]);
-    this.guestbooks.set('yavuz-ve-merve', [...DEMO_GUESTBOOK]);
   }
 
   // Silent anonymous authentication for guests (only when adding photos/guestbook)
@@ -129,7 +124,7 @@ class EventService {
         } else {
           // Event does not exist in Firestore yet: Generate complete event
           const isDemoSlug =
-            slug === DEMO_EVENT.slug || slug === 'demo' || slug === 'demo-panel' || slug === 'samet-ve-sule' || slug === 'yavuz-ve-merve';
+            slug === DEMO_EVENT.slug || slug === 'demo' || slug === 'demo-panel' || slug === 'samet-ve-sule';
           const defaultEvent = isDemoSlug
             ? { ...DEMO_EVENT, slug }
             : generateDefaultEvent(slug, hostDisplayName);
@@ -183,7 +178,7 @@ class EventService {
 
     // Auto-generate rich default event if visiting a new slug
     const isDemo =
-      slug === DEMO_EVENT.slug || slug === 'demo' || slug === 'demo-panel' || slug === 'samet-ve-sule' || slug === 'yavuz-ve-merve';
+      slug === DEMO_EVENT.slug || slug === 'demo' || slug === 'demo-panel' || slug === 'samet-ve-sule';
     const generated = isDemo
       ? { ...DEMO_EVENT, slug }
       : generateDefaultEvent(slug, hostDisplayName);
@@ -249,8 +244,7 @@ class EventService {
         formattedSlug === DEMO_EVENT.slug ||
         formattedSlug === 'demo' ||
         formattedSlug === 'demo-panel' ||
-        formattedSlug === 'samet-ve-sule' ||
-        formattedSlug === 'yavuz-ve-merve';
+        formattedSlug === 'samet-ve-sule';
       if (isDemo || (localEvent.id && !localEvent.id.includes(currentUserId || 'none'))) {
         return {
           available: false,
@@ -275,7 +269,7 @@ class EventService {
     if (user.uid === 'demo-host-yavuz') return 'demo-panel';
 
     const existing = user.events?.find(
-      (s) => s && s !== 'demo-panel' && s !== 'samet-ve-sule' && s !== 'yavuz-ve-merve'
+      (s) => s && s !== 'demo-panel' && s !== 'samet-ve-sule'
     );
     if (existing && !customSlug) {
       await this.getEvent(existing, user.displayName);
@@ -330,14 +324,14 @@ class EventService {
       if (data) {
         return JSON.parse(data) as EventModel;
       }
-    } catch (_e) {}
+    } catch (_e) { }
     return null;
   }
 
   private saveEventToStorage(slug: string, event: EventModel): void {
     try {
       appStorage.setItem(`qr_la_event_${slug}`, JSON.stringify(event));
-    } catch (_e) {}
+    } catch (_e) { }
   }
 
   async upgradeStorageTier(
@@ -374,14 +368,14 @@ class EventService {
       if (data) {
         return JSON.parse(data) as AlbumModel[];
       }
-    } catch (_e) {}
+    } catch (_e) { }
     return [];
   }
 
   private saveAlbumsToStorage(slug: string, albums: AlbumModel[]): void {
     try {
       appStorage.setItem(`qr_la_albums_${slug}`, JSON.stringify(albums));
-    } catch (_e) {}
+    } catch (_e) { }
   }
 
   async getAlbums(slug: string): Promise<AlbumModel[]> {
@@ -416,7 +410,7 @@ class EventService {
     }
 
     const isDemo =
-      slug === DEMO_EVENT.slug || slug === 'demo' || slug === 'demo-panel' || slug === 'samet-ve-sule' || slug === 'yavuz-ve-merve';
+      slug === DEMO_EVENT.slug || slug === 'demo' || slug === 'demo-panel' || slug === 'samet-ve-sule';
     const defaults = isDemo ? [...DEMO_ALBUMS] : [...DEFAULT_ALBUMS];
     this.albums.set(slug, defaults);
     this.saveAlbumsToStorage(slug, defaults);
@@ -482,7 +476,7 @@ class EventService {
       try {
         const albumDoc = doc(db, 'events', slug, 'albums', albumId);
         await setDoc(albumDoc, { isDeleted: true }, { merge: true });
-      } catch (_err) {}
+      } catch (_err) { }
     }
     return updated;
   }
@@ -493,14 +487,14 @@ class EventService {
       if (data) {
         return JSON.parse(data) as PhotoModel[];
       }
-    } catch (_e) {}
+    } catch (_e) { }
     return [];
   }
 
   private savePhotosToStorage(slug: string, photos: PhotoModel[]): void {
     try {
       appStorage.setItem(`qr_la_photos_${slug}`, JSON.stringify(photos));
-    } catch (_e) {}
+    } catch (_e) { }
   }
 
   async getPhotos(slug: string, albumId?: string): Promise<PhotoModel[]> {
@@ -540,7 +534,7 @@ class EventService {
     saved.forEach((p) => combinedMap.set(p.id, p));
 
     const isDemo =
-      slug === DEMO_EVENT.slug || slug === 'demo' || slug === 'demo-panel' || slug === 'samet-ve-sule' || slug === 'yavuz-ve-merve';
+      slug === DEMO_EVENT.slug || slug === 'demo' || slug === 'demo-panel' || slug === 'samet-ve-sule';
     if (combinedMap.size === 0 && isDemo) {
       DEMO_PHOTOS.forEach((p) => combinedMap.set(p.id, p));
     }
@@ -744,7 +738,7 @@ class EventService {
     subscribers.push(callback);
     this.photoSubscribers.set(slug, subscribers);
 
-    let unsubscribeFirestore = () => {};
+    let unsubscribeFirestore = () => { };
 
     if (isRealFirebaseConfigured && db) {
       try {

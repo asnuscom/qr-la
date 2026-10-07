@@ -13,10 +13,26 @@ export default function RootLayout() {
           animation: 'fade',
         }}
       >
-        <Stack.Screen name="index" />
-        <Stack.Screen name="giris" />
-        <Stack.Screen name="[slug]" />
-        <Stack.Screen name="panel" />
+        <Stack.Screen
+          name="index"
+          options={{ title: "QR-la | Masadaki Kodu QR'la, En Mutlu Anları Paylaş" }}
+        />
+        <Stack.Screen
+          name="giris"
+          options={{ title: "Giriş Yap & Kayıt Ol | QR-la" }}
+        />
+        <Stack.Screen
+          name="demo"
+          options={{ title: "Canlı Düğün Demosu | QR-la" }}
+        />
+        <Stack.Screen
+          name="[slug]"
+          options={{ title: "Etkinlik | QR-la" }}
+        />
+        <Stack.Screen
+          name="panel"
+          options={{ title: "Yönetim Paneli | QR-la" }}
+        />
       </Stack>
     </>
   );

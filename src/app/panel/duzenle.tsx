@@ -1,23 +1,24 @@
-import React, { useEffect, useState } from 'react';
+import { authService } from '@/services/authService';
+import { eventService } from '@/services/eventService';
+import { slugify } from '@/services/mockData';
+import { AlbumModel, EventModel, EventType, ScheduleItem } from '@/types';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Platform,
   ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
   TextInput,
   TouchableOpacity,
-  Switch,
-  Image,
-  Alert,
-  ActivityIndicator,
+  View,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { eventService } from '@/services/eventService';
-import { authService } from '@/services/authService';
-import { EventModel, ScheduleItem, AlbumModel, EventType } from '@/types';
-import { slugify } from '@/services/mockData';
 
 // Curated luxury cover photo presets so user can pick with one tap
 const COVER_PRESETS = [
@@ -69,13 +70,19 @@ export default function EventFormScreen() {
     (user &&
       user.uid !== 'demo-host-yavuz' &&
       user.events?.find(
-        (s) => s && s !== 'demo-panel' && s !== 'samet-ve-sule' && s !== 'yavuz-ve-merve'
+        (s) => s && s !== 'demo-panel' && s !== 'samet-ve-sule'
       )) ||
     user?.events?.[0];
   const currentSlug = paramSlug || userSlug || 'demo-panel';
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      document.title = 'Etkinlik Detaylarını Düzenle | QR-la';
+    }
+  }, []);
 
   // Form State initialized with rich defaults
   const [slug, setSlug] = useState(currentSlug);
@@ -175,7 +182,7 @@ export default function EventFormScreen() {
               const mins = String(d.getMinutes()).padStart(2, '0');
               setEventTimeStr(`${hours}:${mins}`);
             }
-          } catch (_e) {}
+          } catch (_e) { }
         }
 
         const alb = await eventService.getAlbums(currentSlug);
@@ -250,11 +257,11 @@ export default function EventFormScreen() {
       schedule.map((item) =>
         item.id === editingScheduleId
           ? {
-              ...item,
-              time: editScheduleTime.trim() || item.time,
-              title: editScheduleTitle.trim(),
-              description: editScheduleDesc.trim() || undefined,
-            }
+            ...item,
+            time: editScheduleTime.trim() || item.time,
+            title: editScheduleTitle.trim(),
+            description: editScheduleDesc.trim() || undefined,
+          }
           : item
       )
     );
@@ -302,7 +309,7 @@ export default function EventFormScreen() {
         if (!isNaN(combined.getTime())) {
           finalEventDate = combined.toISOString();
         }
-      } catch (_e) {}
+      } catch (_e) { }
 
       const updatedData: Partial<EventModel> = {
         slug: cleanSlug,
@@ -386,7 +393,7 @@ export default function EventFormScreen() {
         weekday: 'long',
       });
     }
-  } catch (_e) {}
+  } catch (_e) { }
 
   return (
     <SafeAreaView style={styles.safeArea}>

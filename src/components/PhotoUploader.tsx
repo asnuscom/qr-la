@@ -12,6 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { AlbumModel } from '@/types';
 import { compressImage, formatBytes } from '@/services/compression';
@@ -28,7 +29,7 @@ interface SelectedImageItem {
 interface PhotoUploaderProps {
   slug: string;
   albums: AlbumModel[];
-  onUploadSuccess: () => void;
+  onUploadSuccess?: () => void;
 }
 
 export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
@@ -36,6 +37,7 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
   albums,
   onUploadSuccess,
 }) => {
+  const router = useRouter();
   const [selectedImages, setSelectedImages] = useState<SelectedImageItem[]>([]);
   const [uploaderName, setUploaderName] = useState('');
   const [tableNumber, setTableNumber] = useState('');
@@ -48,9 +50,14 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
   const [isCompressionEnabled, setIsCompressionEnabled] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadSuccessInfo, setUploadSuccessInfo] = useState<{
+    count: number;
+    albumName: string;
+  } | null>(null);
 
   // Pick images from gallery
   const pickImages = async () => {
+    setUploadSuccessInfo(null);
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -88,6 +95,8 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
 
     try {
       const total = selectedImages.length;
+      const targetAlbum = albums.find((a) => a.id === selectedAlbumId);
+      const targetAlbumName = targetAlbum ? targetAlbum.name : 'Genel';
 
       for (let i = 0; i < total; i++) {
         const item = selectedImages[i];
@@ -121,8 +130,14 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
       setIsUploading(false);
       setSelectedImages([]);
       setGuestNote('');
-      Alert.alert('Başarılı! 🎉', 'Fotoğraf başarıyla yüklendi.');
-      onUploadSuccess();
+      setUploadSuccessInfo({
+        count: total,
+        albumName: targetAlbumName,
+      });
+
+      if (onUploadSuccess) {
+        onUploadSuccess();
+      }
     } catch (err: any) {
       console.error('Upload failed:', err);
       setIsUploading(false);
@@ -142,6 +157,52 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
       <Text style={styles.subtitle}>
         Geceden yakaladığın en özel anları gelin ve damadın arşivine tek tıkla ekle.
       </Text>
+
+      {/* Upload Success Banner */}
+      {uploadSuccessInfo && (
+        <View style={styles.successBanner}>
+          <View style={styles.successBannerHeader}>
+            <View style={styles.successIconCircle}>
+              <Ionicons name="checkmark-circle" size={28} color="#10B981" />
+            </View>
+            <View style={styles.successTextContainer}>
+              <Text style={styles.successTitle}>
+                {uploadSuccessInfo.count} Fotoğraf Başarıyla Yüklendi! 🎉
+              </Text>
+              <Text style={styles.successDesc}>
+                Fotoğraflarınız "{uploadSuccessInfo.albumName}" albümüne eklendi ve canlı yayına iletildi.
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => setUploadSuccessInfo(null)}
+              style={styles.closeSuccessBtn}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="close" size={18} color="#9CA3AF" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.successActions}>
+            <TouchableOpacity
+              style={styles.successGalleryBtn}
+              onPress={() => router.push(`/${slug}/galeri` as any)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="images" size={15} color="#8A6D3B" />
+              <Text style={styles.successGalleryBtnText}>Galeriyi İncele</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.successNewUploadBtn}
+              onPress={pickImages}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="add-circle" size={15} color="#FFF" />
+              <Text style={styles.successNewUploadBtnText}>Daha Fazla Fotoğraf Yükle</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       {/* Select Photo Trigger Box */}
       <TouchableOpacity
@@ -609,5 +670,90 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
+  },
+  successBanner: {
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1.5,
+    borderColor: '#86EFAC',
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 20,
+    shadowColor: '#10B981',
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  successBannerHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 12,
+  },
+  successIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#DCFCE7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  successTextContainer: {
+    flex: 1,
+    paddingRight: 4,
+  },
+  successTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#065F46',
+    marginBottom: 4,
+  },
+  successDesc: {
+    fontSize: 12,
+    color: '#047857',
+    lineHeight: 17,
+  },
+  closeSuccessBtn: {
+    padding: 4,
+  },
+  successActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+  },
+  successGalleryBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  successGalleryBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#8A6D3B',
+  },
+  successNewUploadBtn: {
+    flex: 1.2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#10B981',
+    paddingVertical: 10,
+    borderRadius: 12,
+    shadowColor: '#10B981',
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  successNewUploadBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

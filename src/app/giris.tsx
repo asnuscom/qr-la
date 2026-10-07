@@ -8,6 +8,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -35,6 +36,12 @@ export default function LoginScreen() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [_authState, setAuthState] = useState<AuthState>(authService.getState());
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      document.title = tab === 'register' ? 'Ücretsiz Kayıt Ol | QR-la' : 'Giriş Yap | QR-la';
+    }
+  }, [tab]);
 
   useEffect(() => {
     if (params.tab === 'register' || params.tab === 'login') {

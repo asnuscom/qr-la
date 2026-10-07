@@ -1,15 +1,15 @@
 import {
-  signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
   onAuthStateChanged,
+  signInWithEmailAndPassword,
   updateProfile,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
-import { auth, db, isRealFirebaseConfigured } from './firebase';
-import { UserModel, AuthState } from '@/types';
+import { AuthState, UserModel } from '@/types';
 import { eventService } from './eventService';
+import { auth, db, isRealFirebaseConfigured } from './firebase';
 import { slugify } from './mockData';
 import { appStorage } from './storage';
 
@@ -71,7 +71,7 @@ const DEMO_USER: UserModel = {
   email: 'samet@qr-la.com',
   displayName: 'Samet & Şule (Ev Sahibi)',
   isHost: true,
-  events: ['demo-panel', 'samet-ve-sule', 'yavuz-ve-merve'],
+  events: ['demo-panel', 'samet-ve-sule'],
   createdAt: '2026-10-01T00:00:00.000Z',
 };
 
@@ -96,7 +96,7 @@ class AuthService {
             isLoading: false,
           };
         }
-      } catch (_) {}
+      } catch (_) { }
     }
 
     this.init();
@@ -135,7 +135,7 @@ class AuthService {
             if (db) {
               try {
                 await setDoc(doc(db, 'users', firebaseUser.uid), userProfile, { merge: true });
-              } catch (_) {}
+              } catch (_) { }
             }
           }
 
@@ -154,7 +154,7 @@ class AuthService {
               const parsed = JSON.parse(stored) as UserModel;
               this.updateState({ user: parsed, isAuthenticated: true, isLoading: false });
               return;
-            } catch (_) {}
+            } catch (_) { }
           }
           this.updateState({
             user: null,
@@ -169,7 +169,7 @@ class AuthService {
               const parsed = JSON.parse(stored) as UserModel;
               this.updateState({ user: parsed, isAuthenticated: true, isLoading: false });
               return;
-            } catch (_) {}
+            } catch (_) { }
           }
           this.updateState({
             user: null,
@@ -186,7 +186,7 @@ class AuthService {
           const parsed = JSON.parse(stored) as UserModel;
           this.updateState({ user: parsed, isAuthenticated: true, isLoading: false });
           return;
-        } catch (_) {}
+        } catch (_) { }
       }
       this.updateState({
         user: null,
@@ -219,14 +219,14 @@ class AuthService {
       if (data) {
         return JSON.parse(data);
       }
-    } catch (_) {}
+    } catch (_) { }
     return [];
   }
 
   private saveLocalUsers(users: LocalUserRecord[]) {
     try {
       appStorage.setItem(LOCAL_USERS_STORAGE_KEY, JSON.stringify(users));
-    } catch (_) {}
+    } catch (_) { }
   }
 
   // Sign In with Email & Password
@@ -253,7 +253,7 @@ class AuthService {
             if (userDoc.exists()) {
               userProfile = { ...userProfile, ...(userDoc.data() as UserModel) };
             }
-          } catch (_) {}
+          } catch (_) { }
         }
 
         const personalSlug = await eventService.ensureUserEvent(userProfile);
@@ -262,7 +262,7 @@ class AuthService {
           if (db) {
             try {
               await setDoc(doc(db, 'users', user.uid), userProfile, { merge: true });
-            } catch (_) {}
+            } catch (_) { }
           }
         }
 
@@ -370,7 +370,7 @@ class AuthService {
       if (isRealFirebaseConfigured && db) {
         try {
           await setDoc(doc(db, 'users', uid), { events: updatedEvents }, { merge: true });
-        } catch (_) {}
+        } catch (_) { }
       }
     }
   }
