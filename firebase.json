@@ -1,0 +1,38 @@
+{
+  "hosting": {
+    "public": "dist",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "cleanUrls": true,
+    "trailingSlash": false,
+    "rewrites": [
+      {
+        "source": "/*/galeri",
+        "destination": "/[slug]/galeri.html"
+      },
+      {
+        "source": "/*/yukle",
+        "destination": "/[slug]/yukle.html"
+      },
+      {
+        "source": "/*/canli",
+        "destination": "/[slug]/canli.html"
+      },
+      {
+        "source": "/*/ani-defteri",
+        "destination": "/[slug]/ani-defteri.html"
+      },
+      {
+        "source": "/*",
+        "destination": "/[slug]/index.html"
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

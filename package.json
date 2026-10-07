@@ -45,6 +45,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "build:web": "expo export --platform web",
+    "deploy:firebase": "npm run build:web && npx firebase-tools@13 deploy --only hosting",
     "lint": "expo lint"
   },
   "private": true
