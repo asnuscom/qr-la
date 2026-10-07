@@ -2,5 +2,5 @@ import React from 'react';
 import { Redirect } from 'expo-router';
 
 export default function DemoRedirectScreen() {
-  return <Redirect href="/demo-panel" />;
+  return <Redirect href="/panel" />;
 }
