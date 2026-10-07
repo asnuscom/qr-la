@@ -74,15 +74,30 @@ export default function EventFormScreen() {
       )) ||
     user?.events?.[0];
   const currentSlug = paramSlug || userSlug || 'demo-panel';
+  const isDemo = currentSlug === 'demo-panel' || !user || user.uid === 'demo-host-yavuz';
+
+  const showDemoLockedNotice = (fieldName: string) => {
+    Alert.alert(
+      'Demo Modu Kilitlidir 🔒',
+      `Demo etkinliğinde "${fieldName}" değiştirilemez. Kendi etkinliğinizi oluşturup kişiselleştirmek için lütfen ücretsiz kayıt olun.`,
+      [
+        { text: 'Anladım', style: 'cancel' },
+        {
+          text: 'Kayıt Ol',
+          onPress: () => router.push({ pathname: '/giris', params: { tab: 'register' } } as any),
+        },
+      ]
+    );
+  };
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
-      document.title = 'Etkinlik Detaylarını Düzenle | QR-la';
+      document.title = isDemo ? 'Demo Etkinlik Ayarları | QR-la' : 'Etkinlik Detaylarını Düzenle | QR-la';
     }
-  }, []);
+  }, [isDemo]);
 
   // Form State initialized with rich defaults
   const [slug, setSlug] = useState(currentSlug);
@@ -199,6 +214,10 @@ export default function EventFormScreen() {
 
   // When bride or groom names change, automatically update suggested title and slug
   const handleNameChange = (newBride: string, newGroom: string) => {
+    if (isDemo) {
+      showDemoLockedNotice('Gelin ve damat isimleri');
+      return;
+    }
     setBrideName(newBride);
     setGroomName(newGroom);
 
@@ -293,6 +312,21 @@ export default function EventFormScreen() {
   };
 
   const handleSave = async () => {
+    if (isDemo) {
+      Alert.alert(
+        'Demo Modu (Salt Okunur) 🔒',
+        'Örnek düğün demosunun isimleri, bağlantısı (slug) ve ayarları diğer ziyaretçilerin incelemesi için kilitlidir.\n\nKendi etkinliğinizi oluşturmak ve tüm ayarları özgürce düzenlemek için hemen ücretsiz hesap açabilirsiniz!',
+        [
+          { text: 'İncelemeye Devam Et', style: 'cancel' },
+          {
+            text: 'Kayıt Ol',
+            onPress: () => router.push({ pathname: '/giris', params: { tab: 'register' } } as any),
+          },
+        ]
+      );
+      return;
+    }
+
     if (!title.trim() || !slug.trim()) {
       Alert.alert('Eksik Bilgi', 'Lütfen etkinlik başlığı ve linkini girin.');
       return;
@@ -417,20 +451,49 @@ export default function EventFormScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Demo Warning Banner */}
+        {isDemo && (
+          <View style={styles.demoWarningBanner}>
+            <View style={styles.demoWarningIcon}>
+              <Ionicons name="lock-closed" size={20} color="#B45309" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.demoWarningTitle}>Demo Modu: Salt Okunur 🔒</Text>
+              <Text style={styles.demoWarningText}>
+                Örnek düğün yönetim panelini inceliyorsunuz. İsimler, başlık ve etkinlik bağlantısı (slug) demoda kilitlidir.
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.demoRegisterBtn}
+              onPress={() => router.push({ pathname: '/giris', params: { tab: 'register' } } as any)}
+            >
+              <Text style={styles.demoRegisterBtnText}>Kendi Etkinliğini Başlat</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Section 1: Event Type, Names & Date */}
         <View style={styles.formCard}>
           <Text style={styles.cardHeader}>1. Etkinlik Türü & Temel Bilgiler</Text>
 
           {/* Event Type Chips */}
-          <Text style={styles.label}>Etkinlik Türü</Text>
+          <View style={styles.labelRowWithBadge}>
+            <Text style={styles.label}>Etkinlik Türü</Text>
+            {isDemo && (
+              <View style={styles.lockedBadge}>
+                <Ionicons name="lock-closed" size={10} color="#B45309" />
+                <Text style={styles.lockedBadgeText}>Kilitli</Text>
+              </View>
+            )}
+          </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.typeChipsScroll}>
             {EVENT_TYPES.map((t) => {
               const isSelected = eventType === t.id;
               return (
                 <TouchableOpacity
                   key={t.id}
-                  style={[styles.typeChip, isSelected && styles.typeChipActive]}
-                  onPress={() => setEventType(t.id)}
+                  style={[styles.typeChip, isSelected && styles.typeChipActive, isDemo && !isSelected && styles.typeChipDisabled]}
+                  onPress={() => isDemo ? showDemoLockedNotice('Etkinlik türü') : setEventType(t.id)}
                   activeOpacity={0.8}
                 >
                   <Ionicons
@@ -448,34 +511,75 @@ export default function EventFormScreen() {
 
           <View style={styles.row}>
             <View style={[styles.inputGroup, { flex: 1 }]}>
-              <Text style={styles.label}>Gelin / 1. Ev Sahibi</Text>
+              <View style={styles.labelRowWithBadge}>
+                <Text style={styles.label}>Gelin / 1. Ev Sahibi</Text>
+                {isDemo && (
+                  <Ionicons name="lock-closed" size={12} color="#B45309" />
+                )}
+              </View>
               <TextInput
-                style={styles.input}
+                style={[styles.input, isDemo && styles.inputLocked]}
                 value={brideName}
                 onChangeText={(val) => handleNameChange(val, groomName)}
                 placeholder="Örn: Şule"
+                editable={!isDemo}
               />
             </View>
 
             <View style={[styles.inputGroup, { flex: 1 }]}>
-              <Text style={styles.label}>Damat / 2. İsim</Text>
+              <View style={styles.labelRowWithBadge}>
+                <Text style={styles.label}>Damat / 2. İsim</Text>
+                {isDemo && (
+                  <Ionicons name="lock-closed" size={12} color="#B45309" />
+                )}
+              </View>
               <TextInput
-                style={styles.input}
+                style={[styles.input, isDemo && styles.inputLocked]}
                 value={groomName}
                 onChangeText={(val) => handleNameChange(brideName, val)}
                 placeholder="Örn: Samet"
+                editable={!isDemo}
               />
             </View>
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Etkinlik Başlığı</Text>
+            <View style={styles.labelRowWithBadge}>
+              <Text style={styles.label}>Etkinlik Başlığı</Text>
+              {isDemo && (
+                <Ionicons name="lock-closed" size={12} color="#B45309" />
+              )}
+            </View>
             <TextInput
-              style={styles.input}
+              style={[styles.input, isDemo && styles.inputLocked]}
               value={title}
               onChangeText={setTitle}
               placeholder="Örn: Samet & Şule Düğünü"
+              editable={!isDemo}
             />
+          </View>
+
+          {/* Custom Slug / URL */}
+          <View style={styles.inputGroup}>
+            <View style={styles.labelRowWithBadge}>
+              <Text style={styles.label}>Özel Bağlantı (Slug)</Text>
+              {isDemo && (
+                <View style={styles.lockedBadge}>
+                  <Ionicons name="lock-closed" size={10} color="#B45309" />
+                  <Text style={styles.lockedBadgeText}>Demoda Kilitli</Text>
+                </View>
+              )}
+            </View>
+            <View style={[styles.slugLockedBox, isDemo && styles.inputLocked]}>
+              <Ionicons name={isDemo ? "lock-closed" : "link"} size={16} color={isDemo ? "#B45309" : "#C5A059"} />
+              <Text style={styles.slugPrefixText}>qr-la.com/</Text>
+              <Text style={styles.slugValueText}>{slug || 'demo-panel'}</Text>
+            </View>
+            {isDemo && (
+              <Text style={styles.helperText}>
+                Demo linki diğer misafirlerin incelemesi için sabittir. Kendi özel kısa linkinizi oluşturmak için ücretsiz hesap açabilirsiniz.
+              </Text>
+            )}
           </View>
 
           <View style={styles.inputGroup}>

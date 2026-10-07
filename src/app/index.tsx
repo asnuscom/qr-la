@@ -106,9 +106,9 @@ export default function LandingScreen() {
 
                 <TouchableOpacity
                   style={[styles.demoHeaderBtn, isSmallPhone && styles.demoHeaderBtnCompact]}
-                  onPress={() => router.push('/demo-panel' as any)}
+                  onPress={() => router.push('/panel' as any)}
                 >
-                  <Text style={styles.demoHeaderBtnText}>Demo</Text>
+                  <Text style={styles.demoHeaderBtnText}>Demo Paneli</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -147,11 +147,11 @@ export default function LandingScreen() {
 
             <TouchableOpacity
               style={[styles.secondaryCta, isMobile && styles.ctaBtnMobile]}
-              onPress={() => router.push('/demo-panel' as any)}
+              onPress={() => router.push('/panel' as any)}
               activeOpacity={0.85}
             >
               <Ionicons name="play-circle" size={18} color="#1A1817" />
-              <Text style={styles.secondaryCtaText}>Canlı Düğün Demosu</Text>
+              <Text style={styles.secondaryCtaText}>Canlı Demo Paneli Gör</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
