@@ -22,6 +22,66 @@ interface QRCardTemplateProps {
 
 export type CardThemeId = 'gold' | 'marble' | 'sage' | 'rose' | 'kraft' | 'midnight' | 'minimal';
 export type CardLayoutId = 'single' | 'tent' | 'double' | 'quad';
+export type CardSizeId = 'standard_10x15' | 'square_12x12' | 'large_13x18' | 'mini_85x55' | 'a5_15x21';
+
+export interface CardSizeConfig {
+  id: CardSizeId;
+  name: string;
+  label: string;
+  widthMm: number;
+  heightMm: number;
+  desc: string;
+  icon: string;
+}
+
+export const CARD_SIZES: Record<CardSizeId, CardSizeConfig> = {
+  standard_10x15: {
+    id: 'standard_10x15',
+    name: 'Standart Masa Kartı',
+    label: '10 x 15 cm (A6)',
+    widthMm: 100,
+    heightMm: 150,
+    desc: 'En popüler şık masa kartı ölçüsü, çerçeve ve şövalelere tam uyumlu',
+    icon: 'tablet-portrait-outline',
+  },
+  square_12x12: {
+    id: 'square_12x12',
+    name: 'Modern Kare Kart',
+    label: '12 x 12 cm',
+    widthMm: 120,
+    heightMm: 120,
+    desc: 'Minimalist ve modern masa düzenleri için estetik kare format',
+    icon: 'square-outline',
+  },
+  large_13x18: {
+    id: 'large_13x18',
+    name: 'Büyük Boy Menü / Şövale',
+    label: '13 x 18 cm (5x7")',
+    widthMm: 130,
+    heightMm: 180,
+    desc: 'Büyük masalar, masa ortası şövale veya büyük çerçeveler için',
+    icon: 'document-text-outline',
+  },
+  mini_85x55: {
+    id: 'mini_85x55',
+    name: 'Kompakt / Mini Kart',
+    label: '8.5 x 5.5 cm',
+    widthMm: 85,
+    heightMm: 55,
+    desc: 'Tabak içi peçete üstü veya küçük masa üstü notları için',
+    icon: 'card-outline',
+  },
+  a5_15x21: {
+    id: 'a5_15x21',
+    name: 'Tam A5 / Karşılama Kartı',
+    label: '15 x 21 cm (A5)',
+    widthMm: 148,
+    heightMm: 210,
+    desc: 'Giriş masası, anı köşesi veya tekli büyük karşılama için',
+    icon: 'easel-outline',
+  },
+};
+
 export type CardFontId = 'playfair' | 'greatvibes' | 'cinzel' | 'montserrat' | 'inter';
 export type QRIconId = 'camera' | 'heart' | 'sparkles' | 'none';
 export type FramePresetId =
@@ -443,6 +503,7 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
   const [cardTheme, setCardTheme] = useState<CardThemeId>('gold');
   const [framePreset, setFramePreset] = useState<FramePresetId>('gold_geometric');
   const [cardLayout, setCardLayout] = useState<CardLayoutId>('single');
+  const [cardSize, setCardSize] = useState<CardSizeId>('standard_10x15');
   const [fontFamily, setFontFamily] = useState<CardFontId>('playfair');
   const [qrColor, setQrColor] = useState<string>('#1A1817');
   const [qrIcon, setQrIcon] = useState<QRIconId>('camera');
@@ -601,6 +662,10 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
     const isDark = theme.isDark;
     const frameSvg = currentFrame ? currentFrame.getSvg(theme.border, theme.innerBorder) : '';
 
+    const sizeConf = CARD_SIZES[cardSize] || CARD_SIZES.standard_10x15;
+    const cardW = sizeConf.widthMm;
+    const cardH = sizeConf.heightMm;
+
     let gridStyles = '';
     let cardDimensionStyles = '';
 
@@ -614,8 +679,8 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
         page-break-after: always;
       `;
       cardDimensionStyles = `
-        width: 145mm;
-        min-height: 215mm;
+        width: ${cardW}mm;
+        min-height: ${cardH}mm;
         margin: 0 auto;
       `;
     } else if (cardLayout === 'tent') {
@@ -628,35 +693,39 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
         page-break-after: always;
       `;
       cardDimensionStyles = `
-        width: 135mm;
+        width: ${Math.min(cardW, 140)}mm;
+        height: ${Math.min(cardH, 130)}mm;
         margin: 0 auto;
       `;
     } else if (cardLayout === 'double') {
       gridStyles = `
-        display: grid;
-        grid-template-columns: 1fr;
-        grid-row-gap: 12mm;
+        display: flex;
+        flex-direction: column;
         align-items: center;
-        justify-items: center;
+        justify-content: center;
+        gap: 6mm;
+        min-height: 100vh;
         page-break-after: always;
       `;
       cardDimensionStyles = `
-        width: 130mm;
-        min-height: 125mm;
+        width: ${Math.min(cardW, 140)}mm;
+        height: ${Math.min(cardH, 130)}mm;
         margin: 0 auto;
       `;
     } else {
       gridStyles = `
         display: grid;
         grid-template-columns: 1fr 1fr;
-        grid-gap: 8mm;
+        grid-gap: 6mm;
         align-items: center;
         justify-items: center;
+        min-height: 100vh;
         page-break-after: always;
       `;
       cardDimensionStyles = `
-        width: 90mm;
-        min-height: 125mm;
+        width: ${Math.min(cardW, 94)}mm;
+        height: ${Math.min(cardH, 134)}mm;
+        margin: 0 auto;
       `;
     }
 
@@ -678,6 +747,12 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
       const overlayHtml = customBgUrl && overlayOpacity > 0
         ? `<div class="bg-overlay-layer" style="background-color: ${isDark ? '#000000' : '#FFFFFF'}; opacity: ${overlayOpacity};"></div>`
         : '';
+
+      const innerBgColor = customBgUrl
+        ? isDark
+          ? `rgba(20, 19, 18, ${Math.max(0.78, 1 - overlayOpacity)})`
+          : `rgba(255, 255, 255, ${Math.max(0.78, 1 - overlayOpacity)})`
+        : theme.cardBg;
 
       const frameSvgHtml = frameSvg
         ? `<div class="frame-svg-layer">${frameSvg}</div>`
@@ -726,7 +801,7 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
           <div class="card-box polaroid-box" style="${cardDimensionStyles}; background: #FFF; border-color: #E5E7EB; border-width: 1px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); padding: 16px 16px 36px 16px;">
             ${customBgHtml}
             ${overlayHtml}
-            <div class="polaroid-photo-frame" style="background: ${isDark ? '#1C1917' : '#F9FAFB'}; border: 1.5px solid ${theme.border}; border-radius: 10px; padding: 22px 14px; position: relative;">
+            <div class="polaroid-photo-frame" style="background: ${customBgUrl ? (isDark ? 'rgba(28, 25, 23, 0.92)' : 'rgba(249, 250, 251, 0.94)') : (isDark ? '#1C1917' : '#F9FAFB')}; border: 1.5px solid ${theme.border}; border-radius: 10px; padding: 22px 14px; position: relative;">
               ${currentTable ? `<div class="polaroid-table-tag" style="background: ${theme.accentColor}; color: #FFF;">MASA ${currentTable}</div>` : ''}
               <div class="qr-wrapper" style="border-color: ${theme.border}; background: #FFF; margin: 0 auto 10px auto;">
                 <img src="${base64Qr}" alt="QR Kod" class="qr-img" style="width: 155px; height: 155px;" />
@@ -753,7 +828,7 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
             ${customBgHtml}
             ${overlayHtml}
             ${frameSvgHtml}
-            <div class="inner-frame" style="border-color: ${theme.innerBorder}; padding: 16px;">
+            <div class="inner-frame" style="border-color: ${theme.innerBorder}; background-color: ${innerBgColor}; padding: 16px;">
               <!-- Giant Table Number Medallion -->
               <div class="table-hero-medallion" style="border: 2.5px solid ${theme.accentColor}; background: ${theme.badgeBg};">
                 <div class="table-hero-label" style="color: ${theme.badgeTextColor};">MASA</div>
@@ -789,7 +864,7 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
             ${customBgHtml}
             ${overlayHtml}
             ${frameSvgHtml}
-            <div class="inner-frame" style="border-color: ${theme.innerBorder}; padding: 14px;">
+            <div class="inner-frame" style="border-color: ${theme.innerBorder}; background-color: ${innerBgColor}; padding: 14px;">
               ${buildCoupleNamesHtml('19px', false, '100px')}
               <div class="date-tag" style="color: ${isDark ? '#A1A1AA' : '#6B7280'}; font-size: 10px; margin-bottom: 8px;">
                 ${badgeDisplay} • ${customDateOrSub}
@@ -821,7 +896,7 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
             ${customBgHtml}
             ${overlayHtml}
             ${frameSvgHtml}
-            <div class="inner-frame" style="border-color: ${theme.innerBorder}; padding: 18px;">
+            <div class="inner-frame" style="border-color: ${theme.innerBorder}; background-color: ${innerBgColor}; padding: 18px;">
               <div class="letter-stamp" style="font-size: 20px; color: ${theme.accentColor}; margin-bottom: 4px;">💌</div>
               <h2 style="font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 800; letter-spacing: 1px; color: ${theme.badgeTextColor}; text-transform: uppercase; margin: 0 0 6px 0;">
                 Sevgili Misafirimiz,
@@ -856,7 +931,7 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
           ${overlayHtml}
           ${frameSvgHtml}
 
-          <div class="inner-frame" style="border-color: ${theme.innerBorder};">
+          <div class="inner-frame" style="border-color: ${theme.innerBorder}; background-color: ${innerBgColor};">
             <div class="top-ornament">
               <span class="sparkle" style="color: ${theme.accentColor}">✦</span>
               <span class="date-tag" style="color: ${isDark ? '#A1A1AA' : '#6B7280'}">${customDateOrSub}</span>
@@ -898,16 +973,18 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
       for (const tbl of tableList) {
         pagesHtml += `
           <div class="print-page" style="${gridStyles}">
-            <div class="tent-container">
-              <div class="tent-tag">ÖN YÜZ</div>
-              ${renderSingleCardHtml(tbl, false)}
-              <div class="fold-guide">
-                <div class="dash-line"></div>
-                <div class="fold-text">✂ KATLAMA VE MASA ÜSTÜ ÇİZGİSİ</div>
-                <div class="dash-line"></div>
+            <div class="tent-container" style="max-width: ${Math.min(cardW, 140)}mm;">
+              <div class="tent-card-wrapper tent-top-card">
+                ${renderSingleCardHtml(tbl, true)}
               </div>
-              <div class="tent-tag">ARKA YÜZ</div>
-              ${renderSingleCardHtml(tbl, true)}
+              <div class="tent-fold-line" style="width: 100%; max-width: ${Math.min(cardW, 140)}mm;">
+                <span class="fold-dash"></span>
+                <span class="fold-text">✂ KATLAMA ÇİZGİSİ (180° BAŞ AŞAĞI KATLAYIN)</span>
+                <span class="fold-dash"></span>
+              </div>
+              <div class="tent-card-wrapper tent-bottom-card">
+                ${renderSingleCardHtml(tbl, false)}
+              </div>
             </div>
           </div>
         `;
@@ -915,20 +992,28 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
     } else if (cardLayout === 'double') {
       for (let i = 0; i < tableList.length; i += 2) {
         const item1 = tableList[i];
-        const item2 = i + 1 < tableList.length ? tableList[i + 1] : null;
+        const item2 = i + 1 < tableList.length ? tableList[i + 1] : item1;
         pagesHtml += `
           <div class="print-page" style="${gridStyles}">
-            ${renderSingleCardHtml(item1)}
-            ${item2 !== null ? renderSingleCardHtml(item2) : ''}
+            <div class="print-cut-item">${renderSingleCardHtml(item1)}</div>
+            <div class="print-cut-divider">
+              <span class="dash-line"></span>
+              <span class="fold-text">✂ SAYFAYI İKİYE KESİN</span>
+              <span class="dash-line"></span>
+            </div>
+            <div class="print-cut-item">${renderSingleCardHtml(item2)}</div>
           </div>
         `;
       }
     } else if (cardLayout === 'quad') {
       for (let i = 0; i < tableList.length; i += 4) {
         const chunk = tableList.slice(i, i + 4);
+        while (chunk.length < 4) {
+          chunk.push(chunk[0]);
+        }
         pagesHtml += `
           <div class="print-page" style="${gridStyles}">
-            ${chunk.map((item) => renderSingleCardHtml(item)).join('')}
+            ${chunk.map((item) => `<div class="quad-card-cell">${renderSingleCardHtml(item)}</div>`).join('')}
           </div>
         `;
       }
@@ -1020,6 +1105,10 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
             align-items: center;
             justify-content: center;
             height: 100%;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
           }
           .top-ornament {
             display: flex;
@@ -1207,35 +1296,74 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 12px;
+            justify-content: center;
             width: 100%;
+            margin: 0 auto;
           }
-          .fold-guide {
+          .tent-card-wrapper {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+          }
+          .tent-top-card {
+            transform: rotate(180deg);
+            transform-origin: center center;
+            margin-bottom: 0;
+          }
+          .tent-top-card .card-box {
+            border-bottom-left-radius: 4px !important;
+            border-bottom-right-radius: 4px !important;
+          }
+          .tent-bottom-card {
+            margin-top: 0;
+          }
+          .tent-bottom-card .card-box {
+            border-top-left-radius: 4px !important;
+            border-top-right-radius: 4px !important;
+          }
+          .tent-fold-line {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 10px;
             width: 100%;
-            max-width: 135mm;
-            padding: 6px 0;
+            margin: 2mm 0;
+            padding: 1mm 0;
           }
+          .tent-fold-line .fold-dash,
           .dash-line {
             flex: 1;
             border-top: 1.5px dashed #9CA3AF;
           }
+          .tent-fold-line .fold-text,
           .fold-text {
-            font-size: 9px;
+            font-size: 8.5px;
             font-weight: 800;
             color: #6B7280;
             letter-spacing: 1px;
             font-family: 'Montserrat', sans-serif;
+            text-transform: uppercase;
           }
-          .tent-tag {
-            font-size: 9px;
-            font-weight: 800;
-            color: #9CA3AF;
-            letter-spacing: 1px;
-            font-family: 'Montserrat', sans-serif;
+          .print-cut-divider {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            max-width: 140mm;
+            margin: 3mm 0;
+          }
+          .print-cut-item {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+          }
+          .quad-card-cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
           }
         </style>
       </head>
@@ -1273,10 +1401,23 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
           tableList.push(String(i));
         }
       } else {
-        tableList = [singleTableNumber || '1'];
+        const num = singleTableNumber || '1';
+        if (cardLayout === 'quad') {
+          tableList = [num, num, num, num];
+        } else if (cardLayout === 'double') {
+          tableList = [num, num];
+        } else {
+          tableList = [num];
+        }
       }
     } else {
-      tableList = [null];
+      if (cardLayout === 'quad') {
+        tableList = [null, null, null, null];
+      } else if (cardLayout === 'double') {
+        tableList = [null, null];
+      } else {
+        tableList = [null];
+      }
     }
 
     const printHtml = buildPrintHtml(tableList);
@@ -1786,6 +1927,18 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
     );
   };
 
+  const selectedSizeConfig = CARD_SIZES[cardSize] || CARD_SIZES.standard_10x15;
+  const cardAspectRatio = selectedSizeConfig.widthMm / selectedSizeConfig.heightMm;
+  const baseCardWidth = 370;
+  const calculatedCardMinHeight = Math.min(620, Math.max(260, Math.round(baseCardWidth / cardAspectRatio)));
+
+  const cardPaperDimensionStyle = {
+    width: baseCardWidth,
+    minHeight: calculatedCardMinHeight,
+    borderColor: theme.border,
+    backgroundColor: theme.cardBg,
+  };
+
   return (
     <View style={styles.container}>
       {/* Studio Configuration Toolbox */}
@@ -2287,9 +2440,46 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
           </View>
         </View>
 
-        {/* SECTION 7: Baskı Formatı / A4 Kağıt Düzeni */}
+        {/* SECTION 8: Kart Boyutu (Ebat Seçenekleri) */}
         <View style={styles.sectionDivider} />
-        <Text style={styles.sectionHeaderLabel}>8. A4 SAYFA DÜZENİ / BASKI FORMATI:</Text>
+        <Text style={styles.sectionHeaderLabel}>8. KART BOYUTU (EBAT SEÇENEKLERİ):</Text>
+        <View style={styles.sizeSelectorGrid}>
+          {(Object.keys(CARD_SIZES) as CardSizeId[]).map((sId) => {
+            const sConf = CARD_SIZES[sId];
+            const isSelected = cardSize === sId;
+            return (
+              <TouchableOpacity
+                key={sId}
+                style={[styles.sizeCard, isSelected && styles.sizeCardActive]}
+                onPress={() => setCardSize(sId)}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name={sConf.icon as any}
+                  size={20}
+                  color={isSelected ? '#8A6D3B' : '#6B7280'}
+                />
+                <View style={{ flex: 1 }}>
+                  <View style={styles.sizeCardTitleRow}>
+                    <Text style={[styles.sizeCardTitle, isSelected && styles.sizeCardTitleActive]}>
+                      {sConf.name}
+                    </Text>
+                    <View style={[styles.sizeBadge, isSelected && styles.sizeBadgeActive]}>
+                      <Text style={[styles.sizeBadgeText, isSelected && styles.sizeBadgeTextActive]}>
+                        {sConf.label}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.sizeCardDesc}>{sConf.desc}</Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* SECTION 9: Baskı Formatı / A4 Kağıt Düzeni */}
+        <View style={styles.sectionDivider} />
+        <Text style={styles.sectionHeaderLabel}>9. A4 SAYFA DÜZENİ / BASKI FORMATI:</Text>
         <View style={styles.layoutSelectorGrid}>
           <TouchableOpacity
             style={[styles.layoutCard, cardLayout === 'single' && styles.layoutCardActive]}
@@ -2303,9 +2493,9 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
             />
             <View>
               <Text style={[styles.layoutCardTitle, cardLayout === 'single' && styles.layoutCardTitleActive]}>
-                Tekli Büyük Kart (A5)
+                Tekli Büyük Kart (A5/A4)
               </Text>
-              <Text style={styles.layoutCardDesc}>Şövale veya masa çerçeveleri için ideal</Text>
+              <Text style={styles.layoutCardDesc}>Şövale veya masa çerçeveleri için tekli büyük baskı</Text>
             </View>
           </TouchableOpacity>
 
@@ -2321,9 +2511,9 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
             />
             <View>
               <Text style={[styles.layoutCardTitle, cardLayout === 'tent' && styles.layoutCardTitleActive]}>
-                Üçgen Masa Standı
+                Üçgen Masa Standı (Katlamalı)
               </Text>
-              <Text style={styles.layoutCardDesc}>Ön + Arka yüz + Katlama çizgisi</Text>
+              <Text style={styles.layoutCardDesc}>Ön + 180° ters arka yüz (katlanınca iki taraf düz)</Text>
             </View>
           </TouchableOpacity>
 
@@ -2339,9 +2529,9 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
             />
             <View>
               <Text style={[styles.layoutCardTitle, cardLayout === 'double' && styles.layoutCardTitleActive]}>
-                A4'te 2 Kart (A6)
+                A4'te 2 Kart (A6 / Yarım Sayfa)
               </Text>
-              <Text style={styles.layoutCardDesc}>Sayfayı ikiye kesmek için ekonomik düzen</Text>
+              <Text style={styles.layoutCardDesc}>Sayfayı ortadan ikiye kesmek için 2 adet kart</Text>
             </View>
           </TouchableOpacity>
 
@@ -2357,9 +2547,9 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
             />
             <View>
               <Text style={[styles.layoutCardTitle, cardLayout === 'quad' && styles.layoutCardTitleActive]}>
-                A4'te 4 Kart (Mini)
+                A4'te 4 Kart (2x2 Izgara)
               </Text>
-              <Text style={styles.layoutCardDesc}>Yüksek sayıda masa için en tasarruflu</Text>
+              <Text style={styles.layoutCardDesc}>1 sayfaya 4 adet kart, kesim çizgili en ekonomik düzen</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -2395,19 +2585,18 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
         <View style={styles.previewHeader}>
           <Ionicons name="sparkles" size={16} color="#C5A059" />
           <Text style={styles.previewHeaderText}>
-            CANLI BASKI ÖNİZLEMESİ ({CARD_DESIGNS[cardDesign].name} • {currentFrame.name} • {theme.name})
+            CANLI BASKI ÖNİZLEMESİ ({CARD_DESIGNS[cardDesign].name} • {selectedSizeConfig.label} • {cardLayout === 'tent' ? 'Üçgen Stand' : cardLayout === 'double' ? 'A4 2 Kart' : cardLayout === 'quad' ? 'A4 4 Kart' : 'Tekli Kart'})
           </Text>
         </View>
 
         {cardLayout === 'tent' ? (
           <View style={styles.tentWrapper}>
+            {/* TOP CARD: ROTATED 180 DEG (UPSIDE DOWN) */}
             <View
               style={[
                 styles.cardPaper,
-                {
-                  borderColor: theme.border,
-                  backgroundColor: theme.cardBg,
-                },
+                cardPaperDimensionStyle,
+                styles.tentTopCard,
               ]}
             >
               {customBgUrl && (
@@ -2417,28 +2606,27 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
                   resizeMode="cover"
                 />
               )}
-              <View style={styles.tentSideTag}>
-                <Text style={styles.tentSideTagText}>ÖN YÜZ</Text>
+              <View style={[styles.tentSideTag, { backgroundColor: '#8A6D3B' }]}>
+                <Text style={styles.tentSideTagText}>🔄 180° BAŞ AŞAĞI (KATLANDIĞINDA DÜZ GÖRÜNÜR)</Text>
               </View>
-              {renderLiveCardContent(showTableNumber ? singleTableNumber : null, false)}
+              {renderLiveCardContent(showTableNumber ? singleTableNumber : null, true)}
             </View>
 
             <View style={styles.foldLineContainer}>
               <View style={styles.foldDash} />
               <View style={styles.foldBadge}>
                 <Ionicons name="cut-outline" size={12} color="#6B7280" />
-                <Text style={styles.foldBadgeText}>KATLAMA ÇİZGİSİ</Text>
+                <Text style={styles.foldBadgeText}>✂ KATLAMA ÇİZGİSİ (180° KATLAYIN)</Text>
               </View>
               <View style={styles.foldDash} />
             </View>
 
+            {/* BOTTOM CARD: NORMAL (0 DEG) */}
             <View
               style={[
                 styles.cardPaper,
-                {
-                  borderColor: theme.border,
-                  backgroundColor: theme.cardBg,
-                },
+                cardPaperDimensionStyle,
+                styles.tentBottomCard,
               ]}
             >
               {customBgUrl && (
@@ -2449,19 +2637,92 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
                 />
               )}
               <View style={styles.tentSideTag}>
-                <Text style={styles.tentSideTagText}>ARKA YÜZ</Text>
+                <Text style={styles.tentSideTagText}>ÖN YÜZ (DÜZ)</Text>
               </View>
-              {renderLiveCardContent(showTableNumber ? singleTableNumber : null, true)}
+              {renderLiveCardContent(showTableNumber ? singleTableNumber : null, false)}
+            </View>
+          </View>
+        ) : cardLayout === 'double' ? (
+          <View style={styles.a4DoubleWrapper}>
+            <View style={styles.a4PreviewBadge}>
+              <Ionicons name="copy-outline" size={13} color="#8A6D3B" />
+              <Text style={styles.a4PreviewBadgeText}>📄 A4 SAYFADA 2 KART BASKI DÜZENİ</Text>
+            </View>
+            <View style={styles.doubleCardSlot}>
+              <View style={[styles.cardPaper, cardPaperDimensionStyle, styles.doubleSlotCard]}>
+                {customBgUrl && <Image source={{ uri: customBgUrl }} style={styles.cardBgImageAbsolute} resizeMode="cover" />}
+                {renderLiveCardContent(showTableNumber ? singleTableNumber : null, false)}
+              </View>
+            </View>
+
+            <View style={styles.foldLineContainer}>
+              <View style={styles.foldDash} />
+              <View style={styles.foldBadge}>
+                <Ionicons name="cut-outline" size={12} color="#6B7280" />
+                <Text style={styles.foldBadgeText}>✂ SAYFAYI İKİYE KESİN</Text>
+              </View>
+              <View style={styles.foldDash} />
+            </View>
+
+            <View style={styles.doubleCardSlot}>
+              <View style={[styles.cardPaper, cardPaperDimensionStyle, styles.doubleSlotCard]}>
+                {customBgUrl && <Image source={{ uri: customBgUrl }} style={styles.cardBgImageAbsolute} resizeMode="cover" />}
+                {renderLiveCardContent(showTableNumber && isBatchMode ? String((parseInt(singleTableNumber, 10) || 1) + 1) : (showTableNumber ? singleTableNumber : null), false)}
+              </View>
+            </View>
+          </View>
+        ) : cardLayout === 'quad' ? (
+          <View style={styles.quadPreviewWrapper}>
+            <View style={styles.a4PreviewBadge}>
+              <Ionicons name="grid-outline" size={13} color="#8A6D3B" />
+              <Text style={styles.a4PreviewBadgeText}>📄 A4 SAYFADA 4 KART (2x2 KESİM DÜZENİ)</Text>
+            </View>
+            <View style={styles.quadGrid2x2}>
+              <View style={styles.quadGridRow}>
+                <View style={styles.quadSlot}>
+                  <View style={[styles.cardPaper, cardPaperDimensionStyle, styles.quadSlotScaledCard]}>
+                    {customBgUrl && <Image source={{ uri: customBgUrl }} style={styles.cardBgImageAbsolute} resizeMode="cover" />}
+                    {renderLiveCardContent(showTableNumber ? singleTableNumber : null, false)}
+                  </View>
+                </View>
+                <View style={styles.quadSlot}>
+                  <View style={[styles.cardPaper, cardPaperDimensionStyle, styles.quadSlotScaledCard]}>
+                    {customBgUrl && <Image source={{ uri: customBgUrl }} style={styles.cardBgImageAbsolute} resizeMode="cover" />}
+                    {renderLiveCardContent(showTableNumber && isBatchMode ? String((parseInt(singleTableNumber, 10) || 1) + 1) : (showTableNumber ? singleTableNumber : null), false)}
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.foldLineContainer}>
+                <View style={styles.foldDash} />
+                <View style={styles.foldBadge}>
+                  <Ionicons name="cut-outline" size={12} color="#6B7280" />
+                  <Text style={styles.foldBadgeText}>✂ YATAY VE DİKEY KESİM ÇİZGİSİ</Text>
+                </View>
+                <View style={styles.foldDash} />
+              </View>
+
+              <View style={styles.quadGridRow}>
+                <View style={styles.quadSlot}>
+                  <View style={[styles.cardPaper, cardPaperDimensionStyle, styles.quadSlotScaledCard]}>
+                    {customBgUrl && <Image source={{ uri: customBgUrl }} style={styles.cardBgImageAbsolute} resizeMode="cover" />}
+                    {renderLiveCardContent(showTableNumber && isBatchMode ? String((parseInt(singleTableNumber, 10) || 1) + 2) : (showTableNumber ? singleTableNumber : null), false)}
+                  </View>
+                </View>
+                <View style={styles.quadSlot}>
+                  <View style={[styles.cardPaper, cardPaperDimensionStyle, styles.quadSlotScaledCard]}>
+                    {customBgUrl && <Image source={{ uri: customBgUrl }} style={styles.cardBgImageAbsolute} resizeMode="cover" />}
+                    {renderLiveCardContent(showTableNumber && isBatchMode ? String((parseInt(singleTableNumber, 10) || 1) + 3) : (showTableNumber ? singleTableNumber : null), false)}
+                  </View>
+                </View>
+              </View>
             </View>
           </View>
         ) : (
           <View
             style={[
               styles.cardPaper,
-              {
-                borderColor: theme.border,
-                backgroundColor: theme.cardBg,
-              },
+              cardPaperDimensionStyle,
             ]}
           >
             {customBgUrl && (
@@ -2988,6 +3249,60 @@ const styles = StyleSheet.create({
     color: '#8A6D3B',
     fontWeight: '800',
   },
+  sizeSelectorGrid: {
+    gap: 8,
+  },
+  sizeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#FAF7F2',
+    borderWidth: 1.5,
+    borderColor: '#EFE7DA',
+    padding: 12,
+    borderRadius: 14,
+  },
+  sizeCardActive: {
+    borderColor: '#C5A059',
+    backgroundColor: '#FAF5EA',
+  },
+  sizeCardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 2,
+  },
+  sizeCardTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#374151',
+  },
+  sizeCardTitleActive: {
+    color: '#8A6D3B',
+  },
+  sizeBadge: {
+    backgroundColor: '#E5E7EB',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  sizeBadgeActive: {
+    backgroundColor: '#C5A059',
+  },
+  sizeBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#4B5563',
+  },
+  sizeBadgeTextActive: {
+    color: '#FFF',
+  },
+  sizeCardDesc: {
+    fontSize: 11,
+    color: '#6B7280',
+    lineHeight: 15,
+  },
   layoutSelectorGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -3345,6 +3660,86 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#6B7280',
     letterSpacing: 0.5,
+  },
+  tentTopCard: {
+    transform: [{ rotate: '180deg' }],
+    borderBottomLeftRadius: 6,
+    borderBottomRightRadius: 6,
+  },
+  tentBottomCard: {
+    borderTopLeftRadius: 6,
+    borderTopRightRadius: 6,
+  },
+  a4DoubleWrapper: {
+    width: '100%',
+    maxWidth: 440,
+    backgroundColor: '#FAF8F5',
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#EFE7DA',
+    padding: 12,
+    alignItems: 'center',
+  },
+  a4PreviewBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FAF5EA',
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#EAD7BB',
+  },
+  a4PreviewBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#8A6D3B',
+  },
+  doubleCardSlot: {
+    width: '100%',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  doubleSlotCard: {
+    transform: [{ scale: 0.85 }],
+    marginVertical: -25,
+  },
+  quadPreviewWrapper: {
+    width: '100%',
+    maxWidth: 440,
+    backgroundColor: '#FAF8F5',
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#EFE7DA',
+    padding: 12,
+    alignItems: 'center',
+  },
+  quadGrid2x2: {
+    width: '100%',
+    alignItems: 'center',
+    gap: 6,
+  },
+  quadGridRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  quadSlot: {
+    width: 175,
+    height: 250,
+    overflow: 'hidden',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quadSlotScaledCard: {
+    transform: [{ scale: 0.46 }],
   },
 
   // Archetype Specific Screen Styles
