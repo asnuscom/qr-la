@@ -244,7 +244,8 @@ export default function EventFormScreen() {
 
           setIsPrivate(ev.settings.isPrivate);
           setPinCode(ev.settings.pinCode || '1923');
-          setEnableCompression(ev.settings.enableCompression);
+          const isOrigQuality = Boolean((ev.settings as any)?.originalQuality || ev.settings.enableCompression === false);
+          setEnableCompression(!isOrigQuality);
           setAllowGuestDownloads(ev.settings.allowGuestDownloads);
           setIsLiveFeedActive(ev.settings.isLiveFeedActive);
           setAllowGuestbook(ev.settings.allowGuestbook ?? true);
@@ -628,6 +629,7 @@ export default function EventFormScreen() {
           isPrivate,
           pinCode,
           enableCompression,
+          originalQuality: !enableCompression,
           allowGuestDownloads,
           isLiveFeedActive,
           allowGuestbook,
@@ -1593,13 +1595,11 @@ export default function EventFormScreen() {
             </View>
           )}
 
-          {/* Smart Compression */}
+          {/* Original Quality Upload Option */}
           <View style={styles.switchRow}>
             <View style={{ flex: 1, paddingRight: 10 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={styles.switchLabel}>
-                  {enableCompression ? 'Akıllı Sıkıştırma Aktif' : 'Orijinal Kalitede Yükleme'}
-                </Text>
+                <Text style={styles.switchLabel}>Orijinal Kalitede Yükle</Text>
                 {!enableCompression && (
                   <View style={styles.warningBadge}>
                     <Text style={styles.warningBadgeText}>Kota Hızlı Dolar</Text>
@@ -1607,15 +1607,15 @@ export default function EventFormScreen() {
                 )}
               </View>
               <Text style={styles.switchSub}>
-                {enableCompression
-                  ? 'Fotoğraflar kalite kaybı olmadan optimize edilerek hızlı yüklenir.'
-                  : 'Fotoğraflar orijinal ham boyutuyla (3-8 MB) yüklenir.'}
+                {!enableCompression
+                  ? 'Fotoğraflar sıkıştırılmadan orijinal ham çözünürlüğünde (3-8 MB) yüklenir.'
+                  : 'Fotoğraflar kalite kaybı olmadan optimize edilerek hızlı yüklenir.'}
               </Text>
             </View>
             <Switch
-              value={enableCompression}
-              onValueChange={setEnableCompression}
-              trackColor={{ false: '#F59E0B', true: '#C5A059' }}
+              value={!enableCompression}
+              onValueChange={(val) => setEnableCompression(!val)}
+              trackColor={{ false: '#D1D5DB', true: '#C5A059' }}
             />
           </View>
 
