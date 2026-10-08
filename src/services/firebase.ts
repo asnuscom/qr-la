@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getAuth } from 'firebase/auth';
 import { Platform } from 'react-native';
@@ -28,8 +28,21 @@ let auth: any = null;
 let analytics: any = null;
 
 try {
-  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-  db = getFirestore(app);
+  if (getApps().length === 0) {
+    app = initializeApp(firebaseConfig);
+    try {
+      db = initializeFirestore(app, { ignoreUndefinedProperties: true });
+    } catch (_e) {
+      db = getFirestore(app);
+    }
+  } else {
+    app = getApp();
+    try {
+      db = initializeFirestore(app, { ignoreUndefinedProperties: true });
+    } catch (_e) {
+      db = getFirestore(app);
+    }
+  }
   storage = getStorage(app);
   auth = getAuth(app);
 

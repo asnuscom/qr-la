@@ -42,6 +42,27 @@ export const RESERVED_SLUGS = new Set([
   'samet-ve-sule',
 ]);
 
+export function sanitizeForFirestore<T extends Record<string, any>>(obj: T): any {
+  if (obj === null || obj === undefined) return null;
+  if (Array.isArray(obj)) {
+    return obj.map((item) =>
+      typeof item === 'object' && item !== null && !(item instanceof Date)
+        ? sanitizeForFirestore(item)
+        : item
+    );
+  }
+  const result: any = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value === undefined) continue;
+    if (value !== null && typeof value === 'object' && !(value instanceof Date)) {
+      result[key] = sanitizeForFirestore(value);
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
 class EventService {
   private events: Map<string, EventModel> = new Map();
   private albums: Map<string, AlbumModel[]> = new Map();
@@ -78,13 +99,9 @@ class EventService {
 
   // Silent anonymous authentication for guests (only when adding photos/guestbook)
   async ensureAuth() {
-    if (this.authInitialized) return;
-    // If a host is already authenticated or stored in session, never overwrite with anonymous login!
-    if (appStorage.getItem('qr_la_host_session')) {
-      return;
-    }
+    if (this.authInitialized && auth?.currentUser) return;
     if (isRealFirebaseConfigured && auth) {
-      if (auth.currentUser && !auth.currentUser.isAnonymous) {
+      if (auth.currentUser) {
         this.authInitialized = true;
         return;
       }
@@ -92,7 +109,6 @@ class EventService {
         await signInAnonymously(auth);
         this.authInitialized = true;
       } catch (err: any) {
-        // Prevent repeated failing requests on every component mount
         this.authInitialized = true;
         if (
           err?.code === 'auth/configuration-not-found' ||
@@ -100,7 +116,7 @@ class EventService {
           err?.code === 'auth/operation-not-allowed'
         ) {
           console.info(
-            'ℹ️ [QR-la Firebase Bilgisi]: Firebase Console üzerinde "Authentication > Sign-in method > Anonymous (Anonim)" henüz aktif edilmemiş. Uygulama kesintisiz yerel/demo verileriyle kusursuz çalışıyor.'
+            'ℹ️ [QR-la Firebase Bilgisi]: Firebase Console üzerinde "Authentication > Sign-in method > Anonymous (Anonim)" henüz aktif edilmemiş.'
           );
         } else {
           console.warn('Firebase anonymous sign in notice:', err?.message || err);
@@ -556,7 +572,7 @@ class EventService {
     const photoId = `ph-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     let finalUrl = newPhoto.originalUrl;
 
-    // Upload to Firebase Storage with a 6-second timeout so it never hangs
+    // Upload to Firebase Storage with a 25-second timeout
     if (isRealFirebaseConfigured && storage && newPhoto.originalUrl) {
       try {
         const uploadTask = (async () => {
@@ -568,12 +584,24 @@ class EventService {
         })();
 
         const timeout = new Promise<string>((_, reject) =>
-          setTimeout(() => reject(new Error('Storage upload timed out')), 6000)
+          setTimeout(() => reject(new Error('Storage upload timed out')), 25000)
         );
 
         finalUrl = await Promise.race([uploadTask, timeout]);
       } catch (err) {
-        console.warn('Firebase Storage upload notice (using local/data URI):', err);
+        console.warn('Firebase Storage upload notice (using fallback):', err);
+        // If Storage failed and URI is a temporary blob:, convert to persistent base64 Data URL so it is never lost
+        if (newPhoto.originalUrl.startsWith('blob:') && typeof window !== 'undefined') {
+          try {
+            const res = await fetch(newPhoto.originalUrl);
+            const blob = await res.blob();
+            finalUrl = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.readAsDataURL(blob);
+            });
+          } catch (_blobErr) { }
+        }
       }
     }
 
@@ -602,30 +630,31 @@ class EventService {
 
     this.notifyPhotoSubscribers(slug, updatedList);
 
-    // Save to Firestore in background
+    // Save to Firestore with sanitized payload
     if (isRealFirebaseConfigured && db) {
       try {
         const photoDocRef = doc(db, 'events', slug, 'photos', photoId);
-        await setDoc(photoDocRef, createdPhoto);
+        const firestorePhoto = sanitizeForFirestore(createdPhoto);
+        await setDoc(photoDocRef, firestorePhoto);
 
         // Update quota and count with setDoc merge
         const eventDocRef = doc(db, 'events', slug);
         const ev = await this.getEvent(slug);
         const updatedPhotoCount = updatedList.length;
-        const updatedUsedBytes = (ev.storage.usedBytes || 0) + (newPhoto.sizeBytes || 650000);
+        const updatedUsedBytes = (ev.storage?.usedBytes || 0) + (newPhoto.sizeBytes || 650000);
         await setDoc(
           eventDocRef,
-          {
+          sanitizeForFirestore({
             storage: {
-              ...ev.storage,
+              ...(ev.storage || {}),
               photoCount: updatedPhotoCount,
               usedBytes: updatedUsedBytes,
             },
-          },
+          }),
           { merge: true }
         );
       } catch (err) {
-        console.warn('Firestore photo save notice:', err);
+        console.error('Firestore photo save error:', err);
       }
     }
 
@@ -750,12 +779,23 @@ class EventService {
             const list: PhotoModel[] = [];
             snapshot.forEach((d) => {
               const data = d.data() as PhotoModel;
-              if (data.isApproved !== false) {
+              if (data.isApproved !== false && !(data as any).isDeleted) {
                 list.push(data);
               }
             });
-            this.photos.set(slug, list);
-            callback(list);
+            if (list.length > 0) {
+              this.photos.set(slug, list);
+              this.savePhotosToStorage(slug, list);
+              callback(list);
+            } else {
+              const local = this.photos.get(slug) || this.loadSavedPhotosFromStorage(slug);
+              if (local.length > 0) {
+                callback(local);
+              } else {
+                this.photos.set(slug, []);
+                callback([]);
+              }
+            }
           },
           (error: any) => {
             if (
