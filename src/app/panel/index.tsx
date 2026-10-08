@@ -126,8 +126,25 @@ export default function HostPanelScreen() {
     }
   };
 
+  const isDemo = event?.slug === 'demo-panel' || !currentUser || currentUser.uid === 'demo-host-yavuz';
+
   const handleSaveSettings = async () => {
     if (!event) return;
+    if (isDemo) {
+      Alert.alert(
+        'Demo Modu (Salt Okunur) 🔒',
+        'Örnek demo panelindeki ayarlar diğer ziyaretçilerin deneyimi için kilitlidir.\n\nKendi etkinliğinizi oluşturup tüm gizlilik ve kontrol ayarlarına sahip olmak için ücretsiz kayıt olabilirsiniz.',
+        [
+          { text: 'İncelemeye Devam Et', style: 'cancel' },
+          {
+            text: 'Kayıt Ol',
+            onPress: () => router.push({ pathname: '/giris', params: { tab: 'register' } } as any),
+          },
+        ]
+      );
+      return;
+    }
+
     if (isPrivate && (!pinCode || pinCode.trim().length !== 4)) {
       Alert.alert('Eksik Bilgi', 'PIN koruması aktifken lütfen 4 haneli geçerli bir PIN kodu giriniz.');
       return;
@@ -380,8 +397,20 @@ export default function HostPanelScreen() {
         <View style={styles.settingsSection}>
           <View style={styles.settingsHeaderRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.sectionHeaderTitle}>Gizlilik & Etkinlik Ayarları</Text>
-              <Text style={styles.sectionHeaderSub}>Misafir erişimi ve yükleme kuralları</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                <Text style={styles.sectionHeaderTitle}>Gizlilik & Etkinlik Ayarları</Text>
+                {isDemo && (
+                  <View style={styles.lockedBadge}>
+                    <Ionicons name="lock-closed" size={10} color="#B45309" />
+                    <Text style={styles.lockedBadgeText}>Demoda Kilitli</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.sectionHeaderSub}>
+                {isDemo
+                  ? 'Demo modunda önizleme yapılabilir, değişiklikler sunucuya kaydedilmez.'
+                  : 'Misafir erişimi ve yükleme kuralları'}
+              </Text>
             </View>
           </View>
 
@@ -1266,5 +1295,19 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 13,
     fontWeight: '700',
+  },
+  lockedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  lockedBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#B45309',
   },
 });
