@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
+  ActivityIndicator,
   View,
   Text,
   StyleSheet,
@@ -63,6 +64,28 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
   if (sortMode === 'popular') {
     filteredPhotos.sort((a, b) => (b.likes || 0) - (a.likes || 0));
   }
+
+  // Pagination for high-volume photos (e.g. 1000+ items)
+  const PAGE_SIZE = 24;
+  const [visibleCount, setVisibleCount] = useState<number>(PAGE_SIZE);
+  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+
+  // Reset pagination when album or sortMode changes
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [selectedAlbumId, sortMode]);
+
+  const displayedPhotos = filteredPhotos.slice(0, visibleCount);
+  const hasMore = visibleCount < filteredPhotos.length;
+  const remainingCount = filteredPhotos.length - visibleCount;
+
+  const handleLoadMore = () => {
+    setIsLoadingMore(true);
+    setTimeout(() => {
+      setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, filteredPhotos.length));
+      setIsLoadingMore(false);
+    }, 200);
+  };
 
   // Column calculations
   const numColumns = width > 900 ? 4 : width > 600 ? 3 : 2;
@@ -182,7 +205,7 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
         </View>
       ) : (
         <View style={styles.grid}>
-          {filteredPhotos.map((photo) => {
+          {displayedPhotos.map((photo) => {
             const isLiked = likedPhotoIds.has(photo.id);
             const isTopTrending = maxLikes > 0 && photo.likes === maxLikes;
             const isAnimating = animatingHeartPhotoId === photo.id;
@@ -226,6 +249,7 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
                     source={{ uri: photo.thumbnailUrl || photo.originalUrl }}
                     style={styles.image}
                     resizeMode="cover"
+                    {...(Platform.OS === 'web' ? ({ loading: 'lazy' } as any) : {})}
                   />
                 )}
 
@@ -282,6 +306,43 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
               </TouchableOpacity>
             );
           })}
+        </View>
+      )}
+
+      {/* Pagination / Load More Footer for High Volume (1000+ Photos) */}
+      {filteredPhotos.length > 0 && (
+        <View style={styles.paginationContainer}>
+          <Text style={styles.paginationInfoText}>
+            Toplam {filteredPhotos.length} anıdan {Math.min(visibleCount, filteredPhotos.length)} tanesi gösteriliyor
+          </Text>
+
+          {hasMore ? (
+            <TouchableOpacity
+              style={styles.loadMoreBtn}
+              onPress={handleLoadMore}
+              disabled={isLoadingMore}
+              activeOpacity={0.8}
+            >
+              {isLoadingMore ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <>
+                  <Ionicons name="sparkles" size={16} color="#FFF" />
+                  <Text style={styles.loadMoreBtnText}>
+                    Daha Fazla Fotoğraf Göster (+{Math.min(PAGE_SIZE, remainingCount)})
+                  </Text>
+                  <Ionicons name="chevron-down" size={16} color="#FFF" />
+                </>
+              )}
+            </TouchableOpacity>
+          ) : (
+            filteredPhotos.length > PAGE_SIZE && (
+              <View style={styles.allLoadedBadge}>
+                <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                <Text style={styles.allLoadedText}>Tüm anılar yüklendi ({filteredPhotos.length})</Text>
+              </View>
+            )
+          )}
         </View>
       )}
 
@@ -526,6 +587,58 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     marginTop: 4,
     textAlign: 'center',
+  },
+  paginationContainer: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  paginationInfoText: {
+    fontSize: 13,
+    color: '#8A6D3B',
+    fontWeight: '600',
+    backgroundColor: '#FAF5EA',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+  },
+  loadMoreBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#C5A059',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  loadMoreBtnText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  allLoadedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F0FDF4',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#DCFCE7',
+  },
+  allLoadedText: {
+    color: '#166534',
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
 

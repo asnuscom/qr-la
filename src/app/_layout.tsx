@@ -34,7 +34,9 @@ export default function RootLayout() {
       >
         <Stack.Screen
           name="index"
-          options={{ title: "QR-la | Masadaki Kodu QR'la, En Mutlu Anları Paylaş" }}
+          options={{
+            title: "QR-la | Düğünde & Nikahta Karekodla Fotoğraf Yüklemesi - Davetiye Etkinlik Albümü",
+          }}
         />
         <Stack.Screen
           name="giris"

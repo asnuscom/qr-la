@@ -27,7 +27,29 @@ export default function LandingScreen() {
 
   useEffect(() => {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
-      document.title = "QR-la | Masadaki Kodu QR'la, En Mutlu Anları Paylaş";
+      document.title = "QR-la | Düğünde & Nikahta Karekodla Fotoğraf Yüklemesi - Davetiye Etkinlik Albümü";
+
+      let metaDesc = document.querySelector('meta[name="description"]');
+      if (!metaDesc) {
+        metaDesc = document.createElement('meta');
+        metaDesc.setAttribute('name', 'description');
+        document.head.appendChild(metaDesc);
+      }
+      metaDesc.setAttribute(
+        'content',
+        'Düğün, nikah ve özel davetiye etkinliklerinizde masalardaki karekodla misafirlerinizden anında yüksek çözünürlüklü fotoğraf toplayın. Uygulama indirmeden karekodla fotoğraf yüklemesi, canlı TV/projeksiyon yayını ve tek tıkla ZIP arşiv indirme.'
+      );
+
+      let metaKeywords = document.querySelector('meta[name="keywords"]');
+      if (!metaKeywords) {
+        metaKeywords = document.createElement('meta');
+        metaKeywords.setAttribute('name', 'keywords');
+        document.head.appendChild(metaKeywords);
+      }
+      metaKeywords.setAttribute(
+        'content',
+        'davetiye etkinlik, düğünde nikahta karekodla fotoğraf yüklemesi, düğün karekod fotoğraf, nikah karekod fotoğraf, karekodla fotoğraf toplama, masada qr kod fotoğraf, dijital davetiye etkinlik fotoğraf albümü, etkinlik karekod galeri, düğün masa kartı qr kod, kına gecesi karekod, canlı projeksiyon düğün slayt'
+      );
     }
   }, []);
 
@@ -120,18 +142,20 @@ export default function LandingScreen() {
           <View style={styles.heroBadge}>
             <Ionicons name="sparkles" size={13} color="#C5A059" />
             <Text style={[styles.heroBadgeText, isMobile && styles.heroBadgeTextMobile]}>
-              {isSmallPhone ? 'DÜĞÜN & ÖZEL GÜN PAYLAŞIMI' : 'DÜĞÜN, NİŞAN VE ÖZEL GÜNLER İÇİN YENİ NESİL PAYLAŞIM'}
+              {isSmallPhone
+                ? 'DÜĞÜN & NİKAHTA KAREKOD FOTOĞRAF'
+                : 'DÜĞÜNDE & NİKAHTA KAREKODLA FOTOĞRAF YÜKLEMESİ • DAVETİYE ETKİNLİK ALBÜMÜ'}
             </Text>
           </View>
 
           <Text style={[styles.heroTitle, isMobile && styles.heroTitleMobile]}>
-            Masadaki Kodu <Text style={styles.highlightText}>QR'la</Text>,{'\n'}
-            En Mutlu Anları Paylaş & Kutla
+            Düğün & Nikahta Masadaki Kodu <Text style={styles.highlightText}>QR'la</Text>,{'\n'}
+            Tüm Anıları Tek Albümde Topla
           </Text>
 
           <Text style={[styles.heroSubtitle, isMobile && styles.heroSubtitleMobile]}>
-            Misafirlerinizin çektiği yüzlerce eşsiz fotoğraf WhatsApp gruplarında kaybolmasın.
-            Uygulama indirmeden, tek bir QR kodla tüm fotoğrafları toplayın ve salondaki dev ekrana anında yansıtın!
+            Düğün, nikah ve özel davetiye etkinliklerinizde misafirlerinizin çektiği yüzlerce eşsiz fotoğraf WhatsApp'ta kaybolmasın.
+            Uygulama indirmeden, masadaki karekodla anında fotoğraf yüklemesi yapın ve salondaki dev ekranda canlı yansıtın!
           </Text>
 
           {/* Action CTAs */}
@@ -310,6 +334,62 @@ export default function LandingScreen() {
                 </TouchableOpacity>
               </View>
             ))}
+          </View>
+        </View>
+
+        {/* SEO FAQ & Feature Highlights Section */}
+        <View style={[styles.section, isMobile && styles.sectionMobile]}>
+          <Text style={styles.sectionOverline}>MERAK EDİLENLER</Text>
+          <Text style={[styles.sectionHeading, isMobile && styles.sectionHeadingMobile]}>
+            Düğün & Nikahta Karekodla Fotoğraf Yüklemesi SSS
+          </Text>
+          <Text style={[styles.sectionSub, isMobile && styles.sectionSubMobile]}>
+            Davetiye etkinliklerinizde karekod albümünün sağladığı kolaylıklar ve sıkça sorulan sorular.
+          </Text>
+
+          <View style={styles.faqList}>
+            <View style={styles.faqCard}>
+              <View style={styles.faqQuestionRow}>
+                <Ionicons name="help-circle" size={20} color="#C5A059" />
+                <Text style={styles.faqQuestion}>Düğünde ve nikahta karekodla fotoğraf yüklemesi nasıl yapılır?</Text>
+              </View>
+              <Text style={styles.faqAnswer}>
+                Misafirler masalarındaki şık masa kartlarında bulunan karekodu cep telefonu kamerasıyla okutur.
+                Herhangi bir mobil uygulama indirmeye ya da üye olmaya gerek kalmadan, doğrudan açılan web galerisine tek tıkla fotoğraf ve video yükleyebilirler.
+              </Text>
+            </View>
+
+            <View style={styles.faqCard}>
+              <View style={styles.faqQuestionRow}>
+                <Ionicons name="help-circle" size={20} color="#C5A059" />
+                <Text style={styles.faqQuestion}>Davetiye etkinliklerinde neden QR kodlu fotoğraf albümü tercih edilmeli?</Text>
+              </View>
+              <Text style={styles.faqAnswer}>
+                WhatsApp gibi mesajlaşma uygulamaları görselleri sıkıştırarak kalitelerini bozar ve fotoğrafları misafirlerden tek tek istemek haftalar sürer.
+                QR-la ile tüm davetiye etkinliklerinizde (düğün, nikah, nişan, kına gecesi) çekilen anılar tek bir yüksek çözünürlüklü dijital arşivde toplanır.
+              </Text>
+            </View>
+
+            <View style={styles.faqCard}>
+              <View style={styles.faqQuestionRow}>
+                <Ionicons name="help-circle" size={20} color="#C5A059" />
+                <Text style={styles.faqQuestion}>Canlı projeksiyon slayt gösterisi nasıl çalışır?</Text>
+              </View>
+              <Text style={styles.faqAnswer}>
+                Düğün veya nikah salonundaki akıllı televizyona ya da projeksiyon cihazına etkinlik canlı mod bağlantısını açmanız yeterlidir.
+                Misafirler masalarından karekodla fotoğraf yükledikçe ekranda şık animasyonlar ve arka plan müziği eşliğinde otomatik olarak gösterilir.
+              </Text>
+            </View>
+
+            <View style={styles.faqCard}>
+              <View style={styles.faqQuestionRow}>
+                <Ionicons name="help-circle" size={20} color="#C5A059" />
+                <Text style={styles.faqQuestion}>Gece bitiminde fotoğrafları nasıl indirebilirim?</Text>
+              </View>
+              <Text style={styles.faqAnswer}>
+                Yönetim panelinizdeki "ZIP İndir" butonuna tıklayarak etkinlik boyunca yüklenen tüm yüksek çözünürlüklü fotoğraf ve videoları tek bir arşiv dosyası olarak bilgisayarınıza veya telefonunuza orijinal kalitesinde indirebilirsiniz.
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -913,5 +993,42 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#9CA3AF',
     textAlign: 'center',
+  },
+  faqList: {
+    width: '100%',
+    maxWidth: 860,
+    gap: 16,
+    marginTop: 8,
+  },
+  faqCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#F3EFE6',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  faqQuestionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 8,
+  },
+  faqQuestion: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#1A1817',
+    lineHeight: 20,
+  },
+  faqAnswer: {
+    fontSize: 13,
+    color: '#4B5563',
+    lineHeight: 20,
+    paddingLeft: 30,
   },
 });

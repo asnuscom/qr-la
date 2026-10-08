@@ -44,6 +44,13 @@ export default function HostPanelScreen() {
   const [zipProgressText, setZipProgressText] = useState('');
   const [zipPercent, setZipPercent] = useState(0);
 
+  // Moderation pagination & search states
+  const MOD_PAGE_SIZE = 30;
+  const [modVisibleCount, setModVisibleCount] = useState<number>(MOD_PAGE_SIZE);
+  const [isModLoadingMore, setIsModLoadingMore] = useState<boolean>(false);
+  const [modSearchQuery, setModSearchQuery] = useState<string>('');
+  const [modMediaTypeFilter, setModMediaTypeFilter] = useState<'all' | 'photo' | 'video'>('all');
+
   useEffect(() => {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
       document.title = 'Yönetim Paneli | QR-la';
@@ -337,6 +344,31 @@ export default function HostPanelScreen() {
         ]
       );
     }
+  };
+
+  const filteredModPhotos = photos.filter((p) => {
+    if (modMediaTypeFilter === 'photo' && p.mediaType === 'video') return false;
+    if (modMediaTypeFilter === 'video' && p.mediaType !== 'video') return false;
+    if (modSearchQuery.trim()) {
+      const q = modSearchQuery.toLowerCase().trim();
+      const matchName = (p.uploaderName || '').toLowerCase().includes(q);
+      const matchTable = (p.tableNumber || '').toLowerCase().includes(q);
+      const matchNote = (p.guestNote || '').toLowerCase().includes(q);
+      return matchName || matchTable || matchNote;
+    }
+    return true;
+  });
+
+  const displayedModPhotos = filteredModPhotos.slice(0, modVisibleCount);
+  const hasMoreMod = modVisibleCount < filteredModPhotos.length;
+  const remainingMod = filteredModPhotos.length - modVisibleCount;
+
+  const handleLoadMoreMod = () => {
+    setIsModLoadingMore(true);
+    setTimeout(() => {
+      setModVisibleCount((prev) => Math.min(prev + MOD_PAGE_SIZE, filteredModPhotos.length));
+      setIsModLoadingMore(false);
+    }, 200);
   };
 
   if (!event) return null;
@@ -694,11 +726,88 @@ export default function HostPanelScreen() {
         <View style={styles.moderationSection}>
           <View style={styles.modHeaderRow}>
             <Text style={styles.sectionHeaderTitle}>Fotoğraf Yönetimi & Moderasyon</Text>
-            <Text style={styles.modCountText}>{photos.length} Görsel</Text>
+            <Text style={styles.modCountText}>
+              {filteredModPhotos.length === photos.length
+                ? `${photos.length} Görsel`
+                : `${filteredModPhotos.length} / ${photos.length} Görsel`}
+            </Text>
           </View>
           <Text style={styles.modDesc}>
             İstemediğiniz veya uygunsuz bulduğunuz fotoğrafları tek tıkla silebilirsiniz.
           </Text>
+
+          {/* Search & Media Filter Controls for High Volume (1000+ Items) */}
+          {photos.length > 0 && (
+            <View style={styles.modFilterBar}>
+              <View style={styles.modSearchWrap}>
+                <Ionicons name="search-outline" size={16} color="#9CA3AF" />
+                <TextInput
+                  style={styles.modSearchInput}
+                  placeholder="Misafir adı, masa no veya not ara..."
+                  value={modSearchQuery}
+                  onChangeText={(val) => {
+                    setModSearchQuery(val);
+                    setModVisibleCount(MOD_PAGE_SIZE);
+                  }}
+                  placeholderTextColor="#9CA3AF"
+                />
+                {modSearchQuery.trim() ? (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setModSearchQuery('');
+                      setModVisibleCount(MOD_PAGE_SIZE);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="close-circle" size={16} color="#9CA3AF" />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+
+              <View style={styles.modTypeChipsRow}>
+                <TouchableOpacity
+                  style={[styles.modTypeChip, modMediaTypeFilter === 'all' && styles.modTypeChipActive]}
+                  onPress={() => {
+                    setModMediaTypeFilter('all');
+                    setModVisibleCount(MOD_PAGE_SIZE);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.modTypeChipText, modMediaTypeFilter === 'all' && styles.modTypeChipTextActive]}>
+                    Tümü ({photos.length})
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.modTypeChip, modMediaTypeFilter === 'photo' && styles.modTypeChipActive]}
+                  onPress={() => {
+                    setModMediaTypeFilter('photo');
+                    setModVisibleCount(MOD_PAGE_SIZE);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="image-outline" size={13} color={modMediaTypeFilter === 'photo' ? '#FFF' : '#6B7280'} />
+                  <Text style={[styles.modTypeChipText, modMediaTypeFilter === 'photo' && styles.modTypeChipTextActive]}>
+                    Fotoğraflar ({photos.filter((p) => p.mediaType !== 'video').length})
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.modTypeChip, modMediaTypeFilter === 'video' && styles.modTypeChipActive]}
+                  onPress={() => {
+                    setModMediaTypeFilter('video');
+                    setModVisibleCount(MOD_PAGE_SIZE);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="videocam-outline" size={13} color={modMediaTypeFilter === 'video' ? '#FFF' : '#6B7280'} />
+                  <Text style={[styles.modTypeChipText, modMediaTypeFilter === 'video' && styles.modTypeChipTextActive]}>
+                    Videolar ({photos.filter((p) => p.mediaType === 'video').length})
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
 
           {photos.length === 0 ? (
             <View style={styles.emptyModBox}>
@@ -745,49 +854,110 @@ export default function HostPanelScreen() {
                 )}
               </TouchableOpacity>
             </View>
-          ) : (
-            <View style={styles.modGrid}>
-              {photos.map((photo) => (
-                <View key={photo.id} style={styles.modCard}>
-                  {photo.mediaType === 'video' ? (
-                    <View style={{ width: '100%', height: '100%', position: 'relative' }}>
-                      {Platform.OS === 'web' ? (
-                        <video
-                          src={photo.thumbnailUrl || photo.originalUrl}
-                          muted
-                          playsInline
-                          preload="metadata"
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                            pointerEvents: 'none',
-                          }}
-                        />
-                      ) : (
-                        <Image source={{ uri: photo.thumbnailUrl || photo.originalUrl }} style={styles.modImage} />
-                      )}
-                      <View style={styles.modVideoBadge}>
-                        <Ionicons name="videocam" size={11} color="#FFF" />
-                      </View>
-                    </View>
-                  ) : (
-                    <Image source={{ uri: photo.thumbnailUrl || photo.originalUrl }} style={styles.modImage} />
-                  )}
-                  <View style={styles.modInfoRow}>
-                    <Text style={styles.modUploader} numberOfLines={1}>
-                      {photo.uploaderName || 'Misafir'}
-                    </Text>
-                    <TouchableOpacity
-                      style={styles.modDeleteBtn}
-                      onPress={() => handleDeletePhoto(photo.id)}
-                    >
-                      <Ionicons name="trash-outline" size={14} color="#EF4444" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))}
+          ) : filteredModPhotos.length === 0 ? (
+            <View style={styles.emptySearchResultBox}>
+              <Ionicons name="search-outline" size={36} color="#9CA3AF" />
+              <Text style={styles.emptySearchResultTitle}>Aramanıza Uygun Medya Bulunamadı</Text>
+              <Text style={styles.emptySearchResultSub}>
+                "{modSearchQuery}" ifadesiyle eşleşen misafir veya masa kaydı yok.
+              </Text>
+              <TouchableOpacity
+                style={styles.clearFilterBtn}
+                onPress={() => {
+                  setModSearchQuery('');
+                  setModMediaTypeFilter('all');
+                  setModVisibleCount(MOD_PAGE_SIZE);
+                }}
+              >
+                <Text style={styles.clearFilterBtnText}>Filtreleri Temizle</Text>
+              </TouchableOpacity>
             </View>
+          ) : (
+            <>
+              <View style={styles.modGrid}>
+                {displayedModPhotos.map((photo) => (
+                  <View key={photo.id} style={styles.modCard}>
+                    {photo.mediaType === 'video' ? (
+                      <View style={{ width: '100%', height: '100%', position: 'relative' }}>
+                        {Platform.OS === 'web' ? (
+                          <video
+                            src={photo.thumbnailUrl || photo.originalUrl}
+                            muted
+                            playsInline
+                            preload="metadata"
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              pointerEvents: 'none',
+                            }}
+                          />
+                        ) : (
+                          <Image source={{ uri: photo.thumbnailUrl || photo.originalUrl }} style={styles.modImage} />
+                        )}
+                        <View style={styles.modVideoBadge}>
+                          <Ionicons name="videocam" size={11} color="#FFF" />
+                        </View>
+                      </View>
+                    ) : (
+                      <Image
+                        source={{ uri: photo.thumbnailUrl || photo.originalUrl }}
+                        style={styles.modImage}
+                        {...(Platform.OS === 'web' ? ({ loading: 'lazy' } as any) : {})}
+                      />
+                    )}
+                    <View style={styles.modInfoRow}>
+                      <Text style={styles.modUploader} numberOfLines={1}>
+                        {photo.uploaderName || 'Misafir'}
+                      </Text>
+                      <TouchableOpacity
+                        style={styles.modDeleteBtn}
+                        onPress={() => handleDeletePhoto(photo.id)}
+                      >
+                        <Ionicons name="trash-outline" size={14} color="#EF4444" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </View>
+
+              {/* Moderation Pagination Footer */}
+              <View style={styles.modPaginationContainer}>
+                <Text style={styles.modPaginationText}>
+                  Toplam {filteredModPhotos.length} medyadan {Math.min(modVisibleCount, filteredModPhotos.length)} tanesi listeleniyor
+                </Text>
+
+                {hasMoreMod ? (
+                  <TouchableOpacity
+                    style={styles.modLoadMoreBtn}
+                    onPress={handleLoadMoreMod}
+                    disabled={isModLoadingMore}
+                    activeOpacity={0.8}
+                  >
+                    {isModLoadingMore ? (
+                      <ActivityIndicator size="small" color="#1A1817" />
+                    ) : (
+                      <>
+                        <Ionicons name="sparkles-outline" size={16} color="#1A1817" />
+                        <Text style={styles.modLoadMoreBtnText}>
+                          Daha Fazla Göster (+{Math.min(MOD_PAGE_SIZE, remainingMod)})
+                        </Text>
+                        <Ionicons name="chevron-down" size={16} color="#1A1817" />
+                      </>
+                    )}
+                  </TouchableOpacity>
+                ) : (
+                  filteredModPhotos.length > MOD_PAGE_SIZE && (
+                    <View style={styles.modAllLoadedBadge}>
+                      <Ionicons name="checkmark-circle" size={15} color="#10B981" />
+                      <Text style={styles.modAllLoadedText}>
+                        Tüm fotoğraflar listelendi ({filteredModPhotos.length})
+                      </Text>
+                    </View>
+                  )
+                )}
+              </View>
+            </>
           )}
         </View>
       </ScrollView>
@@ -1543,5 +1713,143 @@ const styles = StyleSheet.create({
   zipFloatingSub: {
     color: '#94A3B8',
     fontSize: 12,
+  },
+  modFilterBar: {
+    marginBottom: 16,
+    gap: 10,
+  },
+  modSearchWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FAF7F2',
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  modSearchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: '#1A1817',
+    padding: 0,
+  },
+  modTypeChipsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  modTypeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  modTypeChipActive: {
+    backgroundColor: '#1A1817',
+    borderColor: '#1A1817',
+  },
+  modTypeChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#4B5563',
+  },
+  modTypeChipTextActive: {
+    color: '#FFF',
+    fontWeight: '700',
+  },
+  emptySearchResultBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+    gap: 8,
+  },
+  emptySearchResultTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#374151',
+    marginTop: 4,
+  },
+  emptySearchResultSub: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  clearFilterBtn: {
+    marginTop: 8,
+    backgroundColor: '#FAF7F2',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+  },
+  clearFilterBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#C5A059',
+  },
+  modPaginationContainer: {
+    alignItems: 'center',
+    paddingTop: 16,
+    paddingBottom: 8,
+    gap: 10,
+  },
+  modPaginationText: {
+    fontSize: 12,
+    color: '#8A6D3B',
+    fontWeight: '600',
+    backgroundColor: '#FAF5EA',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+  },
+  modLoadMoreBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FAF7F2',
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  modLoadMoreBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1A1817',
+  },
+  modAllLoadedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#F0FDF4',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#DCFCE7',
+  },
+  modAllLoadedText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#166534',
   },
 });

@@ -45,9 +45,26 @@ export default function EventHomeScreen() {
 
   useEffect(() => {
     if (event?.title && Platform.OS === 'web' && typeof document !== 'undefined') {
-      document.title = `${event.title} | QR-la`;
+      const typeLabel =
+        event.eventType === 'dugun'
+          ? 'Düğünü'
+          : event.eventType === 'nisan'
+          ? 'Nişanı'
+          : 'Kutlaması';
+      document.title = `${event.title} | Karekod Fotoğraf & Video Galerisi - QR-la`;
+
+      let metaDesc = document.querySelector('meta[name="description"]');
+      if (!metaDesc) {
+        metaDesc = document.createElement('meta');
+        metaDesc.setAttribute('name', 'description');
+        document.head.appendChild(metaDesc);
+      }
+      metaDesc.setAttribute(
+        'content',
+        `${event.title} ${typeLabel} karekod fotoğraf ve video galerisi. Masadaki QR kodu okutarak anılarınızı anında paylaşın.`
+      );
     }
-  }, [event?.title]);
+  }, [event?.title, event?.eventType]);
 
   useFocusEffect(
     useCallback(() => {
