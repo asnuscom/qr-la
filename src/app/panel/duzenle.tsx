@@ -1,9 +1,12 @@
 import { authService } from '@/services/authService';
 import { eventService } from '@/services/eventService';
+import { isRealFirebaseConfigured, storage } from '@/services/firebase';
 import { slugify } from '@/services/mockData';
 import { AlbumModel, EventModel, EventType, ScheduleItem } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -61,6 +64,58 @@ const EVENT_TYPES: { id: EventType; label: string; icon: any }[] = [
   { id: 'diger', label: 'Özel Gün', icon: 'calendar' },
 ];
 
+// Helpers to parse and format Event Dates strictly in Turkey Timezone (Europe/Istanbul UTC+3)
+const parseEventDateTurkey = (isoString?: string): { dateStr: string; timeStr: string } => {
+  if (!isoString) return { dateStr: '2026-10-18', timeStr: '19:00' };
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return { dateStr: '2026-10-18', timeStr: '19:00' };
+
+    const dateStr = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/Istanbul',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(d);
+
+    let timeStr = new Intl.DateTimeFormat('tr-TR', {
+      timeZone: 'Europe/Istanbul',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(d);
+
+    timeStr = timeStr.replace('.', ':').trim();
+    if (timeStr.length === 4 && timeStr.indexOf(':') === 1) {
+      timeStr = '0' + timeStr;
+    }
+    if (timeStr.startsWith('24:')) {
+      timeStr = '00:' + timeStr.slice(3);
+    }
+
+    return { dateStr, timeStr: timeStr || '19:00' };
+  } catch {
+    return { dateStr: '2026-10-18', timeStr: '19:00' };
+  }
+};
+
+const formatEventDateToTurkeyIso = (dateStr: string, timeStr: string): string => {
+  try {
+    const cleanDate = (dateStr || '').trim();
+    let cleanTime = (timeStr || '19:00').trim().replace('.', ':');
+    if (cleanTime.length === 4 && cleanTime.indexOf(':') === 1) {
+      cleanTime = '0' + cleanTime;
+    }
+    const timeWithSec = cleanTime.length === 5 ? `${cleanTime}:00` : cleanTime;
+    const turkeyIso = `${cleanDate}T${timeWithSec}+03:00`;
+    const d = new Date(turkeyIso);
+    if (!isNaN(d.getTime())) {
+      return d.toISOString();
+    }
+  } catch {}
+  return new Date().toISOString();
+};
+
 export default function EventFormScreen() {
   const router = useRouter();
   const { slug: paramSlug } = useLocalSearchParams<{ slug?: string }>();
@@ -112,6 +167,7 @@ export default function EventFormScreen() {
   const [eventTimeStr, setEventTimeStr] = useState('19:00');
   const [invitationUrl, setInvitationUrl] = useState('');
   const [coverPhotoUrl, setCoverPhotoUrl] = useState(COVER_PRESETS[0].url);
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
   const [primaryColor, setPrimaryColor] = useState('#C5A059');
 
   const [venueName, setVenueName] = useState('Sait Halim Paşa Yalısı');
@@ -185,19 +241,10 @@ export default function EventFormScreen() {
             setSchedule(ev.schedule);
           }
 
-          // Parse date and time cleanly
-          try {
-            const d = new Date(ev.eventDate);
-            if (!isNaN(d.getTime())) {
-              const year = d.getFullYear();
-              const month = String(d.getMonth() + 1).padStart(2, '0');
-              const day = String(d.getDate()).padStart(2, '0');
-              setEventDateStr(`${year}-${month}-${day}`);
-              const hours = String(d.getHours()).padStart(2, '0');
-              const mins = String(d.getMinutes()).padStart(2, '0');
-              setEventTimeStr(`${hours}:${mins}`);
-            }
-          } catch (_e) { }
+          // Parse date and time cleanly in Turkey timezone (GMT+3)
+          const { dateStr, timeStr } = parseEventDateTurkey(ev.eventDate);
+          setEventDateStr(dateStr);
+          setEventTimeStr(timeStr);
         }
 
         const alb = await eventService.getAlbums(currentSlug);
@@ -311,6 +358,43 @@ export default function EventFormScreen() {
     setAlbums(albums.filter((a) => a.id !== albumId));
   };
 
+  const handleUploadCoverPhoto = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.85,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+
+      const asset = result.assets[0];
+      setIsUploadingCover(true);
+
+      if (isRealFirebaseConfigured && storage) {
+        const response = await fetch(asset.uri);
+        const blob = await response.blob();
+        const fileExt = asset.uri.split('.').pop()?.split('?')[0] || 'jpg';
+        const coverRef = ref(storage, `events/${slug || currentSlug}/covers/cover-${Date.now()}.${fileExt}`);
+        await uploadBytes(coverRef, blob, { contentType: 'image/jpeg' });
+        const downloadUrl = await getDownloadURL(coverRef);
+        setCoverPhotoUrl(downloadUrl);
+        Alert.alert('Harika! 📸', 'Kapak fotoğrafı başarıyla yüklendi.');
+      } else {
+        setCoverPhotoUrl(asset.uri);
+        Alert.alert('Bilgi', 'Kapak fotoğrafı seçildi.');
+      }
+    } catch (err: any) {
+      console.error('Cover upload error:', err);
+      Alert.alert('Hata', 'Kapak fotoğrafı yüklenirken bir sorun oluştu: ' + (err?.message || 'Bilinmeyen hata'));
+    } finally {
+      setIsUploadingCover(false);
+    }
+  };
+
   const handleSave = async () => {
     if (isDemo) {
       Alert.alert(
@@ -336,14 +420,8 @@ export default function EventFormScreen() {
     try {
       const cleanSlug = slugify(slug);
 
-      // Compute final ISO eventDate
-      let finalEventDate = new Date().toISOString();
-      try {
-        const combined = new Date(`${eventDateStr}T${eventTimeStr || '19:00'}:00.000Z`);
-        if (!isNaN(combined.getTime())) {
-          finalEventDate = combined.toISOString();
-        }
-      } catch (_e) { }
+      // Compute final ISO eventDate locked to Turkey Timezone (GMT+3)
+      const finalEventDate = formatEventDateToTurkeyIso(eventDateStr, eventTimeStr);
 
       const updatedData: Partial<EventModel> = {
         slug: cleanSlug,
@@ -415,12 +493,14 @@ export default function EventFormScreen() {
     );
   }
 
-  // Formatted date preview for UX
+  // Formatted date preview for UX (Turkey Timezone GMT+3)
   let formattedDatePreview = '';
   try {
-    const d = new Date(`${eventDateStr}T${eventTimeStr || '19:00'}:00`);
+    const previewIso = formatEventDateToTurkeyIso(eventDateStr, eventTimeStr);
+    const d = new Date(previewIso);
     if (!isNaN(d.getTime())) {
       formattedDatePreview = d.toLocaleDateString('tr-TR', {
+        timeZone: 'Europe/Istanbul',
         day: 'numeric',
         month: 'long',
         year: 'numeric',
@@ -651,31 +731,63 @@ export default function EventFormScreen() {
           {/* Date & Time Row */}
           <View style={styles.row}>
             <View style={[styles.inputGroup, { flex: 1.3 }]}>
-              <Text style={styles.label}>Etkinlik Tarihi (YIL-AY-GÜN)</Text>
+              <View style={styles.labelRowWithBadge}>
+                <Text style={styles.label}>Etkinlik Tarihi</Text>
+                <View style={styles.tzBadge}>
+                  <Text style={styles.tzBadgeText}>GMT+3 🇹🇷</Text>
+                </View>
+              </View>
               <TextInput
                 style={styles.input}
                 value={eventDateStr}
                 onChangeText={setEventDateStr}
                 placeholder="2026-10-18"
+                {...(Platform.OS === 'web' ? ({ type: 'date' } as any) : {})}
               />
             </View>
 
             <View style={[styles.inputGroup, { flex: 0.9 }]}>
-              <Text style={styles.label}>Saat (SS:DD)</Text>
+              <View style={styles.labelRowWithBadge}>
+                <Text style={styles.label}>Saat</Text>
+                <View style={styles.tzBadge}>
+                  <Text style={styles.tzBadgeText}>GMT+3 🇹🇷</Text>
+                </View>
+              </View>
               <TextInput
                 style={styles.input}
                 value={eventTimeStr}
                 onChangeText={setEventTimeStr}
                 placeholder="19:00"
+                {...(Platform.OS === 'web' ? ({ type: 'time' } as any) : {})}
               />
             </View>
+          </View>
+
+          {/* Quick Time Presets */}
+          <View style={styles.timePresetsRow}>
+            <Text style={styles.quickLabel}>Hızlı Saat:</Text>
+            {['17:00', '18:00', '18:30', '19:00', '19:30', '20:00', '21:00'].map((timePreset) => {
+              const isSelected = eventTimeStr === timePreset;
+              return (
+                <TouchableOpacity
+                  key={timePreset}
+                  style={[styles.timePresetChip, isSelected && styles.timePresetChipActive]}
+                  onPress={() => setEventTimeStr(timePreset)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.timePresetChipText, isSelected && styles.timePresetChipTextActive]}>
+                    {timePreset}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
           {formattedDatePreview ? (
             <View style={styles.datePreviewBox}>
               <Ionicons name="calendar" size={14} color="#C5A059" />
               <Text style={styles.datePreviewText}>
-                {formattedDatePreview} — Saat {eventTimeStr}
+                {formattedDatePreview} — Saat {eventTimeStr} (Türkiye Saati)
               </Text>
             </View>
           ) : null}
@@ -696,7 +808,36 @@ export default function EventFormScreen() {
         <View style={styles.formCard}>
           <Text style={styles.cardHeader}>2. Kapak Fotoğrafı & Tema Rengi</Text>
 
-          <Text style={styles.label}>Hazır Kapak Fotoğraflarından Seçin:</Text>
+          {/* Current Cover Preview Card with Device Upload Action */}
+          <View style={styles.coverPreviewCard}>
+            <Image source={{ uri: coverPhotoUrl }} style={styles.coverPreviewImg} />
+            <View style={styles.coverPreviewOverlay}>
+              <View style={styles.coverActiveBadge}>
+                <Ionicons name="image" size={13} color="#FFF" />
+                <Text style={styles.coverActiveBadgeText}>Mevcut Kapak Görseli</Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.coverUploadActionBtn}
+                onPress={handleUploadCoverPhoto}
+                disabled={isUploadingCover}
+                activeOpacity={0.85}
+              >
+                {isUploadingCover ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <>
+                    <Ionicons name="cloud-upload" size={16} color="#FFF" />
+                    <Text style={styles.coverUploadActionBtnText}>
+                      Cihazımdan Fotoğraf Yükle
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <Text style={styles.label}>Veya Hazır Kapak Fotoğraflarından Seçin:</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetsScroll}>
             {COVER_PRESETS.map((preset) => {
               const isSelected = coverPhotoUrl === preset.url;
@@ -719,7 +860,7 @@ export default function EventFormScreen() {
           </ScrollView>
 
           <View style={[styles.inputGroup, { marginTop: 14 }]}>
-            <Text style={styles.label}>Veya Özel Kapak Görseli Linkinizi Girin:</Text>
+            <Text style={styles.label}>Veya Özel Kapak Görseli Linkinizi Girin (URL):</Text>
             <TextInput
               style={styles.input}
               value={coverPhotoUrl}
@@ -1818,5 +1959,111 @@ const styles = StyleSheet.create({
   },
   typeChipDisabled: {
     opacity: 0.5,
+  },
+  tzBadge: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  tzBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#B45309',
+  },
+  timePresetsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  quickLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginRight: 2,
+  },
+  timePresetChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  timePresetChipActive: {
+    backgroundColor: '#C5A059',
+    borderColor: '#C5A059',
+  },
+  timePresetChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#4B5563',
+  },
+  timePresetChipTextActive: {
+    color: '#FFF',
+    fontWeight: '700',
+  },
+  coverPreviewCard: {
+    position: 'relative',
+    height: 180,
+    borderRadius: 14,
+    overflow: 'hidden',
+    marginBottom: 14,
+    backgroundColor: '#1E293B',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  coverPreviewImg: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  coverPreviewOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'space-between',
+    padding: 12,
+  },
+  coverActiveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  coverActiveBadgeText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  coverUploadActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#C5A059',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  coverUploadActionBtnText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

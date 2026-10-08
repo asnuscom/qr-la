@@ -57,7 +57,8 @@ export default function QRCardScreen() {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {/* Top Navbar */}
-        <View style={styles.navbar}>
+        {/* @ts-ignore */}
+        <View style={styles.navbar} className="no-print">
           <TouchableOpacity
             style={styles.backBtn}
             onPress={() => router.push('/panel' as any)}

@@ -76,12 +76,26 @@ export const EventHeader: React.FC<EventHeaderProps> = ({ event, activeTab = 'ho
     }
   };
 
-  const formattedDate = new Date(event.eventDate).toLocaleDateString('tr-TR', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    weekday: 'long',
-  });
+  const dateObj = new Date(event.eventDate);
+  const isValidDate = !isNaN(dateObj.getTime());
+  const formattedDate = isValidDate
+    ? dateObj.toLocaleDateString('tr-TR', {
+        timeZone: 'Europe/Istanbul',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        weekday: 'long',
+      })
+    : '';
+
+  const formattedTime = isValidDate
+    ? dateObj.toLocaleTimeString('tr-TR', {
+        timeZone: 'Europe/Istanbul',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }).replace('.', ':')
+    : '';
 
   return (
     <View style={styles.container}>
@@ -161,7 +175,7 @@ export const EventHeader: React.FC<EventHeaderProps> = ({ event, activeTab = 'ho
         <View style={styles.metaRow}>
           <View style={styles.metaItem}>
             <Ionicons name="calendar-outline" size={16} color="#C5A059" />
-            <Text style={styles.metaText}>{formattedDate}</Text>
+            <Text style={styles.metaText}>{formattedDate}{formattedTime ? ` • ${formattedTime}` : ''}</Text>
           </View>
           <TouchableOpacity style={styles.metaItem} onPress={openMap} activeOpacity={0.7}>
             <Ionicons name="location-outline" size={16} color="#C5A059" />

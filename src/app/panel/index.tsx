@@ -5,6 +5,7 @@ import { DEMO_PHOTOS, slugify } from '@/services/mockData';
 import { EventModel, PhotoModel, UserModel } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
+import JSZip from 'jszip';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -37,6 +38,11 @@ export default function HostPanelScreen() {
   const [hasUnsavedSettings, setHasUnsavedSettings] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingSamples, setIsLoadingSamples] = useState(false);
+
+  // ZIP Download progress state
+  const [isZipping, setIsZipping] = useState(false);
+  const [zipProgressText, setZipProgressText] = useState('');
+  const [zipPercent, setZipPercent] = useState(0);
 
   useEffect(() => {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -189,11 +195,109 @@ export default function HostPanelScreen() {
     return () => unsub();
   }, []);
 
-  const handleDownloadAllZip = () => {
-    Alert.alert(
-      'Arşiv İndirme',
-      `${photos.length} adet yüksek çözünürlüklü fotoğraf ZIP arşivi olarak hazırlanıyor. İndirme birazdan başlayacaktır!`
-    );
+  const handleDownloadAllZip = async () => {
+    if (!photos || photos.length === 0) {
+      Alert.alert('İndirilecek Fotoğraf Yok', 'Galeride henüz indirilmeye hazır fotoğraf veya video bulunmuyor.');
+      return;
+    }
+
+    if (isZipping) return;
+
+    setIsZipping(true);
+    setZipPercent(5);
+    setZipProgressText(`Arşiv hazırlanıyor (0/${photos.length})...`);
+
+    try {
+      const zip = new JSZip();
+      const folderName = `${event?.slug || 'etkinlik'}-fotograflar`;
+      const imgFolder = zip.folder(folderName) || zip;
+
+      let downloadedCount = 0;
+      let failedCount = 0;
+
+      for (let i = 0; i < photos.length; i++) {
+        const photo = photos[i];
+        setZipProgressText(`Medya indiriliyor (${i + 1}/${photos.length})...`);
+        setZipPercent(Math.round(5 + ((i + 1) / photos.length) * 75));
+
+        try {
+          const mediaUrl = photo.originalUrl || photo.thumbnailUrl;
+          const response = await fetch(mediaUrl);
+          if (!response.ok) throw new Error('Fetch failed');
+          const blob = await response.blob();
+
+          const isVideo = photo.mediaType === 'video';
+          const ext = isVideo ? 'mp4' : 'jpg';
+          const guest = (photo.uploaderName || 'misafir')
+            .replace(/[^a-zA-Z0-9_\u00C0-\u024F]/g, '_')
+            .slice(0, 20);
+          const filename = `${String(i + 1).padStart(3, '0')}_${guest}_${photo.id.slice(0, 6)}.${ext}`;
+
+          imgFolder.file(filename, blob);
+          downloadedCount++;
+        } catch (fetchErr) {
+          console.warn(`Photo ${photo.id} could not be downloaded into ZIP:`, fetchErr);
+          failedCount++;
+        }
+      }
+
+      if (downloadedCount === 0) {
+        throw new Error('Dosyalar indirilemedi. İnternet bağlantınızı kontrol edin.');
+      }
+
+      setZipProgressText('ZIP arşivi sıkıştırılıyor...');
+      setZipPercent(85);
+
+      const zipBlob = await zip.generateAsync(
+        {
+          type: 'blob',
+          compression: 'DEFLATE',
+          compressionOptions: { level: 6 },
+        },
+        (metadata) => {
+          if (metadata.percent) {
+            setZipPercent(Math.round(85 + (metadata.percent * 0.14)));
+          }
+        }
+      );
+
+      setZipPercent(100);
+      setZipProgressText('İndirme başlatılıyor...');
+
+      if (Platform.OS === 'web' && typeof document !== 'undefined') {
+        const downloadUrl = URL.createObjectURL(zipBlob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = `${event?.slug || 'etkinlik'}-tum-fotograflar.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(downloadUrl), 5000);
+      } else {
+        Alert.alert('Tamamlandı', `${downloadedCount} adet medya dosyası ZIP olarak paketlendi.`);
+      }
+
+      setTimeout(() => {
+        setIsZipping(false);
+        setZipProgressText('');
+        setZipPercent(0);
+        if (failedCount > 0) {
+          Alert.alert(
+            'İndirme Tamamlandı 📦',
+            `${downloadedCount} adet medya dosyası ZIP olarak indirildi. (${failedCount} dosya sunucu erişim kısıtı nedeniyle atlandı.)`
+          );
+        }
+      }, 1000);
+    } catch (err: any) {
+      console.error('ZIP creation error:', err);
+      setIsZipping(false);
+      setZipProgressText('');
+      setZipPercent(0);
+      Alert.alert(
+        'İndirme Başarısız',
+        'ZIP arşivi oluşturulurken bir hata meydana geldi: ' + (err?.message || 'Bilinmeyen hata')
+      );
+    }
   };
 
   const handleDeletePhoto = async (photoId: string) => {
@@ -362,15 +466,26 @@ export default function HostPanelScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.actionCard}
+            style={[styles.actionCard, isZipping && { borderColor: '#10B981', backgroundColor: '#F0FDF4' }]}
             onPress={handleDownloadAllZip}
+            disabled={isZipping}
             activeOpacity={0.8}
           >
-            <View style={[styles.actionIconWrap, { backgroundColor: '#F0FDF4' }]}>
-              <Ionicons name="archive-outline" size={24} color="#10B981" />
+            <View style={[styles.actionIconWrap, { backgroundColor: isZipping ? '#DCFCE7' : '#F0FDF4' }]}>
+              {isZipping ? (
+                <ActivityIndicator size="small" color="#10B981" />
+              ) : (
+                <Ionicons name="archive-outline" size={24} color="#10B981" />
+              )}
             </View>
-            <Text style={styles.actionTitle}>ZIP İndir</Text>
-            <Text style={styles.actionDesc}>Tüm {photos.length} fotoğrafı tek tıkla cihazına indir.</Text>
+            <Text style={[styles.actionTitle, isZipping && { color: '#047857' }]}>
+              {isZipping ? `Hazırlanıyor (%${zipPercent})` : 'ZIP İndir'}
+            </Text>
+            <Text style={styles.actionDesc}>
+              {isZipping
+                ? zipProgressText || 'Arşiv sıkıştırılıyor...'
+                : `Tüm ${photos.length} fotoğrafı tek tıkla cihazına indir.`}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -676,6 +791,23 @@ export default function HostPanelScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Floating ZIP Progress Banner */}
+      {isZipping && (
+        <View style={styles.zipFloatingBanner}>
+          <View style={styles.zipFloatingTop}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <ActivityIndicator size="small" color="#10B981" />
+              <Text style={styles.zipFloatingTitle}>ZIP Arşivi Paketleniyor...</Text>
+            </View>
+            <Text style={styles.zipFloatingPercent}>%{zipPercent}</Text>
+          </View>
+          <View style={styles.zipProgressBarTrack}>
+            <View style={[styles.zipProgressBarFill, { width: `${zipPercent}%` }]} />
+          </View>
+          <Text style={styles.zipFloatingSub}>{zipProgressText}</Text>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -1363,5 +1495,53 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#B45309',
+  },
+  zipFloatingBanner: {
+    position: 'absolute',
+    bottom: 24,
+    left: 20,
+    right: 20,
+    backgroundColor: '#1E293B',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  zipFloatingTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  zipFloatingTitle: {
+    color: '#F8FAFC',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  zipFloatingPercent: {
+    color: '#10B981',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  zipProgressBarTrack: {
+    height: 6,
+    backgroundColor: '#334155',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  zipProgressBarFill: {
+    height: '100%',
+    backgroundColor: '#10B981',
+    borderRadius: 3,
+  },
+  zipFloatingSub: {
+    color: '#94A3B8',
+    fontSize: 12,
   },
 });
