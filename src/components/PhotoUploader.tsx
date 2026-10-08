@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -33,12 +33,14 @@ interface PhotoUploaderProps {
   slug: string;
   albums: AlbumModel[];
   onUploadSuccess?: () => void;
+  defaultOriginalQuality?: boolean;
 }
 
 export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
   slug,
   albums,
   onUploadSuccess,
+  defaultOriginalQuality,
 }) => {
   const router = useRouter();
   const [selectedImages, setSelectedImages] = useState<SelectedImageItem[]>([]);
@@ -50,7 +52,22 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
     albums.find((a) => a.slug !== 'all')?.id ||
     'alb-genel'
   );
-  const [isCompressionEnabled, setIsCompressionEnabled] = useState(true);
+  const [isOriginalQuality, setIsOriginalQuality] = useState<boolean>(
+    defaultOriginalQuality ?? false
+  );
+
+  useEffect(() => {
+    if (defaultOriginalQuality !== undefined) {
+      setIsOriginalQuality(defaultOriginalQuality);
+    } else if (slug) {
+      eventService.getEvent(slug).then((ev) => {
+        if (ev) {
+          const isOrig = Boolean((ev.settings as any)?.originalQuality || ev.settings.enableCompression === false);
+          setIsOriginalQuality(isOrig);
+        }
+      });
+    }
+  }, [defaultOriginalQuality, slug]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadSuccessInfo, setUploadSuccessInfo] = useState<{
@@ -203,8 +220,8 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
         let finalUri = item.uri;
         let finalSize = item.originalSize;
 
-        // Compress ONLY photos (skip video files to preserve video codec & audio)
-        if (item.mediaType !== 'video' && isCompressionEnabled) {
+        // Compress ONLY photos if NOT in original quality mode (skip video files to preserve video codec & audio)
+        if (item.mediaType !== 'video' && !isOriginalQuality) {
           try {
             const compResult = await compressImage(item.uri, {
               maxWidth: 1920,
@@ -384,43 +401,47 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
         </View>
       )}
 
-      {/* Fast Compression Toggle */}
+      {/* Original Quality Upload Toggle */}
       <View style={styles.switchRow}>
         <View style={{ flex: 1, paddingRight: 10 }}>
           <View style={styles.switchTitleRow}>
             <Ionicons
-              name={isCompressionEnabled ? "flash" : "image"}
+              name={isOriginalQuality ? "sparkles" : "flash"}
               size={16}
-              color={isCompressionEnabled ? "#EAB308" : "#F59E0B"}
+              color={isOriginalQuality ? "#C5A059" : "#EAB308"}
             />
             <Text style={styles.switchLabel}>
-              {isCompressionEnabled ? 'Akıllı Hızlı Sıkıştırma (Önerilen)' : 'Orijinal Kalitede Yükle'}
+              {isOriginalQuality ? 'Orijinal Kalitede Yükle (Aktif)' : 'Akıllı Hızlı Yükleme (Optimize)'}
             </Text>
-            {!isCompressionEnabled && (
+            {isOriginalQuality ? (
+              <View style={styles.originalBadge}>
+                <Text style={styles.originalBadgeText}>Orijinal</Text>
+              </View>
+            ) : (
               <View style={styles.warningBadge}>
-                <Text style={styles.warningBadgeText}>Kota Hızlı Dolar</Text>
+                <Text style={styles.warningBadgeText}>Hızlı</Text>
               </View>
             )}
           </View>
           <Text style={styles.switchDesc}>
-            {isCompressionEnabled
-              ? 'Fotoğrafları kalitesini bozmadan ~%80 küçültür, internet harcamaz ve anında yüklenir.'
-              : 'Orijinal ham dosya boyutuyla (3-8 MB) yüklenir.'}
+            {isOriginalQuality
+              ? 'Fotoğraflar sıkıştırılmadan cihazınızdaki orijinal tam çözünürlüğü ve ham boyutuyla (3-8 MB) yüklenir.'
+              : 'Fotoğraflar kalite kaybı olmadan optimize edilerek hızlı yüklenir ve daha az internet harcar.'}
           </Text>
         </View>
         <Switch
-          value={isCompressionEnabled}
-          onValueChange={setIsCompressionEnabled}
-          trackColor={{ false: '#F59E0B', true: '#C5A059' }}
+          value={isOriginalQuality}
+          onValueChange={setIsOriginalQuality}
+          trackColor={{ false: '#D1D5DB', true: '#C5A059' }}
           thumbColor="#FFFFFF"
         />
       </View>
 
-      {!isCompressionEnabled && (
+      {isOriginalQuality && (
         <View style={styles.quotaWarningBox}>
-          <Ionicons name="warning" size={16} color="#D97706" />
+          <Ionicons name="sparkles" size={16} color="#8A6D3B" />
           <Text style={styles.quotaWarningText}>
-            Uyarı: Orijinal boyutta yüklerseniz etkinlik kotası daha çabuk dolar ve yükleme internet hızınıza bağlı olarak daha uzun sürebilir.
+            Orijinal kalite modu aktif: Fotoğraflar cihazdaki en yüksek çözünürlükle yüklenir. İnternet hızınıza bağlı olarak yükleme biraz daha uzun sürebilir.
           </Text>
         </View>
       )}
@@ -688,6 +709,19 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
     color: '#D97706',
+  },
+  originalBadge: {
+    backgroundColor: '#FAF5EA',
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+  },
+  originalBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#8A6D3B',
   },
   quotaWarningBox: {
     flexDirection: 'row',

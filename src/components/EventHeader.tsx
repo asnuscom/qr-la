@@ -3,7 +3,7 @@ import { EventModel, UserModel } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, Image, Linking, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Linking, Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface EventHeaderProps {
   event: EventModel;
@@ -13,6 +13,7 @@ interface EventHeaderProps {
 export const EventHeader: React.FC<EventHeaderProps> = ({ event, activeTab = 'home' }) => {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<UserModel | null>(authService.getState().user);
+  const [isInvitationModalOpen, setIsInvitationModalOpen] = useState(false);
   const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number }>({
     days: 0,
     hours: 0,
@@ -69,18 +70,24 @@ export const EventHeader: React.FC<EventHeaderProps> = ({ event, activeTab = 'ho
   const openInvitation = () => {
     if (event.invitationUrl && event.invitationUrl.trim()) {
       let url = event.invitationUrl.trim();
-      if (!url.startsWith('http://') && !url.startsWith('https://')) {
-        url = `https://${url}`;
-      }
-      if (Platform.OS === 'web') {
-        window.open(url, '_blank', 'noopener,noreferrer');
+      const lower = url.toLowerCase();
+      const isPdf = lower.includes('.pdf');
+      if (isPdf) {
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+          url = `https://${url}`;
+        }
+        if (Platform.OS === 'web') {
+          window.open(url, '_blank', 'noopener,noreferrer');
+        } else {
+          Linking.openURL(url);
+        }
       } else {
-        Linking.openURL(url);
+        setIsInvitationModalOpen(true);
       }
     } else {
       Alert.alert(
         'Dijital Davetiye 💌',
-        'Bu etkinlik için henüz bir dijital davetiye bağlantısı eklenmemiş.'
+        'Bu etkinlik için henüz bir dijital davetiye yüklenmemiş veya bağlantı eklenmemiş.'
       );
     }
   };
@@ -254,6 +261,71 @@ export const EventHeader: React.FC<EventHeaderProps> = ({ event, activeTab = 'ho
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Digital Invitation Lightbox Modal */}
+      <Modal
+        visible={isInvitationModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsInvitationModalOpen(false)}
+      >
+        <View style={styles.invitationModalOverlay}>
+          <View style={styles.invitationModalContent}>
+            <View style={styles.invitationModalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="mail-open" size={20} color="#C5A059" />
+                <Text style={styles.invitationModalTitle}>Dijital Davetiye</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.invitationModalCloseBtn}
+                onPress={() => setIsInvitationModalOpen(false)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="close" size={22} color="#1A1817" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.invitationModalBody}>
+              {Boolean(event.invitationUrl) && (
+                <Image
+                  source={{ uri: event.invitationUrl }}
+                  style={styles.invitationModalImage}
+                  resizeMode="contain"
+                />
+              )}
+            </View>
+
+            <View style={styles.invitationModalFooter}>
+              <TouchableOpacity
+                style={styles.invitationModalDownloadBtn}
+                onPress={() => {
+                  let url = (event.invitationUrl || '').trim();
+                  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                    url = `https://${url}`;
+                  }
+                  if (Platform.OS === 'web') {
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                  } else {
+                    Linking.openURL(url);
+                  }
+                }}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="open-outline" size={16} color="#FFF" />
+                <Text style={styles.invitationModalDownloadBtnText}>Tam Boyut / İndir</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.invitationModalDismissBtn}
+                onPress={() => setIsInvitationModalOpen(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.invitationModalDismissBtnText}>Kapat</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -551,5 +623,98 @@ const styles = StyleSheet.create({
   },
   navTextActive: {
     color: '#FFF',
+  },
+  invitationModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  invitationModalContent: {
+    width: '100%',
+    maxWidth: 480,
+    maxHeight: '90%',
+    backgroundColor: '#FAF7F2',
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  invitationModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EFE7DA',
+    backgroundColor: '#FFF',
+  },
+  invitationModalTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1A1817',
+  },
+  invitationModalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FAF7F2',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  invitationModalBody: {
+    padding: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 260,
+    maxHeight: 500,
+    backgroundColor: '#1E293B',
+  },
+  invitationModalImage: {
+    width: '100%',
+    height: 420,
+  },
+  invitationModalFooter: {
+    flexDirection: 'row',
+    gap: 10,
+    padding: 14,
+    backgroundColor: '#FFF',
+    borderTopWidth: 1,
+    borderTopColor: '#EFE7DA',
+  },
+  invitationModalDownloadBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#C5A059',
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  invitationModalDownloadBtnText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  invitationModalDismissBtn: {
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 12,
+    backgroundColor: '#FAF7F2',
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  invitationModalDismissBtnText: {
+    color: '#6B7280',
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

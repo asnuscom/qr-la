@@ -77,6 +77,9 @@ export default function UploadScreen() {
         <PhotoUploader
           slug={slug}
           albums={albums}
+          defaultOriginalQuality={Boolean(
+            (event.settings as any)?.originalQuality || event.settings.enableCompression === false
+          )}
         />
       </ScrollView>
     </SafeAreaView>

@@ -6,6 +6,7 @@ import { convertHeicToJpegIfNeeded } from '@/services/compression';
 import { DatePickerModal, TimePickerModal } from '@/components/DateTimePickerModal';
 import { AlbumModel, EventModel, EventType, ScheduleItem } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
@@ -14,6 +15,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -173,6 +175,8 @@ export default function EventFormScreen() {
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
   const [invitationUrl, setInvitationUrl] = useState('');
+  const [isUploadingInvitation, setIsUploadingInvitation] = useState(false);
+  const [showManualInvitationUrl, setShowManualInvitationUrl] = useState(false);
   const [coverPhotoUrl, setCoverPhotoUrl] = useState(COVER_PRESETS[0].url);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
   const [primaryColor, setPrimaryColor] = useState('#C5A059');
@@ -459,6 +463,103 @@ export default function EventFormScreen() {
       Alert.alert('Hata', 'Kapak fotoğrafı yüklenirken bir sorun oluştu: ' + (err?.message || 'Bilinmeyen hata'));
     } finally {
       setIsUploadingCover(false);
+    }
+  };
+
+  const handleUploadInvitationImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: false,
+        quality: 0.9,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+
+      const asset = result.assets[0];
+      setIsUploadingInvitation(true);
+
+      const conv = await convertHeicToJpegIfNeeded(asset.uri, asset.fileName || asset.mimeType);
+      const safeUri = conv.uri;
+      const safeBlob = conv.blob;
+
+      if (isRealFirebaseConfigured && storage) {
+        let blobToUpload = safeBlob;
+        if (!blobToUpload) {
+          const response = await fetch(safeUri);
+          blobToUpload = await response.blob();
+        }
+        const fileExt = 'jpg';
+        const invRef = ref(storage, `events/${slug || currentSlug}/invitations/davetiye-${Date.now()}.${fileExt}`);
+        await uploadBytes(invRef, blobToUpload, { contentType: 'image/jpeg' });
+        const downloadUrl = await getDownloadURL(invRef);
+        setInvitationUrl(downloadUrl);
+        Alert.alert('Harika! 💌', 'Davetiye görseli başarıyla yüklendi.');
+      } else {
+        setInvitationUrl(safeUri);
+        Alert.alert('Bilgi', 'Davetiye görseli seçildi.');
+      }
+    } catch (err: any) {
+      console.error('Invitation image upload error:', err);
+      Alert.alert('Hata', 'Davetiye yüklenirken bir sorun oluştu: ' + (err?.message || 'Bilinmeyen hata'));
+    } finally {
+      setIsUploadingInvitation(false);
+    }
+  };
+
+  const handleUploadInvitationDoc = async () => {
+    try {
+      setIsUploadingInvitation(true);
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'image/*'],
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        setIsUploadingInvitation(false);
+        return;
+      }
+
+      const asset = result.assets[0];
+      const fileName = asset.name || '';
+      const mimeType = asset.mimeType || '';
+      const isPdf =
+        mimeType.includes('pdf') ||
+        fileName.toLowerCase().endsWith('.pdf') ||
+        asset.uri.toLowerCase().includes('.pdf');
+
+      let uploadUri = asset.uri;
+      let uploadBlob: Blob | null = null;
+      let contentType = isPdf ? 'application/pdf' : 'image/jpeg';
+      let fileExt = isPdf ? 'pdf' : 'jpg';
+
+      if (!isPdf) {
+        const conv = await convertHeicToJpegIfNeeded(asset.uri, fileName || mimeType);
+        uploadUri = conv.uri;
+        uploadBlob = conv.blob || null;
+      }
+
+      if (isRealFirebaseConfigured && storage) {
+        if (!uploadBlob) {
+          const response = await fetch(uploadUri);
+          uploadBlob = await response.blob();
+        }
+        const invRef = ref(storage, `events/${slug || currentSlug}/invitations/davetiye-${Date.now()}.${fileExt}`);
+        await uploadBytes(invRef, uploadBlob, { contentType });
+        const downloadUrl = await getDownloadURL(invRef);
+        setInvitationUrl(downloadUrl);
+        Alert.alert('Harika! 💌', isPdf ? 'PDF davetiyeniz başarıyla yüklendi.' : 'Davetiye görseli başarıyla yüklendi.');
+      } else {
+        setInvitationUrl(uploadUri);
+        Alert.alert('Bilgi', 'Davetiye dosyası seçildi.');
+      }
+    } catch (err: any) {
+      console.error('Invitation doc upload error:', err);
+      Alert.alert('Hata', 'Davetiye dosyası yüklenirken bir sorun oluştu: ' + (err?.message || 'Bilinmeyen hata'));
+    } finally {
+      setIsUploadingInvitation(false);
     }
   };
 
@@ -971,15 +1072,173 @@ export default function EventFormScreen() {
             })}
           </View>
 
-          {/* Digital Invitation Link */}
-          <View style={[styles.inputGroup, { marginTop: 8 }]}>
-            <Text style={styles.label}>Dijital Davetiye Görseli / PDF Bağlantısı (İsteğe Bağlı)</Text>
-            <TextInput
-              style={styles.input}
-              value={invitationUrl}
-              onChangeText={setInvitationUrl}
-              placeholder="https://..."
-            />
+          {/* Digital Invitation Section (Direct Upload & Link) */}
+          <View style={styles.invitationSectionContainer}>
+            <View style={styles.invitationHeaderRow}>
+              <View style={styles.invitationHeaderLeft}>
+                <View style={styles.invitationIconCircle}>
+                  <Ionicons name="mail-open-outline" size={20} color="#C5A059" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.invitationTitle}>Dijital Davetiye (Fotoğraf / PDF / Link)</Text>
+                  <Text style={styles.invitationSubtitle}>
+                    Misafirlerin etkinlik sayfasında görüntüleyebileceği dijital davetiye.
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Current Uploaded Invitation Preview */}
+            {Boolean(invitationUrl && invitationUrl.trim()) && (
+              <View style={styles.invitationPreviewCard}>
+                {invitationUrl.toLowerCase().includes('.pdf') ? (
+                  <View style={styles.invitationPdfRow}>
+                    <View style={styles.pdfIconBadge}>
+                      <Ionicons name="document-text" size={28} color="#DC2626" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <View style={styles.invitationBadgeTag}>
+                        <Text style={styles.invitationBadgeTagText}>YÜKLÜ PDF DAVETİYE</Text>
+                      </View>
+                      <Text style={styles.invitationFileName} numberOfLines={1}>
+                        {invitationUrl.split('/').pop()?.split('?')[0] || 'Dijital Davetiye.pdf'}
+                      </Text>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={styles.invitationImageRow}>
+                    <Image source={{ uri: invitationUrl }} style={styles.invitationThumbImage} />
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                      <View style={styles.invitationBadgeTag}>
+                        <Text style={styles.invitationBadgeTagText}>YÜKLÜ GÖRSEL DAVETİYE</Text>
+                      </View>
+                      <Text style={styles.invitationFileName} numberOfLines={1}>
+                        {invitationUrl.split('/').pop()?.split('?')[0] || 'Davetiye Görseli'}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Actions: Open & Remove */}
+                <View style={styles.invitationActionsRow}>
+                  <TouchableOpacity
+                    style={styles.invitationActionBtn}
+                    onPress={() => {
+                      const url = invitationUrl.startsWith('http') ? invitationUrl : `https://${invitationUrl}`;
+                      if (Platform.OS === 'web') {
+                        window.open(url, '_blank');
+                      } else {
+                        Linking.openURL(url);
+                      }
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="eye-outline" size={15} color="#1A1817" />
+                    <Text style={styles.invitationActionBtnText}>Önizle / Aç</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.invitationActionBtn, styles.invitationRemoveBtn]}
+                    onPress={() => {
+                      Alert.alert(
+                        'Davetiyeyi Kaldır',
+                        'Yüklü dijital davetiyeyi kaldırmak istediğinize emin misiniz?',
+                        [
+                          { text: 'Vazgeç', style: 'cancel' },
+                          {
+                            text: 'Kaldır',
+                            style: 'destructive',
+                            onPress: () => setInvitationUrl(''),
+                          },
+                        ]
+                      );
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="trash-outline" size={15} color="#EF4444" />
+                    <Text style={[styles.invitationActionBtnText, { color: '#EF4444' }]}>Kaldır</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* Upload Buttons */}
+            <View style={styles.invitationUploadButtonsRow}>
+              <TouchableOpacity
+                style={[styles.invitationUploadBtn, isUploadingInvitation && styles.uploadBtnDisabled]}
+                onPress={handleUploadInvitationImage}
+                disabled={isUploadingInvitation}
+                activeOpacity={0.85}
+              >
+                {isUploadingInvitation ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <>
+                    <Ionicons name="images" size={16} color="#FFF" />
+                    <Text style={styles.invitationUploadBtnText}>
+                      {invitationUrl ? 'Görseli Değiştir' : 'Fotoğraf Yükle'}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.invitationUploadBtn,
+                  styles.invitationUploadDocBtn,
+                  isUploadingInvitation && styles.uploadBtnDisabled,
+                ]}
+                onPress={handleUploadInvitationDoc}
+                disabled={isUploadingInvitation}
+                activeOpacity={0.85}
+              >
+                {isUploadingInvitation ? (
+                  <ActivityIndicator size="small" color="#8A6D3B" />
+                ) : (
+                  <>
+                    <Ionicons name="document-attach" size={16} color="#8A6D3B" />
+                    <Text style={styles.invitationUploadDocBtnText}>
+                      {invitationUrl ? 'PDF Değiştir' : 'PDF / Dosya Yükle'}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* Toggle Manual URL Link */}
+            <TouchableOpacity
+              style={styles.manualLinkToggle}
+              onPress={() => setShowManualInvitationUrl(!showManualInvitationUrl)}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={showManualInvitationUrl ? 'chevron-up' : 'link-outline'}
+                size={14}
+                color="#8A6D3B"
+              />
+              <Text style={styles.manualLinkToggleText}>
+                {showManualInvitationUrl
+                  ? 'Harici Link Alanını Gizle'
+                  : 'Veya Harici Web / LCV Bağlantısı Girin (URL)'}
+              </Text>
+            </TouchableOpacity>
+
+            {showManualInvitationUrl && (
+              <View style={[styles.inputGroup, { marginTop: 6, marginBottom: 0 }]}>
+                <Text style={styles.label}>Harici Davetiye Web Linki</Text>
+                <TextInput
+                  style={styles.input}
+                  value={invitationUrl}
+                  onChangeText={setInvitationUrl}
+                  placeholder="https://orneksite.com/davetiye"
+                  autoCapitalize="none"
+                  keyboardType="url"
+                />
+                <Text style={styles.fieldHint}>
+                  Canva linki, dijital LCV formu veya harici davetiye web sitenizi buraya yapıştırabilirsiniz.
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -2420,5 +2679,188 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#8A6D3B',
+  },
+  invitationSectionContainer: {
+    marginTop: 14,
+    backgroundColor: '#FAF7F2',
+    borderWidth: 1.5,
+    borderColor: '#EFE7DA',
+    borderRadius: 16,
+    padding: 16,
+    gap: 12,
+  },
+  invitationHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  invitationHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  invitationIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#FAF5EA',
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  invitationTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#1A1817',
+    marginBottom: 2,
+  },
+  invitationSubtitle: {
+    fontSize: 11,
+    color: '#6B7280',
+    lineHeight: 15,
+  },
+  invitationPreviewCard: {
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    padding: 12,
+    gap: 10,
+  },
+  invitationImageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  invitationThumbImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  invitationPdfRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  pdfIconBadge: {
+    width: 50,
+    height: 50,
+    borderRadius: 10,
+    backgroundColor: '#FEE2E2',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  invitationBadgeTag: {
+    backgroundColor: '#FAF5EA',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+  },
+  invitationBadgeTagText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#8A6D3B',
+    letterSpacing: 0.5,
+  },
+  invitationFileName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1A1817',
+  },
+  invitationActionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    paddingTop: 8,
+  },
+  invitationActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#FAF7F2',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  invitationRemoveBtn: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FEE2E2',
+  },
+  invitationActionBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#374151',
+  },
+  invitationUploadButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  invitationUploadBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#C5A059',
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    shadowColor: '#C5A059',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  invitationUploadDocBtn: {
+    backgroundColor: '#FAF5EA',
+    borderWidth: 1.5,
+    borderColor: '#EFE7DA',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  invitationUploadBtnText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  invitationUploadDocBtnText: {
+    color: '#8A6D3B',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  uploadBtnDisabled: {
+    opacity: 0.6,
+  },
+  manualLinkToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 4,
+  },
+  manualLinkToggleText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#8A6D3B',
+    textDecorationLine: 'underline',
+  },
+  fieldHint: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    marginTop: 4,
+    lineHeight: 14,
   },
 });
