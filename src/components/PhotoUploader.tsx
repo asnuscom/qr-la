@@ -15,7 +15,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { AlbumModel } from '@/types';
-import { compressImage, formatBytes } from '@/services/compression';
+import { compressImage, formatBytes, convertHeicToJpegIfNeeded } from '@/services/compression';
 import { eventService } from '@/services/eventService';
 
 interface SelectedImageItem {
@@ -57,6 +57,8 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
     count: number;
     albumName: string;
   } | null>(null);
+  const [isConvertingHeic, setIsConvertingHeic] = useState(false);
+  const [convertingStatus, setConvertingStatus] = useState('');
 
   // Max limits: 100 files, 500 MB per video
   const MAX_FILE_COUNT = 100;
@@ -91,10 +93,12 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
           countExceeded = true;
         }
 
+        setIsConvertingHeic(true);
         const validAssets: SelectedImageItem[] = [];
         let hasOversizedVideo = false;
 
-        for (const asset of assetsToProcess) {
+        for (let i = 0; i < assetsToProcess.length; i++) {
+          const asset = assetsToProcess[i];
           const isVideo =
             asset.type === 'video' ||
             (Boolean(asset.mimeType) && asset.mimeType!.startsWith('video/')) ||
@@ -102,19 +106,53 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
             asset.uri.endsWith('.mov') ||
             asset.uri.endsWith('.webm');
 
-          if (isVideo && asset.fileSize && asset.fileSize > MAX_VIDEO_SIZE_BYTES) {
-            hasOversizedVideo = true;
-            continue;
-          }
+          if (isVideo) {
+            if (asset.fileSize && asset.fileSize > MAX_VIDEO_SIZE_BYTES) {
+              hasOversizedVideo = true;
+              continue;
+            }
 
-          validAssets.push({
-            uri: asset.uri,
-            originalSize: asset.fileSize || (isVideo ? 12000000 : 3500000),
-            mediaType: isVideo ? 'video' : 'photo',
-            duration: asset.duration ? Math.round(asset.duration / 1000) : undefined,
-            mimeType: asset.mimeType || (isVideo ? 'video/mp4' : 'image/jpeg'),
-          });
+            validAssets.push({
+              uri: asset.uri,
+              originalSize: asset.fileSize || 12000000,
+              mediaType: 'video',
+              duration: asset.duration ? Math.round(asset.duration / 1000) : undefined,
+              mimeType: asset.mimeType || 'video/mp4',
+            });
+          } else {
+            // Photo - check and convert iPhone HEIC/HEIF images to JPEG for universal display
+            let photoUri = asset.uri;
+            let photoSize = asset.fileSize || 3500000;
+            let photoMime = asset.mimeType || 'image/jpeg';
+
+            try {
+              if (assetsToProcess.length > 1) {
+                setConvertingStatus(`Fotoğraflar hazırlanıyor (${i + 1}/${assetsToProcess.length})...`);
+              }
+              const conv = await convertHeicToJpegIfNeeded(
+                asset.uri,
+                asset.fileName || asset.mimeType
+              );
+              if (conv.wasConverted) {
+                photoUri = conv.uri;
+                photoSize = conv.blob ? conv.blob.size : photoSize;
+                photoMime = 'image/jpeg';
+              }
+            } catch (convErr) {
+              console.warn('HEIC preview conversion warning:', convErr);
+            }
+
+            validAssets.push({
+              uri: photoUri,
+              originalSize: photoSize,
+              mediaType: 'photo',
+              mimeType: photoMime,
+            });
+          }
         }
+
+        setIsConvertingHeic(false);
+        setConvertingStatus('');
 
         if (countExceeded) {
           Alert.alert(
@@ -133,6 +171,8 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
         setSelectedImages((prev) => [...prev, ...validAssets]);
       }
     } catch (err) {
+      setIsConvertingHeic(false);
+      setConvertingStatus('');
       console.error('Media pick error:', err);
       Alert.alert('Hata', 'Fotoğraf veya video seçilirken bir sorun oluştu.');
     }
@@ -286,7 +326,7 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
         style={styles.dropzone}
         onPress={pickImages}
         activeOpacity={0.8}
-        disabled={isUploading}
+        disabled={isUploading || isConvertingHeic}
       >
         <View style={styles.iconCircle}>
           <Ionicons name="images" size={32} color="#C5A059" />
@@ -294,6 +334,16 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
         <Text style={styles.dropzoneTitle}>Fotoğraf & Video Seç (Maks. 100)</Text>
         <Text style={styles.dropzoneHint}>Tek seferde 100 adede kadar medya ekleyebilirsin (video maks. 500 MB)</Text>
       </TouchableOpacity>
+
+      {/* Converting HEIC Banner */}
+      {isConvertingHeic && (
+        <View style={styles.convertingBanner}>
+          <ActivityIndicator size="small" color="#C5A059" />
+          <Text style={styles.convertingBannerText}>
+            {convertingStatus || 'iPhone (HEIF/HEIC) fotoğrafları optimize ediliyor...'}
+          </Text>
+        </View>
+      )}
 
       {/* Selected Photos & Videos Preview Scroll */}
       {selectedImages.length > 0 && (
@@ -855,5 +905,22 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     marginTop: 4,
+  },
+  convertingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#FFFDF9',
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    marginTop: 10,
+  },
+  convertingBannerText: {
+    fontSize: 13,
+    color: '#8A6D3B',
+    fontWeight: '600',
   },
 });

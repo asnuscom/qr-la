@@ -3,11 +3,11 @@ import { EventModel, UserModel } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Image, Linking, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Linking, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface EventHeaderProps {
   event: EventModel;
-  activeTab?: 'home' | 'yukle' | 'galeri' | 'ani-defteri' | 'canli';
+  activeTab?: 'home' | 'davetiye' | 'yukle' | 'galeri' | 'ani-defteri' | 'canli';
 }
 
 export const EventHeader: React.FC<EventHeaderProps> = ({ event, activeTab = 'home' }) => {
@@ -67,12 +67,21 @@ export const EventHeader: React.FC<EventHeaderProps> = ({ event, activeTab = 'ho
   };
 
   const openInvitation = () => {
-    if (event.invitationUrl) {
-      if (Platform.OS === 'web') {
-        window.open(event.invitationUrl, '_blank');
-      } else {
-        Linking.openURL(event.invitationUrl);
+    if (event.invitationUrl && event.invitationUrl.trim()) {
+      let url = event.invitationUrl.trim();
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = `https://${url}`;
       }
+      if (Platform.OS === 'web') {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      } else {
+        Linking.openURL(url);
+      }
+    } else {
+      Alert.alert(
+        'Dijital Davetiye 💌',
+        'Bu etkinlik için henüz bir dijital davetiye bağlantısı eklenmemiş.'
+      );
     }
   };
 
@@ -181,16 +190,6 @@ export const EventHeader: React.FC<EventHeaderProps> = ({ event, activeTab = 'ho
             <Ionicons name="location-outline" size={16} color="#C5A059" />
             <Text style={[styles.metaText, styles.mapLink]}>{event.venue?.name || 'Düğün Mekanı'}</Text>
           </TouchableOpacity>
-          {event.invitationUrl ? (
-            <TouchableOpacity
-              style={[styles.metaItem, { backgroundColor: '#FAF5EA', borderWidth: 1, borderColor: '#EFE7DA' }]}
-              onPress={openInvitation}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="mail-open-outline" size={15} color="#8A6D3B" />
-              <Text style={[styles.metaText, { color: '#8A6D3B', fontWeight: '700' }]}>Dijital Davetiye</Text>
-            </TouchableOpacity>
-          ) : null}
         </View>
 
         {/* Countdown Box */}
@@ -222,11 +221,12 @@ export const EventHeader: React.FC<EventHeaderProps> = ({ event, activeTab = 'ho
         {/* Quick Nav Bar */}
         <View style={styles.quickNav}>
           <TouchableOpacity
-            style={[styles.navButton, activeTab === 'home' && styles.navButtonActive]}
-            onPress={() => router.push(`/${event.slug}` as any)}
+            style={[styles.navButton, activeTab === 'davetiye' && styles.navButtonActive]}
+            onPress={openInvitation}
+            activeOpacity={0.8}
           >
-            <Ionicons name="sparkles" size={18} color={activeTab === 'home' ? '#FFF' : '#C5A059'} />
-            <Text style={[styles.navText, activeTab === 'home' && styles.navTextActive]}>Akış & Bilgi</Text>
+            <Ionicons name="mail-open-outline" size={18} color={activeTab === 'davetiye' ? '#FFF' : '#C5A059'} />
+            <Text style={[styles.navText, activeTab === 'davetiye' && styles.navTextActive]}>Dijital Davetiye</Text>
           </TouchableOpacity>
 
           <TouchableOpacity

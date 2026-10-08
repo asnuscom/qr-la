@@ -447,15 +447,20 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
   const [qrColor, setQrColor] = useState<string>('#1A1817');
   const [qrIcon, setQrIcon] = useState<QRIconId>('camera');
 
-  // Custom texts
-  const initialNames = useMemo(() => {
-    if (event.hosts.brideOrPrimary && event.hosts.groomOrSecondary) {
-      return `${event.hosts.brideOrPrimary} & ${event.hosts.groomOrSecondary}`;
-    }
-    return event.title || 'Şule & Samet';
-  }, [event]);
+  // Custom bride and groom names
+  const [brideName, setBrideName] = useState(
+    event.hosts?.brideOrPrimary || 'Şule'
+  );
+  const [groomName, setGroomName] = useState(
+    event.hosts?.groomOrSecondary || 'Samet'
+  );
 
-  const [customTitle, setCustomTitle] = useState(initialNames);
+  const customTitle = useMemo(() => {
+    const b = brideName.trim();
+    const g = groomName.trim();
+    if (b && g) return `${b} & ${g}`;
+    return b || g || event.title || 'Şule & Samet';
+  }, [brideName, groomName, event.title]);
   const [customDateOrSub, setCustomDateOrSub] = useState(
     new Date(event.eventDate).toLocaleDateString('tr-TR', {
       day: 'numeric',
@@ -699,6 +704,22 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
       `
         : '';
 
+      const buildCoupleNamesHtml = (fontSize = '24px', isScript = false, maxAmpWidth = '140px') => `
+        <div class="couple-names-block">
+          <div class="couple-name-line bride-line" style="color: ${theme.namesColor}; font-family: ${isScript ? "'Great Vibes', cursive" : selectedFont.family}; font-size: ${fontSize};">
+            ${brideName || 'Gelin'}
+          </div>
+          <div class="ampersand-divider" style="max-width: ${maxAmpWidth};">
+            <span class="amp-line" style="background: ${theme.accentColor}55;"></span>
+            <span class="ampersand-char" style="color: ${theme.accentColor};">&</span>
+            <span class="amp-line" style="background: ${theme.accentColor}55;"></span>
+          </div>
+          <div class="couple-name-line groom-line" style="color: ${theme.namesColor}; font-family: ${isScript ? "'Great Vibes', cursive" : selectedFont.family}; font-size: ${fontSize};">
+            ${groomName || 'Damat'}
+          </div>
+        </div>
+      `;
+
       // ARCHETYPE 1: POLAROID PHOTO
       if (cardDesign === 'polaroid') {
         return `
@@ -715,11 +736,9 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
                 📸 ${isBackSide ? 'Anı Defterimize Not Bırakın' : actionTitle}
               </div>
             </div>
-            <div class="polaroid-caption" style="margin-top: 14px; text-align: center;">
-              <h1 class="couple-title" style="font-family: 'Great Vibes', cursive; font-size: 34px; color: ${theme.namesColor}; margin: 0 0 2px 0;">
-                ${customTitle}
-              </h1>
-              <div class="date-tag" style="color: #6B7280; font-size: 11px;">
+            <div class="polaroid-caption" style="margin-top: 10px; text-align: center;">
+              ${buildCoupleNamesHtml('28px', true, '130px')}
+              <div class="date-tag" style="color: #6B7280; font-size: 10px; margin-top: 2px;">
                 ${customDateOrSub} • ${footerText}
               </div>
             </div>
@@ -743,9 +762,7 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
                 </div>
               </div>
 
-              <h1 class="couple-title" style="color: ${theme.namesColor}; font-family: ${selectedFont.family}; font-size: 24px; margin-top: 6px;">
-                ${customTitle}
-              </h1>
+              ${buildCoupleNamesHtml('20px', false, '120px')}
 
               <div class="qr-wrapper" style="border-color: ${theme.border}; background: ${isDark ? '#141312' : '#FFFFFF'};">
                 <img src="${base64Qr}" alt="QR Kod" class="qr-img" style="width: 140px; height: 140px;" />
@@ -773,9 +790,7 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
             ${overlayHtml}
             ${frameSvgHtml}
             <div class="inner-frame" style="border-color: ${theme.innerBorder}; padding: 14px;">
-              <h1 class="couple-title" style="color: ${theme.namesColor}; font-family: ${selectedFont.family}; font-size: 22px; margin-bottom: 2px;">
-                ${customTitle}
-              </h1>
+              ${buildCoupleNamesHtml('19px', false, '100px')}
               <div class="date-tag" style="color: ${isDark ? '#A1A1AA' : '#6B7280'}; font-size: 10px; margin-bottom: 8px;">
                 ${badgeDisplay} • ${customDateOrSub}
               </div>
@@ -827,7 +842,7 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
                 ${badgeDisplay}
               </div>
               <div style="font-family: 'Great Vibes', cursive; font-size: 26px; color: ${theme.namesColor}; margin-top: 4px;">
-                Sevgiyle, ${customTitle}
+                Sevgiyle, ${brideName || 'Gelin'} & ${groomName || 'Damat'}
               </div>
             </div>
           </div>
@@ -848,9 +863,7 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
               <span class="sparkle" style="color: ${theme.accentColor}">✦</span>
             </div>
 
-            <h1 class="couple-title" style="color: ${theme.namesColor}; font-family: ${selectedFont.family};">
-              ${customTitle}
-            </h1>
+            ${buildCoupleNamesHtml('25px', false, '130px')}
 
             <div class="badge" style="background: ${theme.badgeBg}; border-color: ${theme.badgeBorder}; color: ${theme.badgeTextColor};">
               ${badgeDisplay}
@@ -1024,6 +1037,43 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
             letter-spacing: 1.2px;
             text-transform: uppercase;
             font-family: 'Montserrat', sans-serif;
+          }
+          .couple-names-block {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 4px 0 6px 0;
+            width: 100%;
+          }
+          .couple-name-line {
+            font-size: 24px;
+            line-height: 1.15;
+            font-weight: 800;
+            letter-spacing: 0.8px;
+            text-align: center;
+            word-break: break-word;
+          }
+          .ampersand-divider {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            max-width: 140px;
+            margin: 2px 0;
+          }
+          .amp-line {
+            flex: 1;
+            height: 1px;
+            opacity: 0.6;
+          }
+          .ampersand-char {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 15px;
+            font-style: italic;
+            font-weight: 700;
+            line-height: 1;
           }
           .couple-title {
             margin: 4px 0 8px 0;
@@ -1313,6 +1363,60 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
       </View>
     );
 
+    const renderCoupleNamesBlock = (fontSize = 24, isScript = false, maxWidth = 230) => {
+      const b = brideName.trim() || 'Gelin';
+      const g = groomName.trim() || 'Damat';
+      const fontFam = Platform.OS === 'web' ? (isScript ? "'Great Vibes', cursive" : selectedFont.family) : undefined;
+      return (
+        <View style={[styles.coupleNamesBlock, { maxWidth }]}>
+          <Text
+            style={[
+              styles.coupleNamePrimary,
+              {
+                color: theme.namesColor,
+                // @ts-ignore
+                fontFamily: fontFam,
+                fontSize,
+              },
+            ]}
+            numberOfLines={1}
+          >
+            {b}
+          </Text>
+          <View style={styles.ampersandWrap}>
+            <View style={[styles.ampersandLine, { backgroundColor: theme.accentColor + '55' }]} />
+            <Text
+              style={[
+                styles.ampersandText,
+                {
+                  color: theme.accentColor,
+                  // @ts-ignore
+                  fontFamily: Platform.OS === 'web' ? "'Playfair Display', Georgia, serif" : undefined,
+                },
+              ]}
+            >
+              &
+            </Text>
+            <View style={[styles.ampersandLine, { backgroundColor: theme.accentColor + '55' }]} />
+          </View>
+          <Text
+            style={[
+              styles.coupleNameSecondary,
+              {
+                color: theme.namesColor,
+                // @ts-ignore
+                fontFamily: fontFam,
+                fontSize,
+              },
+            ]}
+            numberOfLines={1}
+          >
+            {g}
+          </Text>
+        </View>
+      );
+    };
+
     // 1. POLAROID DESIGN
     if (cardDesign === 'polaroid') {
       return (
@@ -1338,21 +1442,8 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
           </View>
 
           <View style={styles.polaroidBottomArea}>
-            <Text
-              style={[
-                styles.coupleNames,
-                {
-                  color: theme.namesColor,
-                  // @ts-ignore
-                  fontFamily: Platform.OS === 'web' ? "'Great Vibes', cursive" : undefined,
-                  fontSize: 34,
-                  marginVertical: 2,
-                },
-              ]}
-            >
-              {customTitle}
-            </Text>
-            <Text style={[styles.dateTag, { color: '#6B7280', fontSize: 10 }]}>
+            {renderCoupleNamesBlock(28, true, 260)}
+            <Text style={[styles.dateTag, { color: '#6B7280', fontSize: 10, marginTop: 2 }]}>
               {customDateOrSub} • {footerText}
             </Text>
           </View>
@@ -1409,20 +1500,7 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
             </Text>
           </View>
 
-          <Text
-            style={[
-              styles.coupleNames,
-              {
-                color: theme.namesColor,
-                // @ts-ignore
-                fontFamily: Platform.OS === 'web' ? selectedFont.family : undefined,
-                fontSize: 22,
-                marginVertical: 4,
-              },
-            ]}
-          >
-            {customTitle}
-          </Text>
+          {renderCoupleNamesBlock(20, false, 220)}
 
           {qrElement}
 
@@ -1473,20 +1551,7 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
             />
           )}
 
-          <Text
-            style={[
-              styles.coupleNames,
-              {
-                color: theme.namesColor,
-                // @ts-ignore
-                fontFamily: Platform.OS === 'web' ? selectedFont.family : undefined,
-                fontSize: 22,
-                marginBottom: 2,
-              },
-            ]}
-          >
-            {customTitle}
-          </Text>
+          {renderCoupleNamesBlock(19, false, 210)}
 
           <Text style={[styles.dateTag, { color: isDark ? '#A1A1AA' : '#6B7280', marginBottom: 8 }]}>
             {badgeContent} • {customDateOrSub}
@@ -1581,12 +1646,12 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
                 color: theme.namesColor,
                 // @ts-ignore
                 fontFamily: Platform.OS === 'web' ? "'Great Vibes', cursive" : undefined,
-                fontSize: 28,
+                fontSize: 26,
                 marginTop: 2,
               },
             ]}
           >
-            Sevgiyle, {customTitle}
+            Sevgiyle, {brideName.trim() || 'Gelin'} & {groomName.trim() || 'Damat'}
           </Text>
         </View>
       );
@@ -1625,18 +1690,7 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
         </View>
 
         {/* Couple Names / Title */}
-        <Text
-          style={[
-            styles.coupleNames,
-            {
-              color: theme.namesColor,
-              // @ts-ignore
-              fontFamily: Platform.OS === 'web' ? selectedFont.family : undefined,
-            },
-          ]}
-        >
-          {customTitle}
-        </Text>
+        {renderCoupleNamesBlock(25, false, 240)}
 
         {/* Badge */}
         <View
@@ -1961,14 +2015,26 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
         <Text style={styles.sectionHeaderLabel}>5. KART YAZILARI & METİNLER:</Text>
         <View style={styles.inputGrid}>
           <View style={styles.inputCol}>
-            <Text style={styles.inputLabel}>Ana Başlık / İsimler:</Text>
+            <Text style={styles.inputLabel}>👰 Gelin İsmi:</Text>
             <TextInput
               style={styles.textInputFull}
-              value={customTitle}
-              onChangeText={setCustomTitle}
-              placeholder="Örn: Şule & Samet"
+              value={brideName}
+              onChangeText={setBrideName}
+              placeholder="Örn: Şule"
             />
           </View>
+          <View style={styles.inputCol}>
+            <Text style={styles.inputLabel}>🤵 Damat İsmi:</Text>
+            <TextInput
+              style={styles.textInputFull}
+              value={groomName}
+              onChangeText={setGroomName}
+              placeholder="Örn: Samet"
+            />
+          </View>
+        </View>
+
+        <View style={styles.inputGrid}>
           <View style={styles.inputCol}>
             <Text style={styles.inputLabel}>Üst Tarih / Slogan:</Text>
             <TextInput
@@ -1978,9 +2044,6 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
               placeholder="Örn: 08 Ekim 2026 veya #SuleSamet"
             />
           </View>
-        </View>
-
-        <View style={styles.inputGrid}>
           <View style={styles.inputCol}>
             <Text style={styles.inputLabel}>Ana Çağrı Metni:</Text>
             <TextInput
@@ -1990,15 +2053,16 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
               placeholder="Örn: Fotoğrafları Bizimle Paylaşın"
             />
           </View>
-          <View style={styles.inputCol}>
-            <Text style={styles.inputLabel}>Alt Link / Hashtag:</Text>
-            <TextInput
-              style={styles.textInputFull}
-              value={footerText}
-              onChangeText={setFooterText}
-              placeholder={`qr-la.com/${event.slug}`}
-            />
-          </View>
+        </View>
+
+        <View style={{ marginTop: 8 }}>
+          <Text style={styles.inputLabel}>Alt Link / Hashtag:</Text>
+          <TextInput
+            style={styles.textInputFull}
+            value={footerText}
+            onChangeText={setFooterText}
+            placeholder={`qr-la.com/${event.slug}`}
+          />
         </View>
 
         <View style={{ marginTop: 8 }}>
@@ -3093,6 +3157,43 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginVertical: 6,
     zIndex: 2,
+  },
+  coupleNamesBlock: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 4,
+    zIndex: 2,
+    width: '100%',
+  },
+  coupleNamePrimary: {
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    textAlign: 'center',
+  },
+  coupleNameSecondary: {
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    textAlign: 'center',
+  },
+  ampersandWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '60%',
+    maxWidth: 140,
+    marginVertical: 2,
+  },
+  ampersandLine: {
+    flex: 1,
+    height: 1,
+    opacity: 0.6,
+  },
+  ampersandText: {
+    fontSize: 15,
+    fontWeight: '700',
+    fontStyle: 'italic',
+    marginHorizontal: 8,
+    lineHeight: 17,
   },
   badgeContainer: {
     flexDirection: 'row',

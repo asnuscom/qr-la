@@ -2,6 +2,8 @@ import { authService } from '@/services/authService';
 import { eventService } from '@/services/eventService';
 import { isRealFirebaseConfigured, storage } from '@/services/firebase';
 import { slugify } from '@/services/mockData';
+import { convertHeicToJpegIfNeeded } from '@/services/compression';
+import { DatePickerModal, TimePickerModal } from '@/components/DateTimePickerModal';
 import { AlbumModel, EventModel, EventType, ScheduleItem } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -156,6 +158,9 @@ export default function EventFormScreen() {
 
   // Form State initialized with rich defaults
   const [slug, setSlug] = useState(currentSlug);
+  const [hasUserEditedSlug, setHasUserEditedSlug] = useState(false);
+  const [slugCheckStatus, setSlugCheckStatus] = useState<{ checked: boolean; available: boolean; message?: string } | null>(null);
+  const [isCheckingSlug, setIsCheckingSlug] = useState(false);
   const [eventType, setEventType] = useState<EventType>('dugun');
   const [brideName, setBrideName] = useState('Şule');
   const [groomName, setGroomName] = useState('Samet');
@@ -165,6 +170,8 @@ export default function EventFormScreen() {
   );
   const [eventDateStr, setEventDateStr] = useState('2026-10-18');
   const [eventTimeStr, setEventTimeStr] = useState('19:00');
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
   const [invitationUrl, setInvitationUrl] = useState('');
   const [coverPhotoUrl, setCoverPhotoUrl] = useState(COVER_PRESETS[0].url);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
@@ -217,6 +224,8 @@ export default function EventFormScreen() {
         const ev = await eventService.getEvent(currentSlug, user?.displayName);
         if (ev) {
           setSlug(ev.slug);
+          setHasUserEditedSlug(false);
+          setSlugCheckStatus(null);
           setEventType(ev.eventType || 'dugun');
           setBrideName(ev.hosts.brideOrPrimary || 'Şule');
           setGroomName(ev.hosts.groomOrSecondary || 'Samet');
@@ -259,6 +268,42 @@ export default function EventFormScreen() {
     load();
   }, [currentSlug, user?.displayName]);
 
+  // Debounced slug availability verification
+  useEffect(() => {
+    if (!slug || isDemo || slug === currentSlug) {
+      setSlugCheckStatus(null);
+      setIsCheckingSlug(false);
+      return;
+    }
+
+    if (slug.length < 3) {
+      setSlugCheckStatus({
+        checked: true,
+        available: false,
+        message: 'Bağlantı adı en az 3 karakterden oluşmalıdır.',
+      });
+      return;
+    }
+
+    setIsCheckingSlug(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await eventService.checkSlugAvailability(slug, user?.uid);
+        setSlugCheckStatus({
+          checked: true,
+          available: res.available,
+          message: res.available ? `qr-la.com/${res.formattedSlug} bağlantısı kullanılabilir!` : res.reason,
+        });
+      } catch {
+        setSlugCheckStatus(null);
+      } finally {
+        setIsCheckingSlug(false);
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [slug, currentSlug, isDemo, user?.uid]);
+
   // When bride or groom names change, automatically update suggested title and slug
   const handleNameChange = (newBride: string, newGroom: string) => {
     if (isDemo) {
@@ -270,9 +315,23 @@ export default function EventFormScreen() {
 
     if (newBride && newGroom) {
       setTitle(`${newBride.trim()} & ${newGroom.trim()} Düğünü`);
-      const generatedSlug = slugify(`${newBride.trim()} & ${newGroom.trim()}`);
-      setSlug(generatedSlug);
+      // Only auto-update slug if host hasn't typed a custom slug
+      if (!hasUserEditedSlug) {
+        const generatedSlug = slugify(`${newBride.trim()} & ${newGroom.trim()}`);
+        setSlug(generatedSlug);
+      }
     }
+  };
+
+  const handleSlugChange = (raw: string) => {
+    if (isDemo) {
+      showDemoLockedNotice('Özel Bağlantı Linki (Slug)');
+      return;
+    }
+    setHasUserEditedSlug(true);
+    // Sanitize in real-time: lowercase alphanumeric and hyphens only
+    const sanitized = raw.toLowerCase().replace(/[^a-z0-9-]/g, '');
+    setSlug(sanitized);
   };
 
   // Schedule Management Handlers
@@ -374,17 +433,25 @@ export default function EventFormScreen() {
       const asset = result.assets[0];
       setIsUploadingCover(true);
 
+      // Convert iPhone HEIC/HEIF to JPEG for 100% universal browser compatibility
+      const conv = await convertHeicToJpegIfNeeded(asset.uri, asset.fileName || asset.mimeType);
+      const safeUri = conv.uri;
+      const safeBlob = conv.blob;
+
       if (isRealFirebaseConfigured && storage) {
-        const response = await fetch(asset.uri);
-        const blob = await response.blob();
-        const fileExt = asset.uri.split('.').pop()?.split('?')[0] || 'jpg';
+        let blobToUpload = safeBlob;
+        if (!blobToUpload) {
+          const response = await fetch(safeUri);
+          blobToUpload = await response.blob();
+        }
+        const fileExt = 'jpg';
         const coverRef = ref(storage, `events/${slug || currentSlug}/covers/cover-${Date.now()}.${fileExt}`);
-        await uploadBytes(coverRef, blob, { contentType: 'image/jpeg' });
+        await uploadBytes(coverRef, blobToUpload, { contentType: 'image/jpeg' });
         const downloadUrl = await getDownloadURL(coverRef);
         setCoverPhotoUrl(downloadUrl);
         Alert.alert('Harika! 📸', 'Kapak fotoğrafı başarıyla yüklendi.');
       } else {
-        setCoverPhotoUrl(asset.uri);
+        setCoverPhotoUrl(safeUri);
         Alert.alert('Bilgi', 'Kapak fotoğrafı seçildi.');
       }
     } catch (err: any) {
@@ -416,10 +483,19 @@ export default function EventFormScreen() {
       return;
     }
 
+    const cleanSlug = slugify(slug);
+    if (!cleanSlug || cleanSlug.length < 3) {
+      Alert.alert('Eksik Bilgi', 'Özel bağlantı linki en az 3 karakterden oluşmalıdır.');
+      return;
+    }
+
+    if (slugCheckStatus && !slugCheckStatus.available && cleanSlug !== currentSlug) {
+      Alert.alert('Bağlantı Kullanılamıyor', slugCheckStatus.message || 'Lütfen farklı bir bağlantı adı seçin.');
+      return;
+    }
+
     setIsSaving(true);
     try {
-      const cleanSlug = slugify(slug);
-
       // Compute final ISO eventDate locked to Turkey Timezone (GMT+3)
       const finalEventDate = formatEventDateToTurkeyIso(eventDateStr, eventTimeStr);
 
@@ -458,27 +534,36 @@ export default function EventFormScreen() {
         },
       };
 
-      await eventService.saveEvent(cleanSlug, updatedData);
-      await eventService.saveAlbums(cleanSlug, albums);
-      if (user) {
-        await authService.addEventToUser(user.uid, cleanSlug);
+      if (cleanSlug !== currentSlug) {
+        // Slug changed! Migrate all albums, photos, guestbook, and user profile
+        await eventService.renameEventSlug(currentSlug, cleanSlug, updatedData);
+        await eventService.saveAlbums(cleanSlug, albums);
+        if (user) {
+          await authService.updateUserEventSlug(user.uid, currentSlug, cleanSlug);
+        }
+      } else {
+        await eventService.saveEvent(cleanSlug, updatedData);
+        await eventService.saveAlbums(cleanSlug, albums);
+        if (user) {
+          await authService.addEventToUser(user.uid, cleanSlug);
+        }
       }
 
       setIsSaving(false);
       Alert.alert('Harika! 🎉', 'Etkinliğiniz başarıyla güncellendi ve kaydedildi!', [
         {
           text: 'Panele Dön',
-          onPress: () => router.push('/panel' as any),
+          onPress: () => router.push({ pathname: '/panel', params: { slug: cleanSlug } } as any),
         },
         {
           text: 'Sayfayı Gör',
           onPress: () => router.push(`/${cleanSlug}` as any),
         },
       ]);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
       setIsSaving(false);
-      Alert.alert('Hata', 'Etkinlik kaydedilirken bir sorun oluştu.');
+      Alert.alert('Hata', e?.message || 'Etkinlik kaydedilirken bir sorun oluştu.');
     }
   };
 
@@ -693,26 +778,107 @@ export default function EventFormScreen() {
           {/* Custom Slug / URL */}
           <View style={styles.inputGroup}>
             <View style={styles.labelRowWithBadge}>
-              <Text style={styles.label}>Özel Bağlantı (Slug)</Text>
-              {isDemo && (
+              <Text style={styles.label}>Özel Bağlantı (Slug / URL)</Text>
+              {isDemo ? (
                 <View style={styles.lockedBadge}>
                   <Ionicons name="lock-closed" size={10} color="#B45309" />
                   <Text style={styles.lockedBadgeText}>Demoda Kilitli</Text>
                 </View>
-              )}
+              ) : slugCheckStatus && slug !== currentSlug ? (
+                <View
+                  style={[
+                    styles.slugStatusBadge,
+                    slugCheckStatus.available ? styles.slugStatusBadgeSuccess : styles.slugStatusBadgeError,
+                  ]}
+                >
+                  <Ionicons
+                    name={slugCheckStatus.available ? 'checkmark-circle' : 'alert-circle'}
+                    size={11}
+                    color={slugCheckStatus.available ? '#059669' : '#DC2626'}
+                  />
+                  <Text
+                    style={[
+                      styles.slugStatusBadgeText,
+                      slugCheckStatus.available
+                        ? styles.slugStatusBadgeTextSuccess
+                        : styles.slugStatusBadgeTextError,
+                    ]}
+                  >
+                    {slugCheckStatus.available ? 'Kullanılabilir' : 'Alınamaz'}
+                  </Text>
+                </View>
+              ) : null}
             </View>
-            <TouchableOpacity
-              activeOpacity={isDemo ? 0.7 : 1}
-              onPress={isDemo ? () => showDemoLockedNotice('Özel Bağlantı Linki (Slug)') : undefined}
-              style={[styles.slugLockedBox, isDemo && styles.inputLocked]}
-            >
-              <Ionicons name={isDemo ? "lock-closed" : "link"} size={16} color={isDemo ? "#B45309" : "#C5A059"} />
-              <Text style={styles.slugPrefixText}>qr-la.com/</Text>
-              <Text style={styles.slugValueText}>{slug || 'demo-panel'}</Text>
-            </TouchableOpacity>
-            {isDemo && (
+
+            {isDemo ? (
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => showDemoLockedNotice('Özel Bağlantı Linki (Slug)')}
+                style={[styles.slugLockedBox, styles.inputLocked]}
+              >
+                <Ionicons name="lock-closed" size={16} color="#B45309" />
+                <Text style={styles.slugPrefixText}>qr-la.com/</Text>
+                <Text style={styles.slugValueText}>{slug || 'demo-panel'}</Text>
+              </TouchableOpacity>
+            ) : (
+              <View
+                style={[
+                  styles.slugInputContainer,
+                  slugCheckStatus && !slugCheckStatus.available && styles.slugInputContainerError,
+                  slugCheckStatus && slugCheckStatus.available && slug !== currentSlug && styles.slugInputContainerSuccess,
+                ]}
+              >
+                <View style={styles.slugPrefixWrap}>
+                  <Ionicons name="link-outline" size={16} color="#8A6D3B" />
+                  <Text style={styles.slugPrefixText}>qr-la.com/</Text>
+                </View>
+                <TextInput
+                  style={styles.slugTextInput}
+                  value={slug}
+                  onChangeText={handleSlugChange}
+                  placeholder="ornek-dugun"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                {isCheckingSlug ? (
+                  <ActivityIndicator size="small" color="#C5A059" style={{ marginRight: 8 }} />
+                ) : slug !== currentSlug ? (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSlug(currentSlug);
+                      setHasUserEditedSlug(false);
+                      setSlugCheckStatus(null);
+                    }}
+                    style={styles.slugResetBtn}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons name="refresh" size={13} color="#8A6D3B" />
+                    <Text style={styles.slugResetText}>Geri Al</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            )}
+
+            {isDemo ? (
               <Text style={styles.helperText}>
                 Demo linki diğer misafirlerin incelemesi için sabittir. Kendi özel kısa linkinizi oluşturmak için ücretsiz hesap açabilirsiniz.
+              </Text>
+            ) : slugCheckStatus?.message ? (
+              <Text
+                style={[
+                  styles.slugFeedbackText,
+                  slugCheckStatus.available ? styles.slugFeedbackSuccess : styles.slugFeedbackError,
+                ]}
+              >
+                {slugCheckStatus.available ? `✅ ${slugCheckStatus.message}` : `⚠️ ${slugCheckStatus.message}`}
+              </Text>
+            ) : slug !== currentSlug ? (
+              <Text style={styles.slugNoticeText}>
+                ⚠️ Bağlantıyı değiştirdiğinizde misafirlerin erişeceği adres ve QR kartlarınız "qr-la.com/{slug}" olarak güncellenecektir.
+              </Text>
+            ) : (
+              <Text style={styles.helperText}>
+                Misafirleriniz bu kısa bağlantı üzerinden fotoğraflara ulaşır (Örn: qr-la.com/{slug}). Sadece harf, rakam ve tire (-) içerebilir.
               </Text>
             )}
           </View>
@@ -728,39 +894,61 @@ export default function EventFormScreen() {
             />
           </View>
 
-          {/* Date & Time Row */}
-          <View style={styles.row}>
-            <View style={[styles.inputGroup, { flex: 1.3 }]}>
-              <View style={styles.labelRowWithBadge}>
-                <Text style={styles.label}>Etkinlik Tarihi</Text>
-                <View style={styles.tzBadge}>
-                  <Text style={styles.tzBadgeText}>GMT+3 🇹🇷</Text>
-                </View>
+          {/* Interactive Date & Time Picker Triggers (NO text boxes) */}
+          <View style={styles.dateTimePickersContainer}>
+            {/* Date Picker Trigger Card */}
+            <TouchableOpacity
+              style={styles.pickerTriggerCard}
+              onPress={() => setIsDatePickerOpen(true)}
+              activeOpacity={0.85}
+            >
+              <View style={styles.pickerIconWrap}>
+                <Ionicons name="calendar" size={22} color="#C5A059" />
               </View>
-              <TextInput
-                style={styles.input}
-                value={eventDateStr}
-                onChangeText={setEventDateStr}
-                placeholder="2026-10-18"
-                {...(Platform.OS === 'web' ? ({ type: 'date' } as any) : {})}
-              />
-            </View>
+              <View style={{ flex: 1 }}>
+                <View style={styles.pickerHeaderRow}>
+                  <Text style={styles.pickerCardLabel}>ETKİNLİK TARİHİ</Text>
+                  <View style={styles.tzBadge}>
+                    <Text style={styles.tzBadgeText}>GMT+3 🇹🇷</Text>
+                  </View>
+                </View>
+                <Text style={styles.pickerCardValue}>
+                  {formattedDatePreview || eventDateStr}
+                </Text>
+                <Text style={styles.pickerTapHint}>Takvimden seçmek için tıklayın 📅</Text>
+              </View>
+              <View style={styles.pickerActionBadge}>
+                <Text style={styles.pickerActionBadgeText}>Değiştir</Text>
+                <Ionicons name="chevron-forward" size={14} color="#8A6D3B" />
+              </View>
+            </TouchableOpacity>
 
-            <View style={[styles.inputGroup, { flex: 0.9 }]}>
-              <View style={styles.labelRowWithBadge}>
-                <Text style={styles.label}>Saat</Text>
-                <View style={styles.tzBadge}>
-                  <Text style={styles.tzBadgeText}>GMT+3 🇹🇷</Text>
-                </View>
+            {/* Time Picker Trigger Card */}
+            <TouchableOpacity
+              style={styles.pickerTriggerCard}
+              onPress={() => setIsTimePickerOpen(true)}
+              activeOpacity={0.85}
+            >
+              <View style={[styles.pickerIconWrap, { backgroundColor: '#F0FDF4', borderColor: '#DCFCE7' }]}>
+                <Ionicons name="time" size={22} color="#10B981" />
               </View>
-              <TextInput
-                style={styles.input}
-                value={eventTimeStr}
-                onChangeText={setEventTimeStr}
-                placeholder="19:00"
-                {...(Platform.OS === 'web' ? ({ type: 'time' } as any) : {})}
-              />
-            </View>
+              <View style={{ flex: 1 }}>
+                <View style={styles.pickerHeaderRow}>
+                  <Text style={styles.pickerCardLabel}>BAŞLANGIÇ SAATİ</Text>
+                  <View style={[styles.tzBadge, { backgroundColor: '#DCFCE7' }]}>
+                    <Text style={[styles.tzBadgeText, { color: '#166534' }]}>TSİ</Text>
+                  </View>
+                </View>
+                <Text style={styles.pickerCardValue}>
+                  Saat {eventTimeStr}
+                </Text>
+                <Text style={styles.pickerTapHint}>Saati ayarlamak için tıklayın ⏰</Text>
+              </View>
+              <View style={[styles.pickerActionBadge, { backgroundColor: '#DCFCE7', borderColor: '#BBF7D0' }]}>
+                <Text style={[styles.pickerActionBadgeText, { color: '#166534' }]}>Değiştir</Text>
+                <Ionicons name="chevron-forward" size={14} color="#166534" />
+              </View>
+            </TouchableOpacity>
           </View>
 
           {/* Quick Time Presets */}
@@ -782,15 +970,6 @@ export default function EventFormScreen() {
               );
             })}
           </View>
-
-          {formattedDatePreview ? (
-            <View style={styles.datePreviewBox}>
-              <Ionicons name="calendar" size={14} color="#C5A059" />
-              <Text style={styles.datePreviewText}>
-                {formattedDatePreview} — Saat {eventTimeStr} (Türkiye Saati)
-              </Text>
-            </View>
-          ) : null}
 
           {/* Digital Invitation Link */}
           <View style={[styles.inputGroup, { marginTop: 8 }]}>
@@ -1327,6 +1506,22 @@ export default function EventFormScreen() {
           )}
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Interactive Calendar Date Picker Modal */}
+      <DatePickerModal
+        visible={isDatePickerOpen}
+        value={eventDateStr}
+        onConfirm={setEventDateStr}
+        onClose={() => setIsDatePickerOpen(false)}
+      />
+
+      {/* Interactive Time Picker Modal */}
+      <TimePickerModal
+        visible={isTimePickerOpen}
+        value={eventTimeStr}
+        onConfirm={setEventTimeStr}
+        onClose={() => setIsTimePickerOpen(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -1951,6 +2146,98 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1A1817',
   },
+  slugInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FAF7F2',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 48,
+  },
+  slugInputContainerSuccess: {
+    borderColor: '#10B981',
+    backgroundColor: '#F0FDF4',
+  },
+  slugInputContainerError: {
+    borderColor: '#EF4444',
+    backgroundColor: '#FEF2F2',
+  },
+  slugPrefixWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingRight: 8,
+    borderRightWidth: 1,
+    borderRightColor: '#E5E7EB',
+  },
+  slugTextInput: {
+    flex: 1,
+    height: '100%',
+    paddingHorizontal: 10,
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1A1817',
+  },
+  slugResetBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FAF5EA',
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  slugResetText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#8A6D3B',
+  },
+  slugStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  slugStatusBadgeSuccess: {
+    backgroundColor: '#DCFCE7',
+  },
+  slugStatusBadgeError: {
+    backgroundColor: '#FEE2E2',
+  },
+  slugStatusBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  slugStatusBadgeTextSuccess: {
+    color: '#059669',
+  },
+  slugStatusBadgeTextError: {
+    color: '#DC2626',
+  },
+  slugFeedbackText: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 6,
+  },
+  slugFeedbackSuccess: {
+    color: '#059669',
+  },
+  slugFeedbackError: {
+    color: '#DC2626',
+  },
+  slugNoticeText: {
+    fontSize: 11,
+    color: '#D97706',
+    fontWeight: '600',
+    marginTop: 6,
+    lineHeight: 15,
+  },
   helperText: {
     fontSize: 11,
     color: '#9CA3AF',
@@ -2065,5 +2352,73 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 13,
     fontWeight: '700',
+  },
+  dateTimePickersContainer: {
+    gap: 12,
+    marginBottom: 10,
+  },
+  pickerTriggerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: '#FAF7F2',
+    borderWidth: 1.5,
+    borderColor: '#EFE7DA',
+    borderRadius: 16,
+    padding: 14,
+    shadowColor: '#C5A059',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  pickerIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#FAF5EA',
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pickerHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  pickerCardLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#8A6D3B',
+    letterSpacing: 0.5,
+  },
+  pickerCardValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1A1817',
+    marginBottom: 2,
+  },
+  pickerTapHint: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    fontWeight: '500',
+  },
+  pickerActionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FAF5EA',
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  pickerActionBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#8A6D3B',
   },
 });

@@ -375,6 +375,25 @@ class AuthService {
     }
   }
 
+  // Rename or update event slug in user profile
+  async updateUserEventSlug(uid: string, oldSlug: string, newSlug: string): Promise<void> {
+    if (this.state.user && this.state.user.uid === uid) {
+      const currentList = this.state.user.events || [];
+      const updatedEvents = currentList.map((s) => (s === oldSlug ? newSlug : s));
+      if (!updatedEvents.includes(newSlug)) {
+        updatedEvents.unshift(newSlug);
+      }
+      const updatedUser = { ...this.state.user, events: updatedEvents };
+      appStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(updatedUser));
+      this.updateState({ user: updatedUser });
+      if (isRealFirebaseConfigured && db) {
+        try {
+          await setDoc(doc(db, 'users', uid), { events: updatedEvents }, { merge: true });
+        } catch (_) { }
+      }
+    }
+  }
+
   // Instant 1-click Demo Host Sign In
   async signInAsDemoHost(): Promise<UserModel> {
     appStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(DEMO_USER));

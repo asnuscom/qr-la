@@ -25,6 +25,7 @@ import {
   slugify,
 } from './mockData';
 import { appStorage } from './storage';
+import { convertHeicToJpegIfNeeded } from './compression';
 
 export const RESERVED_SLUGS = new Set([
   'demo',
@@ -329,6 +330,121 @@ class EventService {
     return merged;
   }
 
+  // Rename an event slug (migrates event details, albums, photos, guestbook, and Firestore documents)
+  async renameEventSlug(
+    oldSlug: string,
+    rawNewSlug: string,
+    updatedData?: Partial<EventModel>
+  ): Promise<EventModel> {
+    await this.ensureAuth();
+    const cleanOldSlug = slugify(oldSlug);
+    const cleanNewSlug = slugify(rawNewSlug);
+
+    if (!cleanNewSlug || cleanNewSlug.length < 3) {
+      throw new Error('Yeni bağlantı adı en az 3 karakter olmalıdır.');
+    }
+
+    if (cleanNewSlug === cleanOldSlug) {
+      return this.saveEvent(cleanOldSlug, updatedData || {});
+    }
+
+    if (RESERVED_SLUGS.has(cleanNewSlug)) {
+      throw new Error('Bu bağlantı adı sistem / demo kullanımı için ayrılmıştır.');
+    }
+
+    const check = await this.checkSlugAvailability(cleanNewSlug);
+    if (!check.available) {
+      throw new Error(check.reason || `"${cleanNewSlug}" bağlantısı kullanılamaz.`);
+    }
+
+    // 1. Fetch current data from old slug
+    const currentEvent = await this.getEvent(cleanOldSlug);
+    const currentPhotos = await this.getPhotos(cleanOldSlug);
+    const currentAlbums = await this.getAlbums(cleanOldSlug);
+    const currentGuestbook = await this.getGuestbook(cleanOldSlug);
+
+    // 2. Prepare merged event with new slug
+    const mergedEvent: EventModel = {
+      ...currentEvent,
+      ...(updatedData || {}),
+      slug: cleanNewSlug,
+      theme: { ...currentEvent.theme, ...(updatedData?.theme || {}) },
+      venue: { ...currentEvent.venue, ...(updatedData?.venue || {}) },
+      hosts: { ...currentEvent.hosts, ...(updatedData?.hosts || {}) },
+      settings: { ...currentEvent.settings, ...(updatedData?.settings || {}) },
+    };
+
+    // 3. Save new event in memory and storage
+    this.events.set(cleanNewSlug, mergedEvent);
+    this.saveEventToStorage(cleanNewSlug, mergedEvent);
+
+    // 4. Migrate photos with new eventSlug
+    const updatedPhotos = currentPhotos.map((p) => ({
+      ...p,
+      eventSlug: cleanNewSlug,
+    }));
+    this.photos.set(cleanNewSlug, updatedPhotos);
+    this.savePhotosToStorage(cleanNewSlug, updatedPhotos);
+
+    // 5. Migrate albums
+    this.albums.set(cleanNewSlug, currentAlbums);
+    this.saveAlbumsToStorage(cleanNewSlug, currentAlbums);
+
+    // 6. Migrate guestbook
+    const updatedGuestbook = currentGuestbook.map((g) => ({
+      ...g,
+      eventSlug: cleanNewSlug,
+    }));
+    this.guestbooks.set(cleanNewSlug, updatedGuestbook);
+    try {
+      appStorage.setItem(`qr_la_guestbook_${cleanNewSlug}`, JSON.stringify(updatedGuestbook));
+    } catch (_e) { }
+
+    // 7. Clean up old records from storage & memory
+    this.events.delete(cleanOldSlug);
+    appStorage.removeItem(`qr_la_event_${cleanOldSlug}`);
+    this.photos.delete(cleanOldSlug);
+    appStorage.removeItem(`qr_la_photos_${cleanOldSlug}`);
+    this.albums.delete(cleanOldSlug);
+    appStorage.removeItem(`qr_la_albums_${cleanOldSlug}`);
+    this.guestbooks.delete(cleanOldSlug);
+    appStorage.removeItem(`qr_la_guestbook_${cleanOldSlug}`);
+
+    // 8. Sync Firestore if active
+    if (isRealFirebaseConfigured && db) {
+      try {
+        const newEventDocRef = doc(db, 'events', cleanNewSlug);
+        await setDoc(newEventDocRef, sanitizeForFirestore(mergedEvent));
+
+        for (const p of updatedPhotos) {
+          await setDoc(
+            doc(db, 'events', cleanNewSlug, 'photos', p.id),
+            sanitizeForFirestore(p)
+          );
+          try {
+            await deleteDoc(doc(db, 'events', cleanOldSlug, 'photos', p.id));
+          } catch (_) { }
+        }
+
+        for (const g of updatedGuestbook) {
+          await setDoc(
+            doc(db, 'events', cleanNewSlug, 'guestbook', g.id),
+            sanitizeForFirestore(g)
+          );
+          try {
+            await deleteDoc(doc(db, 'events', cleanOldSlug, 'guestbook', g.id));
+          } catch (_) { }
+        }
+
+        await deleteDoc(doc(db, 'events', cleanOldSlug));
+      } catch (err) {
+        console.warn('Firestore rename sync error:', err);
+      }
+    }
+
+    return mergedEvent;
+  }
+
   async verifyPin(slug: string, pin: string): Promise<boolean> {
     const event = await this.getEvent(slug);
     if (!event || !event.settings.isPrivate) return true;
@@ -584,12 +700,30 @@ class EventService {
     const folder = isVideo ? 'videos' : 'photos';
     const timeoutMs = isVideo ? 300000 : 25000; // 5 mins for video uploads up to 500MB
 
+    let uploadUri = newPhoto.originalUrl;
+    let uploadBlob: Blob | undefined;
+
+    // Ensure HEIC/HEIF is converted to standard JPEG before storage upload
+    if (!isVideo && newPhoto.originalUrl) {
+      try {
+        const conv = await convertHeicToJpegIfNeeded(newPhoto.originalUrl, newPhoto.mimeType);
+        if (conv.wasConverted) {
+          uploadUri = conv.uri;
+          finalUrl = conv.uri;
+          uploadBlob = conv.blob;
+        }
+      } catch (_e) { }
+    }
+
     // Upload to Firebase Storage with proper contentType and timeout
-    if (isRealFirebaseConfigured && storage && newPhoto.originalUrl) {
+    if (isRealFirebaseConfigured && storage && uploadUri) {
       try {
         const uploadTask = (async () => {
-          const response = await fetch(newPhoto.originalUrl);
-          const blob = await response.blob();
+          let blob = uploadBlob;
+          if (!blob) {
+            const response = await fetch(uploadUri);
+            blob = await response.blob();
+          }
           const fileRef = ref(storage, `events/${slug}/${folder}/${photoId}.${fileExt}`);
           await uploadBytes(fileRef, blob, { contentType });
           return await getDownloadURL(fileRef);
@@ -603,10 +737,13 @@ class EventService {
       } catch (err) {
         console.warn('Firebase Storage upload notice (using fallback):', err);
         // If Storage failed and URI is a temporary blob:, convert to persistent base64 Data URL so it is never lost
-        if (newPhoto.originalUrl.startsWith('blob:') && typeof window !== 'undefined' && !isVideo) {
+        if (uploadUri.startsWith('blob:') && typeof window !== 'undefined' && !isVideo) {
           try {
-            const res = await fetch(newPhoto.originalUrl);
-            const blob = await res.blob();
+            let blob = uploadBlob;
+            if (!blob) {
+              const res = await fetch(uploadUri);
+              blob = await res.blob();
+            }
             finalUrl = await new Promise<string>((resolve) => {
               const reader = new FileReader();
               reader.onloadend = () => resolve(reader.result as string);
