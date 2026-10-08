@@ -23,6 +23,9 @@ interface SelectedImageItem {
   originalSize: number;
   compressedUri?: string;
   compressedSize?: number;
+  mediaType?: 'photo' | 'video';
+  duration?: number;
+  mimeType?: string;
   file?: File;
 }
 
@@ -55,26 +58,83 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
     albumName: string;
   } | null>(null);
 
-  // Pick images from gallery
+  // Max limits: 100 files, 500 MB per video
+  const MAX_FILE_COUNT = 100;
+  const MAX_VIDEO_SIZE_BYTES = 500 * 1024 * 1024;
+
+  // Pick images and videos from gallery
   const pickImages = async () => {
+    if (selectedImages.length >= MAX_FILE_COUNT) {
+      Alert.alert(
+        'Maksimum Limit',
+        `Tek seferde en fazla ${MAX_FILE_COUNT} dosya seçebilirsiniz. Lütfen mevcut medyaları yükleyin veya bazılarını kaldırın.`
+      );
+      return;
+    }
+
     setUploadSuccessInfo(null);
     try {
+      const remainingSlots = MAX_FILE_COUNT - selectedImages.length;
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ImagePicker.MediaTypeOptions.All,
         allowsMultipleSelection: true,
+        selectionLimit: remainingSlots,
         quality: 0.9,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        const newItems: SelectedImageItem[] = result.assets.map((asset) => ({
-          uri: asset.uri,
-          originalSize: asset.fileSize || 3500000,
-        }));
-        setSelectedImages((prev) => [...prev, ...newItems]);
+        let assetsToProcess = result.assets;
+        let countExceeded = false;
+
+        if (assetsToProcess.length > remainingSlots) {
+          assetsToProcess = assetsToProcess.slice(0, remainingSlots);
+          countExceeded = true;
+        }
+
+        const validAssets: SelectedImageItem[] = [];
+        let hasOversizedVideo = false;
+
+        for (const asset of assetsToProcess) {
+          const isVideo =
+            asset.type === 'video' ||
+            (Boolean(asset.mimeType) && asset.mimeType!.startsWith('video/')) ||
+            asset.uri.endsWith('.mp4') ||
+            asset.uri.endsWith('.mov') ||
+            asset.uri.endsWith('.webm');
+
+          if (isVideo && asset.fileSize && asset.fileSize > MAX_VIDEO_SIZE_BYTES) {
+            hasOversizedVideo = true;
+            continue;
+          }
+
+          validAssets.push({
+            uri: asset.uri,
+            originalSize: asset.fileSize || (isVideo ? 12000000 : 3500000),
+            mediaType: isVideo ? 'video' : 'photo',
+            duration: asset.duration ? Math.round(asset.duration / 1000) : undefined,
+            mimeType: asset.mimeType || (isVideo ? 'video/mp4' : 'image/jpeg'),
+          });
+        }
+
+        if (countExceeded) {
+          Alert.alert(
+            'Limit Uygulandı',
+            `Tek seferde en fazla ${MAX_FILE_COUNT} dosya yüklenebilir. İlk ${remainingSlots} dosya listeye eklendi.`
+          );
+        }
+
+        if (hasOversizedVideo) {
+          Alert.alert(
+            'Boyut Limiti (500 MB)',
+            '500 MB üzerindeki videolar kabul edilmemektedir. Lütfen daha küçük veya daha kısa bir video seçin.'
+          );
+        }
+
+        setSelectedImages((prev) => [...prev, ...validAssets]);
       }
     } catch (err) {
-      console.error('Image pick error:', err);
-      Alert.alert('Hata', 'Fotoğraf seçilirken bir sorun oluştu.');
+      console.error('Media pick error:', err);
+      Alert.alert('Hata', 'Fotoğraf veya video seçilirken bir sorun oluştu.');
     }
   };
 
@@ -86,7 +146,7 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
   // Perform upload
   const handleUpload = async () => {
     if (selectedImages.length === 0) {
-      Alert.alert('Uyarı', 'Lütfen en az bir fotoğraf seçin.');
+      Alert.alert('Uyarı', 'Lütfen en az bir fotoğraf veya video seçin.');
       return;
     }
 
@@ -103,13 +163,27 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
         let finalUri = item.uri;
         let finalSize = item.originalSize;
 
-        if (isCompressionEnabled) {
-          const compResult = await compressImage(item.uri, {
-            maxWidth: 1920,
-            quality: 0.78,
-          });
-          finalUri = compResult.uri;
-          finalSize = compResult.compressedSize;
+        // Compress ONLY photos (skip video files to preserve video codec & audio)
+        if (item.mediaType !== 'video' && isCompressionEnabled) {
+          try {
+            const compResult = await compressImage(item.uri, {
+              maxWidth: 1920,
+              quality: 0.78,
+            });
+            finalUri = compResult.uri;
+            finalSize = compResult.compressedSize;
+          } catch (_compErr) { }
+        } else if (item.mediaType === 'video') {
+          // Double check video blob size on web
+          try {
+            const res = await fetch(item.uri);
+            const blob = await res.blob();
+            finalSize = blob.size;
+            if (blob.size > MAX_VIDEO_SIZE_BYTES) {
+              Alert.alert('Boyut Limiti', 'Seçilen video 500 MB sınırını aştığı için yüklenemedi.');
+              continue;
+            }
+          } catch (_blobErr) { }
         }
 
         // Add to event service
@@ -118,9 +192,12 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
           albumId: selectedAlbumId,
           originalUrl: finalUri,
           thumbnailUrl: finalUri,
+          mediaType: item.mediaType || 'photo',
+          duration: item.duration,
+          mimeType: item.mimeType,
           uploaderName: uploaderName.trim() || 'Misafir',
-          tableNumber: tableNumber.trim() || undefined,
-          guestNote: guestNote.trim() || undefined,
+          tableNumber: tableNumber.trim() ? tableNumber.trim() : undefined,
+          guestNote: guestNote.trim() ? guestNote.trim() : undefined,
           sizeBytes: finalSize,
         });
 
@@ -143,7 +220,7 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
       setIsUploading(false);
       Alert.alert(
         'Yükleme Sırasında Hata Oluştu',
-        `Fotoğraf kaydedilirken bir sorun oluştu: ${err?.message || 'Lütfen tekrar deneyin.'}`
+        `Medya kaydedilirken bir sorun oluştu: ${err?.message || 'Lütfen tekrar deneyin.'}`
       );
     }
   };
@@ -214,16 +291,16 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
         <View style={styles.iconCircle}>
           <Ionicons name="images" size={32} color="#C5A059" />
         </View>
-        <Text style={styles.dropzoneTitle}>Fotoğrafları Seç (Çoklu Seçim)</Text>
-        <Text style={styles.dropzoneHint}>Galerinden tek seferde dilediğin kadar fotoğraf ekleyebilirsin</Text>
+        <Text style={styles.dropzoneTitle}>Fotoğraf & Video Seç (Maks. 100)</Text>
+        <Text style={styles.dropzoneHint}>Tek seferde 100 adede kadar medya ekleyebilirsin (video maks. 500 MB)</Text>
       </TouchableOpacity>
 
-      {/* Selected Photos Preview Scroll */}
+      {/* Selected Photos & Videos Preview Scroll */}
       {selectedImages.length > 0 && (
         <View style={styles.previewSection}>
           <View style={styles.previewHeader}>
             <Text style={styles.previewCount}>
-              {selectedImages.length} Fotoğraf Seçildi
+              {selectedImages.length} / {MAX_FILE_COUNT} Medya Seçildi
             </Text>
             <TouchableOpacity onPress={() => setSelectedImages([])}>
               <Text style={styles.clearAllText}>Hepsini Kaldır</Text>
@@ -233,7 +310,14 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.previewScroll}>
             {selectedImages.map((img, idx) => (
               <View key={idx} style={styles.thumbWrapper}>
-                <Image source={{ uri: img.uri }} style={styles.thumbImage} />
+                {img.mediaType === 'video' ? (
+                  <View style={styles.thumbVideoBox}>
+                    <Ionicons name="videocam" size={26} color="#C5A059" />
+                    <Text style={styles.thumbVideoLabel}>Video</Text>
+                  </View>
+                ) : (
+                  <Image source={{ uri: img.uri }} style={styles.thumbImage} />
+                )}
                 <TouchableOpacity
                   style={styles.thumbDeleteBtn}
                   onPress={() => removeImage(idx)}
@@ -755,5 +839,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  thumbVideoBox: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    backgroundColor: '#1A1817',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#C5A059',
+  },
+  thumbVideoLabel: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 4,
   },
 });

@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ScrollView,
   useWindowDimensions,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AlbumModel, PhotoModel } from '@/types';
@@ -17,9 +18,15 @@ interface PhotoGridProps {
   albums: AlbumModel[];
   photos: PhotoModel[];
   onLikePhoto: (photoId: string, shouldLike: boolean) => void;
+  onDeletePhoto?: (photoId: string) => void;
 }
 
-export const PhotoGrid: React.FC<PhotoGridProps> = ({ albums, photos, onLikePhoto }) => {
+export const PhotoGrid: React.FC<PhotoGridProps> = ({
+  albums,
+  photos,
+  onLikePhoto,
+  onDeletePhoto,
+}) => {
   const [selectedAlbumId, setSelectedAlbumId] = useState<string>('alb-all');
   const [sortMode, setSortMode] = useState<'latest' | 'popular'>('latest');
   const [activePhoto, setActivePhoto] = useState<PhotoModel | null>(null);
@@ -187,11 +194,40 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ albums, photos, onLikePhot
                 onPress={() => handlePhotoPress(photo)}
                 activeOpacity={0.9}
               >
-                <Image
-                  source={{ uri: photo.thumbnailUrl || photo.originalUrl }}
-                  style={styles.image}
-                  resizeMode="cover"
-                />
+                {photo.mediaType === 'video' ? (
+                  <View style={{ width: '100%', height: '100%', position: 'relative' }}>
+                    {Platform.OS === 'web' ? (
+                      <video
+                        src={photo.thumbnailUrl || photo.originalUrl}
+                        muted
+                        playsInline
+                        preload="metadata"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          pointerEvents: 'none',
+                        }}
+                      />
+                    ) : (
+                      <Image
+                        source={{ uri: photo.thumbnailUrl || photo.originalUrl }}
+                        style={styles.image}
+                        resizeMode="cover"
+                      />
+                    )}
+                    <View style={styles.videoPlayBadge}>
+                      <Ionicons name="play" size={12} color="#FFF" />
+                      <Text style={styles.videoPlayBadgeText}>Video</Text>
+                    </View>
+                  </View>
+                ) : (
+                  <Image
+                    source={{ uri: photo.thumbnailUrl || photo.originalUrl }}
+                    style={styles.image}
+                    resizeMode="cover"
+                  />
+                )}
 
                 {/* Double Tap Heart Burst Animation */}
                 {isAnimating && (
@@ -255,6 +291,7 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ albums, photos, onLikePhot
         isLiked={activePhoto ? likedPhotoIds.has(activePhoto.id) : false}
         onClose={() => setActivePhoto(null)}
         onLike={(id) => handleToggleLike(id)}
+        onDelete={onDeletePhoto}
       />
     </View>
   );
@@ -399,6 +436,25 @@ const styles = StyleSheet.create({
     zIndex: 5,
   },
   trendingBadgeText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  videoPlayBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(37, 99, 235, 0.9)',
+    paddingVertical: 3,
+    paddingHorizontal: 7,
+    borderRadius: 8,
+    zIndex: 5,
+  },
+  videoPlayBadgeText: {
     color: '#FFF',
     fontSize: 9,
     fontWeight: '800',

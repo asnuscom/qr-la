@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  Alert,
   Modal,
   View,
   Text,
@@ -19,9 +20,16 @@ interface LightboxModalProps {
   isLiked?: boolean;
   onClose: () => void;
   onLike: (photoId: string) => void;
+  onDelete?: (photoId: string) => void;
 }
 
-export const LightboxModal: React.FC<LightboxModalProps> = ({ photo, isLiked = false, onClose, onLike }) => {
+export const LightboxModal: React.FC<LightboxModalProps> = ({
+  photo,
+  isLiked = false,
+  onClose,
+  onLike,
+  onDelete,
+}) => {
   const [lastTap, setLastTap] = React.useState<number>(0);
   const [showHeartBurst, setShowHeartBurst] = React.useState(false);
 
@@ -74,6 +82,30 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({ photo, isLiked = f
           </TouchableOpacity>
 
           <View style={styles.topRightActions}>
+            {onDelete && (
+              <TouchableOpacity
+                style={[styles.circleBtn, { backgroundColor: 'rgba(239, 68, 68, 0.45)' }]}
+                onPress={() => {
+                  const doDel = () => {
+                    onDelete(photo.id);
+                    onClose();
+                  };
+                  if (Platform.OS === 'web') {
+                    if (typeof window !== 'undefined' && window.confirm('Bu fotoğrafı kalıcı olarak silmek istediğinizden emin misiniz?')) {
+                      doDel();
+                    }
+                  } else {
+                    Alert.alert('Fotoğrafı Sil', 'Bu fotoğrafı kalıcı olarak silmek istediğinizden emin misiniz?', [
+                      { text: 'Vazgeç', style: 'cancel' },
+                      { text: 'Sil', style: 'destructive', onPress: doDel },
+                    ]);
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
+              </TouchableOpacity>
+            )}
             <TouchableOpacity style={styles.circleBtn} onPress={handleShare} activeOpacity={0.7}>
               <Ionicons name="share-social-outline" size={20} color="#FFF" />
             </TouchableOpacity>
@@ -84,17 +116,36 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({ photo, isLiked = f
           </View>
         </View>
 
-        {/* Main Image with Double Tap */}
+        {/* Main Media Player / Image with Double Tap */}
         <TouchableOpacity
           style={styles.imageContainer}
           activeOpacity={1}
-          onPress={handleDoubleTap}
+          onPress={photo.mediaType === 'video' ? undefined : handleDoubleTap}
         >
-          <Image
-            source={{ uri: photo.originalUrl || photo.thumbnailUrl }}
-            style={styles.fullImage}
-            resizeMode="contain"
-          />
+          {photo.mediaType === 'video' && Platform.OS === 'web' ? (
+            <View style={styles.videoPlayerBox}>
+              <video
+                src={photo.originalUrl}
+                controls
+                autoPlay
+                playsInline
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '75vh',
+                  borderRadius: 16,
+                  backgroundColor: '#000',
+                  boxShadow: '0 10px 40px rgba(0,0,0,0.8)',
+                  outline: 'none',
+                }}
+              />
+            </View>
+          ) : (
+            <Image
+              source={{ uri: photo.originalUrl || photo.thumbnailUrl }}
+              style={styles.fullImage}
+              resizeMode="contain"
+            />
+          )}
 
           {showHeartBurst && (
             <View style={styles.heartBurstOverlay}>
@@ -111,6 +162,12 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({ photo, isLiked = f
                 {photo.uploaderName || 'Misafir'}
               </Text>
               <View style={styles.tagsRow}>
+                {photo.mediaType === 'video' && (
+                  <View style={[styles.tag, { backgroundColor: '#2563EB' }]}>
+                    <Ionicons name="videocam" size={12} color="#FFF" />
+                    <Text style={[styles.tagText, { color: '#FFF', fontWeight: '700' }]}>Video</Text>
+                  </View>
+                )}
                 {photo.tableNumber && (
                   <View style={styles.tag}>
                     <Ionicons name="restaurant-outline" size={12} color="#C5A059" />
@@ -284,6 +341,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.8,
     shadowRadius: 20,
     elevation: 10,
+  },
+  videoPlayerBox: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

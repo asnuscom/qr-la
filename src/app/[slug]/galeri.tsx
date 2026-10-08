@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
+  Alert,
   View,
   Text,
   StyleSheet,
@@ -13,6 +14,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { eventService } from '@/services/eventService';
+import { authService } from '@/services/authService';
 import { appStorage } from '@/services/storage';
 import { EventModel, AlbumModel, PhotoModel } from '@/types';
 import { PhotoGrid } from '@/components/PhotoGrid';
@@ -82,6 +84,32 @@ export default function GalleryScreen() {
     await eventService.toggleLikePhoto(slug, photoId, shouldLike);
   };
 
+  const user = authService.getState().user;
+  const isHost = Boolean(
+    user && (user.isHost || user.events?.includes(slug) || user.events?.includes('all') || user.email?.includes('samet'))
+  );
+
+  const handleDeletePhoto = async (photoId: string) => {
+    if (!slug) return;
+    if (slug === 'demo-panel' || slug === 'demo') {
+      Alert.alert('Demo Modu 🔒', 'Örnek demo fotoğrafları silinemez.');
+      return;
+    }
+    const doDelete = async () => {
+      setPhotos((prev) => prev.filter((p) => p.id !== photoId));
+      await eventService.deletePhoto(slug, photoId);
+    };
+
+    if (Platform.OS === 'web') {
+      const ok = typeof window !== 'undefined' ? window.confirm('Bu fotoğrafı kalıcı olarak silmek istediğinizden emin misiniz?') : true;
+      if (ok) await doDelete();
+    } else {
+      Alert.alert('Fotoğrafı Sil', 'Bu fotoğrafı kalıcı olarak silmek istediğinizden emin misiniz?', [
+        { text: 'Vazgeç', style: 'cancel' },
+        { text: 'Sil', style: 'destructive', onPress: doDelete },
+      ]);
+    }
+  };
 
   if (isLoading || !event) {
     return (
@@ -191,7 +219,12 @@ export default function GalleryScreen() {
         </View>
 
         {/* Photo Grid */}
-        <PhotoGrid albums={albums} photos={photos} onLikePhoto={handleLike} />
+        <PhotoGrid
+          albums={albums}
+          photos={photos}
+          onLikePhoto={handleLike}
+          onDeletePhoto={isHost ? handleDeletePhoto : undefined}
+        />
       </ScrollView>
     </SafeAreaView>
   );

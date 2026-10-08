@@ -82,6 +82,9 @@ export interface PhotoModel {
   albumId?: string;
   originalUrl: string;
   thumbnailUrl: string;
+  mediaType?: 'photo' | 'video';
+  duration?: number;
+  mimeType?: string;
   uploaderName?: string;
   tableNumber?: string;
   guestNote?: string;

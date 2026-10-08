@@ -60,7 +60,7 @@ export const LiveProjector: React.FC<LiveProjectorProps> = ({ event, photos }) =
   return (
     <View style={styles.container}>
       {/* Background ambient blur */}
-      {currentPhoto && (
+      {currentPhoto && currentPhoto.mediaType !== 'video' && (
         <Image
           source={{ uri: currentPhoto.originalUrl || currentPhoto.thumbnailUrl }}
           style={styles.ambientBackground}
@@ -106,18 +106,40 @@ export const LiveProjector: React.FC<LiveProjectorProps> = ({ event, photos }) =
       <View style={styles.stage}>
         {currentPhoto ? (
           <View style={styles.slideCard}>
-            <Image
-              source={{ uri: currentPhoto.originalUrl || currentPhoto.thumbnailUrl }}
-              style={styles.mainImage}
-              resizeMode="contain"
-            />
+            {currentPhoto.mediaType === 'video' && Platform.OS === 'web' ? (
+              // @ts-ignore - React Native Web supports native HTML5 video tag
+              <video
+                src={currentPhoto.originalUrl || currentPhoto.thumbnailUrl}
+                autoPlay
+                muted
+                loop
+                playsInline
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'contain',
+                  backgroundColor: '#000',
+                }}
+              />
+            ) : (
+              <Image
+                source={{ uri: currentPhoto.originalUrl || currentPhoto.thumbnailUrl }}
+                style={styles.mainImage}
+                resizeMode="contain"
+              />
+            )}
 
             {/* Slide Caption Box */}
             <View style={styles.captionBox}>
               <View style={styles.captionTop}>
                 <Text style={styles.captionUploader}>
-                  📸 {currentPhoto.uploaderName || 'Misafir'}
+                  {currentPhoto.mediaType === 'video' ? '🎥' : '📸'} {currentPhoto.uploaderName || 'Misafir'}
                 </Text>
+                {currentPhoto.mediaType === 'video' && (
+                  <View style={[styles.captionTable, { backgroundColor: '#8B5CF6' }]}>
+                    <Text style={styles.captionTableText}>Video</Text>
+                  </View>
+                )}
                 {currentPhoto.tableNumber && (
                   <View style={styles.captionTable}>
                     <Text style={styles.captionTableText}>{currentPhoto.tableNumber}</Text>

@@ -198,21 +198,41 @@ export default function HostPanelScreen() {
 
   const handleDeletePhoto = async (photoId: string) => {
     if (!event) return;
-    Alert.alert(
-      'Fotoğrafı Sil',
-      'Bu fotoğrafı kalıcı olarak silmek istediğinizden emin misiniz?',
-      [
-        { text: 'Vazgeç', style: 'cancel' },
-        {
-          text: 'Sil',
-          style: 'destructive',
-          onPress: async () => {
-            await eventService.deletePhoto(event.slug, photoId);
-            loadData(currentUser);
+
+    if (isDemo) {
+      Alert.alert(
+        'Demo Modu 🔒',
+        'Örnek demo fotoğrafları diğer ziyaretçilerin inceleyebilmesi için silinemez. Kendi fotoğraflarınızı yönetmek için ücretsiz kayıt olabilirsiniz.'
+      );
+      return;
+    }
+
+    const executeDelete = async () => {
+      // Optimistic instant UI update
+      setPhotos((prev) => prev.filter((p) => p.id !== photoId));
+      await eventService.deletePhoto(event.slug, photoId);
+      await loadData(currentUser);
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmed = typeof window !== 'undefined' ? window.confirm('Bu fotoğrafı kalıcı olarak silmek istediğinizden emin misiniz?') : true;
+      if (confirmed) {
+        await executeDelete();
+      }
+    } else {
+      Alert.alert(
+        'Fotoğrafı Sil',
+        'Bu fotoğrafı kalıcı olarak silmek istediğinizden emin misiniz?',
+        [
+          { text: 'Vazgeç', style: 'cancel' },
+          {
+            text: 'Sil',
+            style: 'destructive',
+            onPress: executeDelete,
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   if (!event) return null;
@@ -614,7 +634,31 @@ export default function HostPanelScreen() {
             <View style={styles.modGrid}>
               {photos.map((photo) => (
                 <View key={photo.id} style={styles.modCard}>
-                  <Image source={{ uri: photo.thumbnailUrl || photo.originalUrl }} style={styles.modImage} />
+                  {photo.mediaType === 'video' ? (
+                    <View style={{ width: '100%', height: '100%', position: 'relative' }}>
+                      {Platform.OS === 'web' ? (
+                        <video
+                          src={photo.thumbnailUrl || photo.originalUrl}
+                          muted
+                          playsInline
+                          preload="metadata"
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            pointerEvents: 'none',
+                          }}
+                        />
+                      ) : (
+                        <Image source={{ uri: photo.thumbnailUrl || photo.originalUrl }} style={styles.modImage} />
+                      )}
+                      <View style={styles.modVideoBadge}>
+                        <Ionicons name="videocam" size={11} color="#FFF" />
+                      </View>
+                    </View>
+                  ) : (
+                    <Image source={{ uri: photo.thumbnailUrl || photo.originalUrl }} style={styles.modImage} />
+                  )}
                   <View style={styles.modInfoRow}>
                     <Text style={styles.modUploader} numberOfLines={1}>
                       {photo.uploaderName || 'Misafir'}
@@ -829,6 +873,16 @@ const styles = StyleSheet.create({
   modImage: {
     width: '100%',
     height: '100%',
+  },
+  modVideoBadge: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    backgroundColor: 'rgba(37, 99, 235, 0.9)',
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 4,
+    zIndex: 5,
   },
   modInfoRow: {
     position: 'absolute',

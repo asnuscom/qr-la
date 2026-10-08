@@ -1,6 +1,7 @@
 import { signInAnonymously } from 'firebase/auth';
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -10,7 +11,7 @@ import {
   setDoc,
   updateDoc,
 } from 'firebase/firestore';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 
 import { AlbumModel, EventModel, GuestbookEntryModel, PhotoModel, StorageInfo, StorageTier } from '@/types';
 import { auth, db, isRealFirebaseConfigured, storage } from './firebase';
@@ -521,7 +522,12 @@ class EventService {
         const snap = await getDocs(q);
         if (!snap.empty) {
           const list: PhotoModel[] = [];
-          snap.forEach((d) => list.push(d.data() as PhotoModel));
+          snap.forEach((d) => {
+            const data = d.data() as PhotoModel;
+            if (data.isApproved !== false && !(data as any).isDeleted) {
+              list.push(data);
+            }
+          });
           this.photos.set(slug, list);
           this.savePhotosToStorage(slug, list);
           if (!albumId || albumId === 'alb-all' || albumId === 'all') {
@@ -572,26 +578,32 @@ class EventService {
     const photoId = `ph-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     let finalUrl = newPhoto.originalUrl;
 
-    // Upload to Firebase Storage with a 25-second timeout
+    const isVideo = newPhoto.mediaType === 'video' || (newPhoto.mimeType && newPhoto.mimeType.startsWith('video/'));
+    const fileExt = isVideo ? 'mp4' : 'jpg';
+    const contentType = isVideo ? (newPhoto.mimeType || 'video/mp4') : 'image/jpeg';
+    const folder = isVideo ? 'videos' : 'photos';
+    const timeoutMs = isVideo ? 300000 : 25000; // 5 mins for video uploads up to 500MB
+
+    // Upload to Firebase Storage with proper contentType and timeout
     if (isRealFirebaseConfigured && storage && newPhoto.originalUrl) {
       try {
         const uploadTask = (async () => {
           const response = await fetch(newPhoto.originalUrl);
           const blob = await response.blob();
-          const fileRef = ref(storage, `events/${slug}/photos/${photoId}.jpg`);
-          await uploadBytes(fileRef, blob, { contentType: 'image/jpeg' });
+          const fileRef = ref(storage, `events/${slug}/${folder}/${photoId}.${fileExt}`);
+          await uploadBytes(fileRef, blob, { contentType });
           return await getDownloadURL(fileRef);
         })();
 
         const timeout = new Promise<string>((_, reject) =>
-          setTimeout(() => reject(new Error('Storage upload timed out')), 25000)
+          setTimeout(() => reject(new Error('Storage upload timed out')), timeoutMs)
         );
 
         finalUrl = await Promise.race([uploadTask, timeout]);
       } catch (err) {
         console.warn('Firebase Storage upload notice (using fallback):', err);
         // If Storage failed and URI is a temporary blob:, convert to persistent base64 Data URL so it is never lost
-        if (newPhoto.originalUrl.startsWith('blob:') && typeof window !== 'undefined') {
+        if (newPhoto.originalUrl.startsWith('blob:') && typeof window !== 'undefined' && !isVideo) {
           try {
             const res = await fetch(newPhoto.originalUrl);
             const blob = await res.blob();
@@ -608,6 +620,7 @@ class EventService {
     const createdPhoto: PhotoModel = {
       ...newPhoto,
       id: photoId,
+      mediaType: isVideo ? 'video' : 'photo',
       originalUrl: finalUrl,
       thumbnailUrl: finalUrl,
       createdAt: new Date().toISOString(),
@@ -699,10 +712,36 @@ class EventService {
     this.savePhotosToStorage(slug, filtered);
     this.notifyPhotoSubscribers(slug, filtered);
 
+    const event = this.events.get(slug);
+    if (event) {
+      event.storage.photoCount = Math.max(0, filtered.length);
+      this.events.set(slug, { ...event });
+    }
+
     if (isRealFirebaseConfigured && db) {
       try {
         const docRef = doc(db, 'events', slug, 'photos', photoId);
-        await setDoc(docRef, { isApproved: false, isDeleted: true }, { merge: true });
+        await deleteDoc(docRef);
+
+        if (storage) {
+          try {
+            const photoStorageRef = ref(storage, `events/${slug}/photos/${photoId}.jpg`);
+            await deleteObject(photoStorageRef);
+          } catch (_e) { }
+        }
+
+        const eventDocRef = doc(db, 'events', slug);
+        const ev = await this.getEvent(slug);
+        await setDoc(
+          eventDocRef,
+          sanitizeForFirestore({
+            storage: {
+              ...(ev.storage || {}),
+              photoCount: Math.max(0, filtered.length),
+            },
+          }),
+          { merge: true }
+        );
       } catch (err) {
         console.warn('Firestore delete error:', err);
       }
