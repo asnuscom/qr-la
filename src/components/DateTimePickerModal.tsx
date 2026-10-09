@@ -26,9 +26,11 @@ const MONTH_NAMES = [
 
 const WEEKDAY_NAMES = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 
-// Common wedding / event hours
-const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
-const MINUTES = ['00', '15', '30', '45'];
+// Common wedding / event hours & 5-minute intervals
+const ALL_HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
+const ALL_MINUTES = ['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'];
+const QUICK_TIME_PRESETS = ['17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00'];
+const PRIME_HOURS = ['17', '18', '19', '20', '21', '22', '23'];
 
 // -------------------------------------------------------------
 // 1. DATE PICKER MODAL (Interactive Calendar)
@@ -272,7 +274,7 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = ({
 };
 
 // -------------------------------------------------------------
-// 2. TIME PICKER MODAL (Interactive Clock & Minutes Grid)
+// 2. TIME PICKER MODAL (Modern Interactive Stepper & Grid Selector)
 // -------------------------------------------------------------
 interface TimePickerModalProps {
   visible: boolean;
@@ -281,151 +283,350 @@ interface TimePickerModalProps {
   onClose: () => void;
 }
 
+const parseTimeToParts = (val?: string): { hour: string; minute: string } => {
+  const clean = (val || '19:00').trim().replace('.', ':');
+  const parts = clean.split(':');
+  if (parts.length >= 2) {
+    let h = parseInt(parts[0], 10);
+    let m = parseInt(parts[1], 10);
+    if (isNaN(h) || h < 0 || h > 23) h = 19;
+    if (isNaN(m) || m < 0 || m > 59) m = 0;
+    return {
+      hour: String(h).padStart(2, '0'),
+      minute: String(m).padStart(2, '0'),
+    };
+  }
+  return { hour: '19', minute: '00' };
+};
+
 export const TimePickerModal: React.FC<TimePickerModalProps> = ({
   visible,
   value,
   onConfirm,
   onClose,
 }) => {
-  const parseInitialTime = () => {
-    const clean = (value || '19:00').trim().replace('.', ':');
-    const parts = clean.split(':');
-    if (parts.length >= 2) {
-      const h = parts[0].padStart(2, '0');
-      const m = parts[1].padStart(2, '0');
-      return { hour: h, minute: m };
-    }
-    return { hour: '19', minute: '00' };
-  };
-
-  const initial = parseInitialTime();
-  const [selectedHour, setSelectedHour] = useState<string>(initial.hour);
-  const [selectedMinute, setSelectedMinute] = useState<string>(initial.minute);
+  const [selectedHour, setSelectedHour] = useState<string>('19');
+  const [selectedMinute, setSelectedMinute] = useState<string>('00');
+  const [activeTab, setActiveTab] = useState<'hour' | 'minute'>('hour');
 
   useEffect(() => {
     if (visible) {
-      const parsed = parseInitialTime();
+      const parsed = parseTimeToParts(value);
       setSelectedHour(parsed.hour);
       setSelectedMinute(parsed.minute);
+      setActiveTab('hour');
     }
   }, [visible, value]);
+
+  const handleStepHour = (delta: number) => {
+    const cur = parseInt(selectedHour, 10);
+    const next = (cur + delta + 24) % 24;
+    setSelectedHour(String(next).padStart(2, '0'));
+  };
+
+  const handleStepMinute = (delta: number) => {
+    const cur = parseInt(selectedMinute, 10);
+    let next = cur + delta;
+    if (next >= 60) next = 0;
+    else if (next < 0) next = 55;
+    // Round to nearest 5
+    next = Math.round(next / 5) * 5;
+    if (next >= 60) next = 0;
+    setSelectedMinute(String(next).padStart(2, '0'));
+  };
+
+  const handleSelectPreset = (timeStr: string) => {
+    const parts = timeStr.split(':');
+    if (parts.length === 2) {
+      setSelectedHour(parts[0]);
+      setSelectedMinute(parts[1]);
+    }
+  };
+
+  const handleSelectHour = (hr: string) => {
+    setSelectedHour(hr);
+    // Smooth transition to minute selection
+    setActiveTab('minute');
+  };
+
+  const handleSelectMinute = (mn: string) => {
+    setSelectedMinute(mn);
+  };
 
   const handleConfirm = () => {
     onConfirm(`${selectedHour}:${selectedMinute}`);
     onClose();
   };
 
-  const setPreset = (h: string, m: string) => {
-    setSelectedHour(h);
-    setSelectedMinute(m);
+  const getPeriodLabel = (hStr: string) => {
+    const h = parseInt(hStr, 10);
+    if (h >= 5 && h < 12) return 'Sabah';
+    if (h >= 12 && h < 17) return 'Öğleden Sonra';
+    if (h >= 17 && h < 22) return 'Akşam';
+    return 'Gece';
   };
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.modalBackdrop}>
-        <View style={styles.modalCard}>
+        <View style={styles.timeModalCard}>
           {/* Header */}
           <View style={styles.modalHeader}>
             <View>
-              <Text style={styles.modalTitle}>Etkinlik Saati Seçin</Text>
-              <Text style={styles.modalSubtitle}>Türkiye Saati (TSİ GMT+3 🇹🇷)</Text>
+              <Text style={styles.modalTitle}>Etkinlik Saati</Text>
+              <View style={styles.tzBadgeRow}>
+                <Ionicons name="time" size={13} color="#8A6D3B" />
+                <Text style={styles.modalSubtitle}>TSİ GMT+3 • {getPeriodLabel(selectedHour)}</Text>
+              </View>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
               <Ionicons name="close" size={20} color="#6B7280" />
             </TouchableOpacity>
           </View>
 
-          {/* Big Digital Display */}
-          <View style={styles.digitalClockWrap}>
-            <View style={styles.digitalBox}>
-              <Text style={styles.digitalNumber}>{selectedHour}</Text>
-              <Text style={styles.digitalLabel}>SAAT</Text>
+          {/* Hero Digital Stepper Box */}
+          <View style={styles.heroClockCard}>
+            {/* Hour Stepper Box */}
+            <View style={styles.stepperColumn}>
+              <TouchableOpacity
+                style={styles.stepArrowBtn}
+                onPress={() => handleStepHour(1)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="chevron-up" size={18} color="#8A6D3B" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.digitalBoxTouch,
+                  activeTab === 'hour' && styles.digitalBoxTouchActive,
+                ]}
+                onPress={() => setActiveTab('hour')}
+                activeOpacity={0.8}
+              >
+                <Text style={[
+                  styles.heroDigitalNum,
+                  activeTab === 'hour' && styles.heroDigitalNumActive,
+                ]}>
+                  {selectedHour}
+                </Text>
+                <Text style={[
+                  styles.heroDigitalLabel,
+                  activeTab === 'hour' && styles.heroDigitalLabelActive,
+                ]}>
+                  SAAT
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.stepArrowBtn}
+                onPress={() => handleStepHour(-1)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="chevron-down" size={18} color="#8A6D3B" />
+              </TouchableOpacity>
             </View>
-            <Text style={styles.digitalColon}>:</Text>
-            <View style={styles.digitalBox}>
-              <Text style={styles.digitalNumber}>{selectedMinute}</Text>
-              <Text style={styles.digitalLabel}>DAKİKA</Text>
+
+            {/* Colon */}
+            <View style={styles.colonContainer}>
+              <Text style={styles.heroColon}>:</Text>
+            </View>
+
+            {/* Minute Stepper Box */}
+            <View style={styles.stepperColumn}>
+              <TouchableOpacity
+                style={styles.stepArrowBtn}
+                onPress={() => handleStepMinute(5)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="chevron-up" size={18} color="#8A6D3B" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.digitalBoxTouch,
+                  activeTab === 'minute' && styles.digitalBoxTouchActive,
+                ]}
+                onPress={() => setActiveTab('minute')}
+                activeOpacity={0.8}
+              >
+                <Text style={[
+                  styles.heroDigitalNum,
+                  activeTab === 'minute' && styles.heroDigitalNumActive,
+                ]}>
+                  {selectedMinute}
+                </Text>
+                <Text style={[
+                  styles.heroDigitalLabel,
+                  activeTab === 'minute' && styles.heroDigitalLabelActive,
+                ]}>
+                  DAKİKA
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.stepArrowBtn}
+                onPress={() => handleStepMinute(-5)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="chevron-down" size={18} color="#8A6D3B" />
+              </TouchableOpacity>
             </View>
           </View>
 
-          {/* Quick Wedding Time Templates */}
-          <Text style={styles.pickerSectionTitle}>Hızlı Etkinlik Şablonları:</Text>
-          <View style={styles.presetChipsRow}>
-            {[
-              { h: '18', m: '00', label: '18:00 Kokteyl' },
-              { h: '19', m: '00', label: '19:00 Nikah' },
-              { h: '19', m: '30', label: '19:30 Yemek' },
-              { h: '20', m: '00', label: '20:00 Giriş' },
-              { h: '20', m: '30', label: '20:30 Müzik' },
-              { h: '21', m: '00', label: '21:00 Pasta' },
-            ].map((preset) => {
-              const isMatch = selectedHour === preset.h && selectedMinute === preset.m;
-              return (
-                <TouchableOpacity
-                  key={preset.label}
-                  style={[styles.presetChip, isMatch && styles.presetChipActive]}
-                  onPress={() => setPreset(preset.h, preset.m)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.presetChipText, isMatch && styles.presetChipTextActive]}>
-                    {preset.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+          {/* Quick 1-Tap Presets */}
+          <View style={styles.quickPresetsHeaderRow}>
+            <Text style={styles.quickPresetsLabel}>Sık Kullanılan:</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.quickPresetsChipsScroll}
+            >
+              {QUICK_TIME_PRESETS.map((preset) => {
+                const isSelected = `${selectedHour}:${selectedMinute}` === preset;
+                return (
+                  <TouchableOpacity
+                    key={preset}
+                    style={[styles.quickPresetChip, isSelected && styles.quickPresetChipActive]}
+                    onPress={() => handleSelectPreset(preset)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={[styles.quickPresetChipText, isSelected && styles.quickPresetChipTextActive]}>
+                      {preset}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           </View>
 
-          {/* Hour Selector Grid */}
-          <Text style={styles.pickerSectionTitle}>Saat (00 - 23):</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.timeScroll}
-          >
-            {HOURS.map((hr) => {
-              const isSelected = selectedHour === hr;
-              return (
-                <TouchableOpacity
-                  key={hr}
-                  style={[styles.timeSlotCell, isSelected && styles.timeSlotCellActive]}
-                  onPress={() => setSelectedHour(hr)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.timeSlotText, isSelected && styles.timeSlotTextActive]}>
-                    {hr}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+          {/* Segmented Selector Tabs */}
+          <View style={styles.segmentedTabBar}>
+            <TouchableOpacity
+              style={[styles.segmentedTab, activeTab === 'hour' && styles.segmentedTabActive]}
+              onPress={() => setActiveTab('hour')}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name="time"
+                size={15}
+                color={activeTab === 'hour' ? '#FFF' : '#8A6D3B'}
+              />
+              <Text style={[styles.segmentedTabText, activeTab === 'hour' && styles.segmentedTabTextActive]}>
+                Saat Seç ({selectedHour})
+              </Text>
+            </TouchableOpacity>
 
-          {/* Minute Selector */}
-          <Text style={styles.pickerSectionTitle}>Dakika:</Text>
-          <View style={styles.minuteRow}>
-            {MINUTES.map((mn) => {
-              const isSelected = selectedMinute === mn;
-              return (
-                <TouchableOpacity
-                  key={mn}
-                  style={[styles.minuteCell, isSelected && styles.minuteCellActive]}
-                  onPress={() => setSelectedMinute(mn)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.minuteText, isSelected && styles.minuteTextActive]}>
-                    :{mn}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+            <TouchableOpacity
+              style={[styles.segmentedTab, activeTab === 'minute' && styles.segmentedTabActive]}
+              onPress={() => setActiveTab('minute')}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name="stopwatch-outline"
+                size={15}
+                color={activeTab === 'minute' ? '#FFF' : '#8A6D3B'}
+              />
+              <Text style={[styles.segmentedTabText, activeTab === 'minute' && styles.segmentedTabTextActive]}>
+                Dakika Seç (:{selectedMinute})
+              </Text>
+            </TouchableOpacity>
           </View>
 
-          {/* Confirm / Cancel Actions */}
-          <View style={[styles.actionRow, { marginTop: 24 }]}>
+          {/* Selection Content Container */}
+          <View style={styles.selectionBody}>
+            {activeTab === 'hour' ? (
+              <View style={styles.hourGridContainer}>
+                <View style={styles.gridHintRow}>
+                  <Text style={styles.gridHintText}>Başlangıç saatine dokunun:</Text>
+                  <View style={styles.primeHintBadge}>
+                    <Text style={styles.primeHintBadgeText}>⭐ Akşam Saatleri</Text>
+                  </View>
+                </View>
+
+                {/* 6 columns x 4 rows = 24 hours */}
+                <View style={styles.hoursGrid}>
+                  {ALL_HOURS.map((hr) => {
+                    const isSelected = selectedHour === hr;
+                    const isPrime = PRIME_HOURS.includes(hr);
+                    return (
+                      <TouchableOpacity
+                        key={hr}
+                        style={[
+                          styles.hourBadge,
+                          isPrime && styles.hourBadgePrime,
+                          isSelected && styles.hourBadgeSelected,
+                        ]}
+                        onPress={() => handleSelectHour(hr)}
+                        activeOpacity={0.75}
+                      >
+                        <Text style={[
+                          styles.hourBadgeText,
+                          isPrime && !isSelected && styles.hourBadgeTextPrime,
+                          isSelected && styles.hourBadgeTextSelected,
+                        ]}>
+                          {hr}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            ) : (
+              <View style={styles.minuteGridContainer}>
+                <View style={styles.gridHintRow}>
+                  <Text style={styles.gridHintText}>5'er dakikalık aralıkla seçin:</Text>
+                  <View style={styles.minuteStepBtnsRow}>
+                    <TouchableOpacity
+                      style={styles.minuteStepBtn}
+                      onPress={() => handleStepMinute(-15)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.minuteStepBtnText}>-15 dk</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.minuteStepBtn}
+                      onPress={() => handleStepMinute(15)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.minuteStepBtnText}>+15 dk</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* 4 columns x 3 rows = 12 minute increments */}
+                <View style={styles.minutesGrid}>
+                  {ALL_MINUTES.map((mn) => {
+                    const isSelected = selectedMinute === mn;
+                    return (
+                      <TouchableOpacity
+                        key={mn}
+                        style={[
+                          styles.minuteBadge,
+                          isSelected && styles.minuteBadgeSelected,
+                        ]}
+                        onPress={() => handleSelectMinute(mn)}
+                        activeOpacity={0.75}
+                      >
+                        <Text style={[
+                          styles.minuteBadgeText,
+                          isSelected && styles.minuteBadgeTextSelected,
+                        ]}>
+                          :{mn}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+          </View>
+
+          {/* Action Row */}
+          <View style={styles.actionRow}>
             <TouchableOpacity style={styles.cancelBtn} onPress={onClose} activeOpacity={0.7}>
               <Text style={styles.cancelBtnText}>Vazgeç</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirm} activeOpacity={0.85}>
-              <Text style={styles.confirmBtnText}>Saati Onayla ({selectedHour}:{selectedMinute})</Text>
+              <Text style={styles.confirmBtnText}>
+                Saati Onayla ({selectedHour}:{selectedMinute})
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -641,80 +842,287 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
 
-  // Time Picker specific styles
-  digitalClockWrap: {
+  // Time Picker Modern Redesign Styles
+  timeModalCard: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: '#C5A059',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: '#F3EFE6',
+  },
+  tzBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FAF5EA',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+  },
+  heroClockCard: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#1A1817',
-    borderRadius: 16,
-    paddingVertical: 18,
-    marginVertical: 14,
-    gap: 12,
+    backgroundColor: '#FAF7F2',
+    borderRadius: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginVertical: 12,
+    borderWidth: 1.5,
+    borderColor: '#EFE7DA',
+    gap: 8,
   },
-  digitalBox: {
+  stepperColumn: {
     alignItems: 'center',
-    minWidth: 70,
+    gap: 6,
   },
-  digitalNumber: {
-    fontSize: 38,
+  stepArrowBtn: {
+    width: 36,
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  digitalBoxTouch: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 84,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#EFE7DA',
+  },
+  digitalBoxTouchActive: {
+    backgroundColor: '#FFFDF9',
+    borderColor: '#C5A059',
+    shadowColor: '#C5A059',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  heroDigitalNum: {
+    fontSize: 40,
     fontWeight: '900',
-    color: '#FFFFFF',
+    color: '#374151',
     fontVariant: ['tabular-nums'],
+    letterSpacing: -1,
   },
-  digitalLabel: {
+  heroDigitalNumActive: {
+    color: '#8A6D3B',
+  },
+  heroDigitalLabel: {
     fontSize: 10,
-    fontWeight: '700',
-    color: '#C5A059',
+    fontWeight: '800',
+    color: '#9CA3AF',
     marginTop: 2,
-    letterSpacing: 1,
+    letterSpacing: 1.5,
   },
-  digitalColon: {
-    fontSize: 34,
+  heroDigitalLabelActive: {
+    color: '#C5A059',
+  },
+  colonContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    paddingBottom: 16,
+  },
+  heroColon: {
+    fontSize: 36,
     fontWeight: '900',
     color: '#C5A059',
-    marginBottom: 14,
   },
-  pickerSectionTitle: {
+  quickPresetsHeaderRow: {
+    marginBottom: 12,
+  },
+  quickPresetsLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#6B7280',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  quickPresetsChipsScroll: {
+    gap: 6,
+    paddingBottom: 2,
+  },
+  quickPresetChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+    backgroundColor: '#FAF7F2',
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+  },
+  quickPresetChipActive: {
+    backgroundColor: '#C5A059',
+    borderColor: '#C5A059',
+  },
+  quickPresetChipText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#4B5563',
-    marginBottom: 8,
-    marginTop: 10,
+    color: '#6B7280',
   },
-  presetChipsRow: {
+  quickPresetChipTextActive: {
+    color: '#FFFFFF',
+  },
+  segmentedTabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#FAF7F2',
+    borderRadius: 14,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+    gap: 4,
+    marginBottom: 12,
+  },
+  segmentedTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 9,
+    borderRadius: 10,
+  },
+  segmentedTabActive: {
+    backgroundColor: '#C5A059',
+    shadowColor: '#C5A059',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  segmentedTabText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#8A6D3B',
+  },
+  segmentedTabTextActive: {
+    color: '#FFFFFF',
+  },
+  selectionBody: {
+    minHeight: 180,
+    justifyContent: 'center',
+  },
+  hourGridContainer: {
+    gap: 8,
+  },
+  minuteGridContainer: {
+    gap: 8,
+  },
+  gridHintRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 2,
+  },
+  gridHintText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  primeHintBadge: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  primeHintBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#B45309',
+  },
+  minuteStepBtnsRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  minuteStepBtn: {
+    backgroundColor: '#FAF5EA',
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  minuteStepBtnText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#8A6D3B',
+  },
+  hoursGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
+    justifyContent: 'space-between',
   },
-  presetChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+  hourBadge: {
+    width: '14.5%',
+    aspectRatio: 1.15,
     borderRadius: 10,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#FAF7F2',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#EFE7DA',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  presetChipActive: {
+  hourBadgePrime: {
+    backgroundColor: '#FFFDF5',
+    borderColor: '#FDE68A',
+  },
+  hourBadgeSelected: {
     backgroundColor: '#C5A059',
     borderColor: '#C5A059',
+    shadowColor: '#C5A059',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  presetChipText: {
-    fontSize: 11,
-    fontWeight: '600',
+  hourBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
     color: '#4B5563',
   },
-  presetChipTextActive: {
-    color: '#FFF',
-    fontWeight: '700',
+  hourBadgeTextPrime: {
+    color: '#B45309',
+    fontWeight: '800',
   },
-  timeScroll: {
-    gap: 6,
-    paddingVertical: 4,
+  hourBadgeTextSelected: {
+    color: '#FFFFFF',
+    fontWeight: '900',
   },
-  timeSlotCell: {
-    width: 44,
-    height: 44,
+  minutesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'space-between',
+  },
+  minuteBadge: {
+    width: '23%',
+    aspectRatio: 1.4,
     borderRadius: 12,
     backgroundColor: '#FAF7F2',
     borderWidth: 1,
@@ -722,42 +1130,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  timeSlotCellActive: {
+  minuteBadgeSelected: {
     backgroundColor: '#C5A059',
     borderColor: '#C5A059',
+    shadowColor: '#C5A059',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  timeSlotText: {
+  minuteBadgeText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1A1817',
+    color: '#374151',
   },
-  timeSlotTextActive: {
-    color: '#FFF',
-  },
-  minuteRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  minuteCell: {
-    flex: 1,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#FAF7F2',
-    borderWidth: 1,
-    borderColor: '#EFE7DA',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  minuteCellActive: {
-    backgroundColor: '#C5A059',
-    borderColor: '#C5A059',
-  },
-  minuteText: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#1A1817',
-  },
-  minuteTextActive: {
-    color: '#FFF',
+  minuteBadgeTextSelected: {
+    color: '#FFFFFF',
+    fontWeight: '900',
   },
 });

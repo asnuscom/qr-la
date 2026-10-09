@@ -15,7 +15,6 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -29,14 +28,6 @@ export default function HostPanelScreen() {
   const [event, setEvent] = useState<EventModel | null>(null);
   const [photos, setPhotos] = useState<PhotoModel[]>([]);
   const [currentUser, setCurrentUser] = useState<UserModel | null>(authService.getState().user);
-  const [isPrivate, setIsPrivate] = useState(false);
-  const [pinCode, setPinCode] = useState('1923');
-  const [allowDownloads, setAllowDownloads] = useState(true);
-  const [isLiveFeedActive, setIsLiveFeedActive] = useState(true);
-  const [originalQuality, setOriginalQuality] = useState(false);
-  const [isSavingSettings, setIsSavingSettings] = useState(false);
-  const [settingsSaveSuccess, setSettingsSaveSuccess] = useState(false);
-  const [hasUnsavedSettings, setHasUnsavedSettings] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingSamples, setIsLoadingSamples] = useState(false);
 
@@ -75,12 +66,6 @@ export default function HostPanelScreen() {
     const ev = await eventService.getEvent(activeSlug, targetUser?.displayName);
     if (ev) {
       setEvent(ev);
-      setIsPrivate(ev.settings.isPrivate);
-      setPinCode(ev.settings.pinCode || '1923');
-      setAllowDownloads(ev.settings.allowGuestDownloads);
-      setIsLiveFeedActive(ev.settings.isLiveFeedActive);
-      setOriginalQuality(Boolean((ev.settings as any).originalQuality || !ev.settings.enableCompression));
-      setHasUnsavedSettings(false);
     }
     const ph = await eventService.getPhotos(activeSlug);
     setPhotos(ph);
@@ -181,56 +166,9 @@ export default function HostPanelScreen() {
     }
   };
 
+
+
   const isDemo = event?.slug === 'demo-panel' || !currentUser || currentUser.uid === 'demo-host-yavuz';
-
-  const handleSaveSettings = async () => {
-    if (!event) return;
-    if (isDemo) {
-      Alert.alert(
-        'Demo Modu (Salt Okunur) 🔒',
-        'Örnek demo panelindeki ayarlar diğer ziyaretçilerin deneyimi için kilitlidir.\n\nKendi etkinliğinizi oluşturup tüm gizlilik ve kontrol ayarlarına sahip olmak için ücretsiz kayıt olabilirsiniz.',
-        [
-          { text: 'İncelemeye Devam Et', style: 'cancel' },
-          {
-            text: 'Kayıt Ol',
-            onPress: () => router.push({ pathname: '/giris', params: { tab: 'register' } } as any),
-          },
-        ]
-      );
-      return;
-    }
-
-    if (isPrivate && (!pinCode || pinCode.trim().length !== 4)) {
-      Alert.alert('Eksik Bilgi', 'PIN koruması aktifken lütfen 4 haneli geçerli bir PIN kodu giriniz.');
-      return;
-    }
-
-    setIsSavingSettings(true);
-    try {
-      const updatedSettings = {
-        ...event.settings,
-        isPrivate,
-        pinCode: pinCode.trim(),
-        allowGuestDownloads: allowDownloads,
-        isLiveFeedActive,
-        enableCompression: !originalQuality,
-        originalQuality,
-      };
-
-      await eventService.saveEvent(event.slug, { settings: updatedSettings });
-      setEvent({ ...event, settings: updatedSettings });
-      setHasUnsavedSettings(false);
-      setSettingsSaveSuccess(true);
-      setTimeout(() => setSettingsSaveSuccess(false), 3500);
-
-      Alert.alert('Başarılı! 🎉', 'Gizlilik ve etkinlik ayarlarınız başarıyla güncellendi.');
-    } catch (e) {
-      console.error('Settings save error:', e);
-      Alert.alert('Hata', 'Ayarlar kaydedilirken bir hata oluştu.');
-    } finally {
-      setIsSavingSettings(false);
-    }
-  };
 
   useEffect(() => {
     const initialUser = authService.getState().user;
@@ -451,15 +389,6 @@ export default function HostPanelScreen() {
               <Ionicons name="eye-outline" size={15} color="#FFF" />
               <Text style={styles.viewEventText}>Sayfayı Gör</Text>
             </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.navLogoutBtn}
-              onPress={handleLogout}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="log-out-outline" size={16} color="#EF4444" />
-              <Text style={styles.navLogoutText}>Çıkış Yap</Text>
-            </TouchableOpacity>
           </View>
         </View>
 
@@ -517,23 +446,42 @@ export default function HostPanelScreen() {
           onUpgradePress={() => router.push(`/panel/tarifeler?slug=${event.slug}` as any)}
         />
 
-        {/* Prominent Edit / Setup Button */}
-        <TouchableOpacity
-          style={styles.editSetupCard}
-          onPress={() => router.push(`/panel/duzenle?slug=${event.slug}` as any)}
-          activeOpacity={0.85}
-        >
-          <View style={styles.editSetupIcon}>
-            <Ionicons name="create" size={22} color="#FFF" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.editSetupTitle}>Etkinlik Bilgilerini & Akışı Düzenle</Text>
-            <Text style={styles.editSetupSub}>
-              İsimler, kapak görseli, mekan, akış saatleri ve tema ayarları
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#C5A059" />
-        </TouchableOpacity>
+        {/* Prominent Host Management Action Cards */}
+        <View style={styles.topActionCardsContainer}>
+          <TouchableOpacity
+            style={styles.editSetupCard}
+            onPress={() => router.push(`/panel/duzenle?slug=${event.slug}` as any)}
+            activeOpacity={0.85}
+          >
+            <View style={styles.editSetupIcon}>
+              <Ionicons name="create" size={22} color="#FFF" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.editSetupTitle}>Etkinlik Bilgilerini & Akışı Düzenle</Text>
+              <Text style={styles.editSetupSub}>
+                İsimler, kapak görseli, mekan, akış saatleri ve albüm kategorileri
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#C5A059" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.editSetupCard, styles.settingsSetupCard]}
+            onPress={() => router.push(`/panel/ayarlar?slug=${event.slug}` as any)}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.editSetupIcon, styles.settingsSetupIcon]}>
+              <Ionicons name="shield-checkmark" size={22} color="#FFF" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.editSetupTitle}>Özel Bağlantı, Gizlilik & Ayarlar</Text>
+              <Text style={styles.editSetupSub}>
+                Özel URL (slug), galeri PIN şifresi, canlı yayın ve misafir kuralları
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#4F46E5" />
+          </TouchableOpacity>
+        </View>
 
         {/* Quick Host Actions */}
         <View style={styles.actionGrid}>
@@ -612,165 +560,7 @@ export default function HostPanelScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Security & Event Settings */}
-        <View style={styles.settingsSection}>
-          <View style={styles.settingsHeaderRow}>
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                <Text style={styles.sectionHeaderTitle}>Gizlilik & Etkinlik Ayarları</Text>
-                {isDemo && (
-                  <View style={styles.lockedBadge}>
-                    <Ionicons name="lock-closed" size={10} color="#B45309" />
-                    <Text style={styles.lockedBadgeText}>Demoda Kilitli</Text>
-                  </View>
-                )}
-              </View>
-              <Text style={styles.sectionHeaderSub}>
-                {isDemo
-                  ? 'Demo modunda önizleme yapılabilir, değişiklikler sunucuya kaydedilmez.'
-                  : 'Misafir erişimi ve yükleme kuralları'}
-              </Text>
-            </View>
-          </View>
 
-          {/* Private Event Switch */}
-          <View style={styles.settingRow}>
-            <View style={{ flex: 1, paddingRight: 10 }}>
-              <Text style={styles.settingLabel}>PIN Kodu ile Galeri Koruması</Text>
-              <Text style={styles.settingDesc}>
-                Fotoğraf galerisine yalnızca masadaki PIN koduna sahip misafirler girebilir.
-              </Text>
-            </View>
-            <Switch
-              value={isPrivate}
-              onValueChange={(val) => {
-                setIsPrivate(val);
-                setHasUnsavedSettings(true);
-              }}
-              trackColor={{ false: '#D1D5DB', true: '#C5A059' }}
-            />
-          </View>
-
-          {isPrivate && (
-            <View style={styles.pinConfigRow}>
-              <Text style={styles.pinLabel}>4 Haneli PIN Kodu:</Text>
-              <TextInput
-                style={styles.pinInputField}
-                value={pinCode}
-                onChangeText={(newPin) => {
-                  setPinCode(newPin);
-                  setHasUnsavedSettings(true);
-                }}
-                keyboardType="numeric"
-                maxLength={4}
-              />
-            </View>
-          )}
-
-          {/* Allow Guest Downloads */}
-          <View style={styles.settingRow}>
-            <View style={{ flex: 1, paddingRight: 10 }}>
-              <Text style={styles.settingLabel}>Misafir İndirme İzni</Text>
-              <Text style={styles.settingDesc}>
-                Misafirler galerideki fotoğrafları kendi cihazlarına indirebilsin.
-              </Text>
-            </View>
-            <Switch
-              value={allowDownloads}
-              onValueChange={(val) => {
-                setAllowDownloads(val);
-                setHasUnsavedSettings(true);
-              }}
-              trackColor={{ false: '#D1D5DB', true: '#C5A059' }}
-            />
-          </View>
-
-          {/* Live Feed active */}
-          <View style={styles.settingRow}>
-            <View style={{ flex: 1, paddingRight: 10 }}>
-              <Text style={styles.settingLabel}>Canlı Projeksiyon Yayını</Text>
-              <Text style={styles.settingDesc}>
-                Yeni yüklenen fotoğraflar anında projeksiyon slayt ekranına düşsün.
-              </Text>
-            </View>
-            <Switch
-              value={isLiveFeedActive}
-              onValueChange={(val) => {
-                setIsLiveFeedActive(val);
-                setHasUnsavedSettings(true);
-              }}
-              trackColor={{ false: '#D1D5DB', true: '#C5A059' }}
-            />
-          </View>
-
-          {/* Original Quality Upload Switch */}
-          <View style={styles.settingRow}>
-            <View style={{ flex: 1, paddingRight: 10 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={styles.settingLabel}>Orijinal Kalite Seçeneği</Text>
-                {originalQuality && (
-                  <View style={styles.warningBadge}>
-                    <Text style={styles.warningBadgeText}>Kota Hızlı Dolar</Text>
-                  </View>
-                )}
-              </View>
-              <Text style={styles.settingDesc}>
-                Fotoğraflar sıkıştırılmadan orijinal ham çözünürlüğünde (3-8 MB) yüklensin.
-              </Text>
-            </View>
-            <Switch
-              value={originalQuality}
-              onValueChange={(val) => {
-                setOriginalQuality(val);
-                setHasUnsavedSettings(true);
-              }}
-              trackColor={{ false: '#D1D5DB', true: '#F59E0B' }}
-            />
-          </View>
-
-          {originalQuality && (
-            <View style={styles.quotaWarningBox}>
-              <View style={styles.quotaWarningHeader}>
-                <Ionicons name="warning" size={18} color="#D97706" />
-                <Text style={styles.quotaWarningTitle}>Depolama Kotası Uyarısı</Text>
-              </View>
-              <Text style={styles.quotaWarningDesc}>
-                ⚠️ Dikkat: Orijinal boyutta yüklerseniz 500 MB depolama kotanız çok daha çabuk dolar. Her bir görsel ortalama 3-8 MB yer kaplayacağı için toplam fotoğraf kapasiteniz düşebilir.
-              </Text>
-            </View>
-          )}
-
-          {/* Bottom Prominent Save Button */}
-          <TouchableOpacity
-            style={[
-              styles.saveSettingsMainBtn,
-              hasUnsavedSettings && styles.saveSettingsMainBtnActive,
-              isSavingSettings && { opacity: 0.7 },
-            ]}
-            onPress={handleSaveSettings}
-            disabled={isSavingSettings}
-            activeOpacity={0.8}
-          >
-            {isSavingSettings ? (
-              <ActivityIndicator color="#FFF" size="small" />
-            ) : (
-              <>
-                <Ionicons
-                  name={settingsSaveSuccess ? 'checkmark-circle' : 'checkmark-done'}
-                  size={18}
-                  color="#FFF"
-                />
-                <Text style={styles.saveSettingsMainBtnText}>
-                  {settingsSaveSuccess
-                    ? 'Ayarlar Kaydedildi!'
-                    : hasUnsavedSettings
-                      ? 'Değişiklikleri Kaydet'
-                      : 'Ayarları Kaydet'}
-                </Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
 
 
 
@@ -1095,22 +885,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
-  navLogoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FEE2E2',
-    paddingVertical: 7,
-    paddingHorizontal: 11,
-    borderRadius: 12,
-  },
-  navLogoutText: {
-    color: '#EF4444',
-    fontSize: 12,
-    fontWeight: '700',
-  },
   actionGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1281,21 +1055,33 @@ const styles = StyleSheet.create({
     padding: 4,
     borderRadius: 6,
   },
+  topActionCardsContainer: {
+    marginHorizontal: 16,
+    marginBottom: 20,
+    gap: 10,
+  },
   editSetupCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    marginHorizontal: 16,
-    marginBottom: 20,
     padding: 16,
     borderRadius: 18,
     borderWidth: 1,
     borderColor: '#C5A059',
     gap: 12,
     shadowColor: '#C5A059',
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 3,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  settingsSetupCard: {
+    borderColor: '#E0E7FF',
+    backgroundColor: '#FAFAFF',
+    shadowColor: '#4F46E5',
+    shadowOpacity: 0.06,
+  },
+  settingsSetupIcon: {
+    backgroundColor: '#4F46E5',
   },
   editSetupIcon: {
     width: 44,
@@ -1512,87 +1298,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#D97706',
   },
-  quotaWarningBox: {
-    backgroundColor: '#FFFBEB',
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#FCD34D',
-    marginTop: 8,
-    marginBottom: 8,
-  },
-  quotaWarningHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 6,
-  },
-  quotaWarningTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#B45309',
-  },
-  quotaWarningDesc: {
-    fontSize: 12,
-    color: '#92400E',
-    lineHeight: 18,
-  },
-  settingsHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  sectionHeaderSub: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  saveSettingsHeaderBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#C5A059',
-    paddingVertical: 7,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    shadowColor: '#C5A059',
-    shadowOpacity: 0.25,
-    shadowRadius: 5,
-    elevation: 2,
-  },
-  saveSettingsHeaderBtnActive: {
-    backgroundColor: '#10B981',
-    shadowColor: '#10B981',
-  },
-  saveSettingsHeaderBtnText: {
-    color: '#FFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  saveSettingsMainBtn: {
-    backgroundColor: '#C5A059',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: 14,
-    marginTop: 16,
-    shadowColor: '#C5A059',
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  saveSettingsMainBtnActive: {
-    backgroundColor: '#10B981',
-    shadowColor: '#10B981',
-  },
-  saveSettingsMainBtnText: {
-    color: '#FFF',
-    fontSize: 14,
-    fontWeight: '700',
-  },
+
   categoriesSection: {
     backgroundColor: '#FFFFFF',
     borderRadius: 24,

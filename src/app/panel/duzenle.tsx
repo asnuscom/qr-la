@@ -20,7 +20,6 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -162,10 +161,6 @@ export default function EventFormScreen() {
   }, [isDemo]);
 
   // Form State initialized with rich defaults
-  const [slug, setSlug] = useState(initialSlug);
-  const [hasUserEditedSlug, setHasUserEditedSlug] = useState(false);
-  const [slugCheckStatus, setSlugCheckStatus] = useState<{ checked: boolean; available: boolean; message?: string } | null>(null);
-  const [isCheckingSlug, setIsCheckingSlug] = useState(false);
   const [eventType, setEventType] = useState<EventType>('dugun');
   const [brideName, setBrideName] = useState('Şule');
   const [groomName, setGroomName] = useState('Samet');
@@ -191,14 +186,6 @@ export default function EventFormScreen() {
   const [mapUrl, setMapUrl] = useState(
     'https://maps.google.com/?q=Sait+Halim+Pasa+Yalisi+Istanbul'
   );
-
-  const [isPrivate, setIsPrivate] = useState(false);
-  const [pinCode, setPinCode] = useState('1923');
-  const [enableCompression, setEnableCompression] = useState(true);
-  const [allowGuestDownloads, setAllowGuestDownloads] = useState(true);
-  const [isLiveFeedActive, setIsLiveFeedActive] = useState(true);
-  const [allowGuestbook, setAllowGuestbook] = useState(true);
-  const [autoApprovePhotos, setAutoApprovePhotos] = useState(true);
 
   // Schedule Timeline State
   const [schedule, setSchedule] = useState<ScheduleItem[]>([
@@ -232,9 +219,6 @@ export default function EventFormScreen() {
         const ev = await eventService.getEvent(slugToLoad, user?.displayName);
         if (ev) {
           setLoadedSlug(ev.slug);
-          setSlug(ev.slug);
-          setHasUserEditedSlug(false);
-          setSlugCheckStatus(null);
           setEventType(ev.eventType || 'dugun');
           setBrideName(ev.hosts.brideOrPrimary || 'Şule');
           setGroomName(ev.hosts.groomOrSecondary || 'Samet');
@@ -246,15 +230,6 @@ export default function EventFormScreen() {
           setVenueAddress(ev.venue.address);
           setMapUrl(ev.venue.mapUrl);
           setInvitationUrl(ev.invitationUrl || '');
-
-          setIsPrivate(ev.settings.isPrivate);
-          setPinCode(ev.settings.pinCode || '1923');
-          const isOrigQuality = Boolean((ev.settings as any)?.originalQuality || ev.settings.enableCompression === false);
-          setEnableCompression(!isOrigQuality);
-          setAllowGuestDownloads(ev.settings.allowGuestDownloads);
-          setIsLiveFeedActive(ev.settings.isLiveFeedActive);
-          setAllowGuestbook(ev.settings.allowGuestbook ?? true);
-          setAutoApprovePhotos(ev.settings.autoApprovePhotos ?? true);
 
           if (ev.schedule && ev.schedule.length > 0) {
             setSchedule(ev.schedule);
@@ -278,43 +253,7 @@ export default function EventFormScreen() {
     load();
   }, [paramSlug, initialSlug, user?.displayName]);
 
-  // Debounced slug availability verification
-  useEffect(() => {
-    if (!slug || isDemo || slug === activeSavedSlug) {
-      setSlugCheckStatus(null);
-      setIsCheckingSlug(false);
-      return;
-    }
-
-    if (slug.length < 3) {
-      setSlugCheckStatus({
-        checked: true,
-        available: false,
-        message: 'Bağlantı adı en az 3 karakterden oluşmalıdır.',
-      });
-      return;
-    }
-
-    setIsCheckingSlug(true);
-    const timer = setTimeout(async () => {
-      try {
-        const res = await eventService.checkSlugAvailability(slug, user?.uid);
-        setSlugCheckStatus({
-          checked: true,
-          available: res.available,
-          message: res.available ? `qr-la.com/${res.formattedSlug} bağlantısı kullanılabilir!` : res.reason,
-        });
-      } catch {
-        setSlugCheckStatus(null);
-      } finally {
-        setIsCheckingSlug(false);
-      }
-    }, 350);
-
-    return () => clearTimeout(timer);
-  }, [slug, activeSavedSlug, isDemo, user?.uid]);
-
-  // When bride or groom names change, automatically update suggested title and slug
+  // When bride or groom names change, automatically update suggested title
   const handleNameChange = (newBride: string, newGroom: string) => {
     if (isDemo) {
       showDemoLockedNotice('Gelin ve damat isimleri');
@@ -325,23 +264,7 @@ export default function EventFormScreen() {
 
     if (newBride && newGroom) {
       setTitle(`${newBride.trim()} & ${newGroom.trim()} Düğünü`);
-      // Only auto-update slug if host hasn't typed a custom slug
-      if (!hasUserEditedSlug) {
-        const generatedSlug = slugify(`${newBride.trim()} & ${newGroom.trim()}`);
-        setSlug(generatedSlug);
-      }
     }
-  };
-
-  const handleSlugChange = (raw: string) => {
-    if (isDemo) {
-      showDemoLockedNotice('Özel Bağlantı Linki (Slug)');
-      return;
-    }
-    setHasUserEditedSlug(true);
-    // Sanitize in real-time: lowercase alphanumeric and hyphens only
-    const sanitized = raw.toLowerCase().replace(/[^a-z0-9-]/g, '');
-    setSlug(sanitized);
   };
 
   // Schedule Management Handlers
@@ -455,7 +378,7 @@ export default function EventFormScreen() {
           blobToUpload = await response.blob();
         }
         const fileExt = 'jpg';
-        const coverRef = ref(storage, `events/${slug || activeSavedSlug}/covers/cover-${Date.now()}.${fileExt}`);
+        const coverRef = ref(storage, `events/${activeSavedSlug}/covers/cover-${Date.now()}.${fileExt}`);
         await uploadBytes(coverRef, blobToUpload, { contentType: 'image/jpeg' });
         const downloadUrl = await getDownloadURL(coverRef);
         setCoverPhotoUrl(downloadUrl);
@@ -498,7 +421,7 @@ export default function EventFormScreen() {
           blobToUpload = await response.blob();
         }
         const fileExt = 'jpg';
-        const invRef = ref(storage, `events/${slug || activeSavedSlug}/invitations/davetiye-${Date.now()}.${fileExt}`);
+        const invRef = ref(storage, `events/${activeSavedSlug}/invitations/davetiye-${Date.now()}.${fileExt}`);
         await uploadBytes(invRef, blobToUpload, { contentType: 'image/jpeg' });
         const downloadUrl = await getDownloadURL(invRef);
         setInvitationUrl(downloadUrl);
@@ -552,7 +475,7 @@ export default function EventFormScreen() {
           const response = await fetch(uploadUri);
           uploadBlob = await response.blob();
         }
-        const invRef = ref(storage, `events/${slug || activeSavedSlug}/invitations/davetiye-${Date.now()}.${fileExt}`);
+        const invRef = ref(storage, `events/${activeSavedSlug}/invitations/davetiye-${Date.now()}.${fileExt}`);
         await uploadBytes(invRef, uploadBlob, { contentType });
         const downloadUrl = await getDownloadURL(invRef);
         setInvitationUrl(downloadUrl);
@@ -585,19 +508,8 @@ export default function EventFormScreen() {
       return;
     }
 
-    if (!title.trim() || !slug.trim()) {
-      Alert.alert('Eksik Bilgi', 'Lütfen etkinlik başlığı ve linkini girin.');
-      return;
-    }
-
-    const cleanSlug = slugify(slug);
-    if (!cleanSlug || cleanSlug.length < 3) {
-      Alert.alert('Eksik Bilgi', 'Özel bağlantı linki en az 3 karakterden oluşmalıdır.');
-      return;
-    }
-
-    if (slugCheckStatus && !slugCheckStatus.available && cleanSlug !== activeSavedSlug) {
-      Alert.alert('Bağlantı Kullanılamıyor', slugCheckStatus.message || 'Lütfen farklı bir bağlantı adı seçin.');
+    if (!title.trim()) {
+      Alert.alert('Eksik Bilgi', 'Lütfen etkinlik başlığını girin.');
       return;
     }
 
@@ -607,7 +519,6 @@ export default function EventFormScreen() {
       const finalEventDate = formatEventDateToTurkeyIso(eventDateStr, eventTimeStr);
 
       const updatedData: Partial<EventModel> = {
-        slug: cleanSlug,
         eventType,
         title: title.trim(),
         subtitle: subtitle.trim(),
@@ -630,53 +541,20 @@ export default function EventFormScreen() {
           mapUrl: mapUrl.trim(),
         },
         schedule,
-        settings: {
-          isPrivate,
-          pinCode,
-          enableCompression,
-          originalQuality: !enableCompression,
-          allowGuestDownloads,
-          isLiveFeedActive,
-          allowGuestbook,
-          autoApprovePhotos,
-        },
       };
 
-      if (cleanSlug !== activeSavedSlug) {
-        // Slug changed! Migrate all albums, photos, guestbook, and user profile
-        await eventService.renameEventSlug(activeSavedSlug, cleanSlug, updatedData);
-        await eventService.saveAlbums(cleanSlug, albums);
-        if (user) {
-          await authService.updateUserEventSlug(user.uid, activeSavedSlug, cleanSlug);
-        }
-        setLoadedSlug(cleanSlug);
-        setSlug(cleanSlug);
-        setHasUserEditedSlug(false);
-        setSlugCheckStatus(null);
-        if (router.setParams) {
-          router.setParams({ slug: cleanSlug });
-        }
-      } else {
-        await eventService.saveEvent(cleanSlug, updatedData);
-        await eventService.saveAlbums(cleanSlug, albums);
-        if (user) {
-          await authService.addEventToUser(user.uid, cleanSlug);
-        }
-        setLoadedSlug(cleanSlug);
-        setSlug(cleanSlug);
-        setHasUserEditedSlug(false);
-        setSlugCheckStatus(null);
-      }
+      await eventService.saveEvent(activeSavedSlug, updatedData);
+      await eventService.saveAlbums(activeSavedSlug, albums);
 
       setIsSaving(false);
-      Alert.alert('Harika! 🎉', 'Etkinliğiniz başarıyla güncellendi ve kaydedildi!', [
+      Alert.alert('Harika! 🎉', 'Etkinlik bilgileri başarıyla güncellendi ve kaydedildi!', [
         {
           text: 'Panele Dön',
-          onPress: () => router.push({ pathname: '/panel', params: { slug: cleanSlug } } as any),
+          onPress: () => router.push({ pathname: '/panel', params: { slug: activeSavedSlug } } as any),
         },
         {
           text: 'Sayfayı Gör',
-          onPress: () => router.push(`/${cleanSlug}` as any),
+          onPress: () => router.push(`/${activeSavedSlug}` as any),
         },
       ]);
     } catch (e: any) {
@@ -936,113 +814,25 @@ export default function EventFormScreen() {
             )}
           </View>
 
-          {/* Custom Slug / URL */}
-          <View style={styles.inputGroup}>
-            <View style={styles.labelRowWithBadge}>
-              <Text style={styles.label}>Özel Bağlantı (Slug / URL)</Text>
-              {isDemo ? (
-                <View style={styles.lockedBadge}>
-                  <Ionicons name="lock-closed" size={10} color="#B45309" />
-                  <Text style={styles.lockedBadgeText}>Demoda Kilitli</Text>
-                </View>
-              ) : slugCheckStatus && slug !== activeSavedSlug ? (
-                <View
-                  style={[
-                    styles.slugStatusBadge,
-                    slugCheckStatus.available ? styles.slugStatusBadgeSuccess : styles.slugStatusBadgeError,
-                  ]}
-                >
-                  <Ionicons
-                    name={slugCheckStatus.available ? 'checkmark-circle' : 'alert-circle'}
-                    size={11}
-                    color={slugCheckStatus.available ? '#059669' : '#DC2626'}
-                  />
-                  <Text
-                    style={[
-                      styles.slugStatusBadgeText,
-                      slugCheckStatus.available
-                        ? styles.slugStatusBadgeTextSuccess
-                        : styles.slugStatusBadgeTextError,
-                    ]}
-                  >
-                    {slugCheckStatus.available ? 'Kullanılabilir' : 'Alınamaz'}
-                  </Text>
-                </View>
-              ) : null}
+          {/* Quick link banner to Ayarlar */}
+          <TouchableOpacity
+            style={styles.settingsRedirectCard}
+            onPress={() => router.push(`/panel/ayarlar?slug=${activeSavedSlug}` as any)}
+            activeOpacity={0.8}
+          >
+            <View style={styles.settingsRedirectIcon}>
+              <Ionicons name="settings-outline" size={20} color="#C5A059" />
             </View>
-
-            {isDemo ? (
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => showDemoLockedNotice('Özel Bağlantı Linki (Slug)')}
-                style={[styles.slugLockedBox, styles.inputLocked]}
-              >
-                <Ionicons name="lock-closed" size={16} color="#B45309" />
-                <Text style={styles.slugPrefixText}>qr-la.com/</Text>
-                <Text style={styles.slugValueText}>{slug || 'demo-panel'}</Text>
-              </TouchableOpacity>
-            ) : (
-              <View
-                style={[
-                  styles.slugInputContainer,
-                  slugCheckStatus && !slugCheckStatus.available && styles.slugInputContainerError,
-                  slugCheckStatus && slugCheckStatus.available && slug !== activeSavedSlug && styles.slugInputContainerSuccess,
-                ]}
-              >
-                <View style={styles.slugPrefixWrap}>
-                  <Ionicons name="link-outline" size={16} color="#8A6D3B" />
-                  <Text style={styles.slugPrefixText}>qr-la.com/</Text>
-                </View>
-                <TextInput
-                  style={styles.slugTextInput}
-                  value={slug}
-                  onChangeText={handleSlugChange}
-                  placeholder="ornek-dugun"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                {isCheckingSlug ? (
-                  <ActivityIndicator size="small" color="#C5A059" style={{ marginRight: 8 }} />
-                ) : slug !== activeSavedSlug ? (
-                  <TouchableOpacity
-                    onPress={() => {
-                      setSlug(activeSavedSlug);
-                      setHasUserEditedSlug(false);
-                      setSlugCheckStatus(null);
-                    }}
-                    style={styles.slugResetBtn}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <Ionicons name="refresh" size={13} color="#8A6D3B" />
-                    <Text style={styles.slugResetText}>Geri Al</Text>
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-            )}
-
-            {isDemo ? (
-              <Text style={styles.helperText}>
-                Demo linki diğer misafirlerin incelemesi için sabittir. Kendi özel kısa linkinizi oluşturmak için ücretsiz hesap açabilirsiniz.
+            <View style={{ flex: 1 }}>
+              <Text style={styles.settingsRedirectTitle}>
+                Özel Bağlantı, PIN & Gizlilik Ayarları
               </Text>
-            ) : slugCheckStatus?.message ? (
-              <Text
-                style={[
-                  styles.slugFeedbackText,
-                  slugCheckStatus.available ? styles.slugFeedbackSuccess : styles.slugFeedbackError,
-                ]}
-              >
-                {slugCheckStatus.available ? `✅ ${slugCheckStatus.message}` : `⚠️ ${slugCheckStatus.message}`}
+              <Text style={styles.settingsRedirectSub}>
+                Kısa link (qr-la.com/{activeSavedSlug}), galeri şifresi, canlı projeksiyon ve indirme kuralları için tıklayın.
               </Text>
-            ) : slug !== activeSavedSlug ? (
-              <Text style={styles.slugNoticeText}>
-                ⚠️ Bağlantıyı değiştirdiğinizde misafirlerin erişeceği adres ve QR kartlarınız "qr-la.com/{slug}" olarak güncellenecektir.
-              </Text>
-            ) : (
-              <Text style={styles.helperText}>
-                Misafirleriniz bu kısa bağlantı üzerinden fotoğraflara ulaşır (Örn: qr-la.com/{slug}). Sadece harf, rakam ve tire (-) içerebilir.
-              </Text>
-            )}
-          </View>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#C5A059" />
+          </TouchableOpacity>
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Karşılama Alt Yazısı (Misafirlere Mesajınız)</Text>
@@ -1621,127 +1411,10 @@ export default function EventFormScreen() {
           </View>
         </View>
 
-        {/* Section 5: Privacy, Moderation & Live Feed */}
-        <View style={styles.formCard}>
-          <Text style={styles.cardHeader}>5. Gizlilik, Kurallar & Canlı Yayın</Text>
-
-          {/* PIN Protection */}
-          <View style={styles.switchRow}>
-            <View style={{ flex: 1, paddingRight: 10 }}>
-              <Text style={styles.switchLabel}>PIN Kodu ile Galeriyi Koru</Text>
-              <Text style={styles.switchSub}>
-                Fotoğraf galerisine yalnızca masadaki PIN koduna sahip misafirler girebilir.
-              </Text>
-            </View>
-            <Switch
-              value={isPrivate}
-              onValueChange={setIsPrivate}
-              trackColor={{ false: '#D1D5DB', true: '#C5A059' }}
-            />
-          </View>
-
-          {isPrivate && (
-            <View style={styles.pinBox}>
-              <Text style={styles.label}>4 Haneli Giriş PIN Kodu:</Text>
-              <TextInput
-                style={styles.pinInput}
-                value={pinCode}
-                onChangeText={setPinCode}
-                keyboardType="numeric"
-                maxLength={4}
-              />
-            </View>
-          )}
-
-          {/* Original Quality Upload Option */}
-          <View style={styles.switchRow}>
-            <View style={{ flex: 1, paddingRight: 10 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={styles.switchLabel}>Orijinal Kalitede Yükle</Text>
-                {!enableCompression && (
-                  <View style={styles.warningBadge}>
-                    <Text style={styles.warningBadgeText}>Kota Hızlı Dolar</Text>
-                  </View>
-                )}
-              </View>
-              <Text style={styles.switchSub}>
-                {!enableCompression
-                  ? 'Fotoğraflar sıkıştırılmadan orijinal ham çözünürlüğünde (3-8 MB) yüklenir.'
-                  : 'Fotoğraflar kalite kaybı olmadan optimize edilerek hızlı yüklenir.'}
-              </Text>
-            </View>
-            <Switch
-              value={!enableCompression}
-              onValueChange={(val) => setEnableCompression(!val)}
-              trackColor={{ false: '#D1D5DB', true: '#C5A059' }}
-            />
-          </View>
-
-          {/* Guest Download Permission */}
-          <View style={styles.switchRow}>
-            <View style={{ flex: 1, paddingRight: 10 }}>
-              <Text style={styles.switchLabel}>Misafirler Fotoğraf İndirebilsin</Text>
-              <Text style={styles.switchSub}>
-                Misafirler galerideki fotoğrafları telefonlarına tek tek veya topluca indirebilir.
-              </Text>
-            </View>
-            <Switch
-              value={allowGuestDownloads}
-              onValueChange={setAllowGuestDownloads}
-              trackColor={{ false: '#D1D5DB', true: '#C5A059' }}
-            />
-          </View>
-
-          {/* Live Feed Projector Toggle */}
-          <View style={styles.switchRow}>
-            <View style={{ flex: 1, paddingRight: 10 }}>
-              <Text style={styles.switchLabel}>Canlı Projeksiyon & Slayt Modu</Text>
-              <Text style={styles.switchSub}>
-                Salondaki dev ekranda yeni yüklenen fotoğraflar canlı olarak yansıtılsın.
-              </Text>
-            </View>
-            <Switch
-              value={isLiveFeedActive}
-              onValueChange={setIsLiveFeedActive}
-              trackColor={{ false: '#D1D5DB', true: '#C5A059' }}
-            />
-          </View>
-
-          {/* Guestbook Toggle */}
-          <View style={styles.switchRow}>
-            <View style={{ flex: 1, paddingRight: 10 }}>
-              <Text style={styles.switchLabel}>Ziyaretçi Anı Defteri & Tebrik Notları</Text>
-              <Text style={styles.switchSub}>
-                Misafirleriniz çiftinize özel tebrik ve iyi dilek notları bırakabilsin.
-              </Text>
-            </View>
-            <Switch
-              value={allowGuestbook}
-              onValueChange={setAllowGuestbook}
-              trackColor={{ false: '#D1D5DB', true: '#C5A059' }}
-            />
-          </View>
-
-          {/* Auto Approve Photos */}
-          <View style={styles.switchRow}>
-            <View style={{ flex: 1, paddingRight: 10 }}>
-              <Text style={styles.switchLabel}>Fotoğrafları Otomatik Onayla</Text>
-              <Text style={styles.switchSub}>
-                Yüklenen fotoğraflar moderasyon beklemeden anında galeride ve canlı yayında görünsün.
-              </Text>
-            </View>
-            <Switch
-              value={autoApprovePhotos}
-              onValueChange={setAutoApprovePhotos}
-              trackColor={{ false: '#D1D5DB', true: '#C5A059' }}
-            />
-          </View>
-        </View>
-
-        {/* Section 6: Gallery Categories (Albums) */}
+        {/* Section 5: Gallery Categories (Albums) */}
         <View style={styles.formCard}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-            <Text style={styles.cardHeader}>6. Fotoğraf Galerisi Kategorileri</Text>
+            <Text style={styles.cardHeader}>5. Fotoğraf Galerisi Kategorileri</Text>
             <View style={styles.categoryCountBadge}>
               <Text style={styles.categoryCountBadgeText}>{albums.filter((a) => a.id !== 'alb-all').length} Kategori</Text>
             </View>
@@ -2239,60 +1912,38 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
-  switchRow: {
+  settingsRedirectCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3EFE6',
-  },
-  switchLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1A1817',
-    marginBottom: 2,
-  },
-  switchSub: {
-    fontSize: 12,
-    color: '#6B7280',
-    lineHeight: 16,
-  },
-  warningBadge: {
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  warningBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#D97706',
-  },
-  pinBox: {
-    backgroundColor: '#FAF7F2',
-    borderWidth: 1,
+    gap: 12,
+    backgroundColor: '#FAF5EA',
+    borderWidth: 1.5,
     borderColor: '#EFE7DA',
-    padding: 12,
-    borderRadius: 12,
-    marginTop: 10,
-    marginBottom: 6,
+    borderRadius: 14,
+    padding: 14,
+    marginTop: 4,
+    marginBottom: 16,
   },
-  pinInput: {
+  settingsRedirectIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     backgroundColor: '#FFF',
     borderWidth: 1,
-    borderColor: '#C5A059',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 18,
+    borderColor: '#EFE7DA',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  settingsRedirectTitle: {
+    fontSize: 13,
     fontWeight: '800',
-    letterSpacing: 4,
-    textAlign: 'center',
-    color: '#1A1817',
-    width: 120,
-    alignSelf: 'center',
-    marginTop: 4,
+    color: '#8A6D3B',
+    marginBottom: 2,
+  },
+  settingsRedirectSub: {
+    fontSize: 11,
+    color: '#6B7280',
+    lineHeight: 15,
   },
   categoryCountBadge: {
     backgroundColor: '#FAF7F2',
