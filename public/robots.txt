@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+Allow: /giris
+Allow: /demo-panel
+
+# Gizlilik geregi ozel davetli ve misafir sayfalarini arama motorlarina kapatiyoruz
+Disallow: /*/galeri
+Disallow: /*/yukle
+Disallow: /*/canli
+Disallow: /*/ani-defteri
+Disallow: /panel/
+Disallow: /panel
+
+Sitemap: https://qr-la.com/sitemap.xml

@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Modal,
   Platform,
   RefreshControl,
   ScrollView,
@@ -40,6 +41,13 @@ export default function HostPanelScreen() {
   const [isZipping, setIsZipping] = useState(false);
   const [zipProgressText, setZipProgressText] = useState('');
   const [zipPercent, setZipPercent] = useState(0);
+  const [zipReadyData, setZipReadyData] = useState<{
+    url: string;
+    fileName: string;
+    count: number;
+    sizeMB: string;
+    skippedCount: number;
+  } | null>(null);
 
   // Moderation pagination & search states
   const MOD_PAGE_SIZE = 30;
@@ -187,20 +195,82 @@ export default function HostPanelScreen() {
     return () => unsub();
   }, []);
 
+  const loadMediaForZip = async (
+    url: string
+  ): Promise<{ data: Blob | string; isBase64: boolean }> => {
+    // 1. Base64 Data URL (e.g. from local uploads/storage)
+    if (url.startsWith('data:')) {
+      const commaIdx = url.indexOf(',');
+      if (commaIdx !== -1) {
+        return { data: url.slice(commaIdx + 1), isBase64: true };
+      }
+    }
+
+    // 2. Direct fetch with cors mode
+    try {
+      const response = await fetch(url, { mode: 'cors' });
+      if (response.ok) {
+        const blob = await response.blob();
+        return { data: blob, isBase64: false };
+      }
+    } catch (fetchErr) {
+      console.warn('Direct fetch failed, attempting canvas fallback for web:', fetchErr);
+    }
+
+    // 3. Web Image element -> Canvas fallback (bypasses direct fetch CORS restrictions for images)
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof document !== 'undefined') {
+      try {
+        const blob = await new Promise<Blob>((resolve, reject) => {
+          const img = new (window as any).Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas');
+              canvas.width = img.naturalWidth || img.width;
+              canvas.height = img.naturalHeight || img.height;
+              const ctx = canvas.getContext('2d');
+              if (!ctx) return reject(new Error('Canvas context failed'));
+              ctx.drawImage(img, 0, 0);
+              canvas.toBlob((b) => {
+                if (b) resolve(b);
+                else reject(new Error('Canvas toBlob failed'));
+              }, 'image/jpeg', 0.92);
+            } catch (e) {
+              reject(e);
+            }
+          };
+          img.onerror = () => reject(new Error('Image failed to load in canvas'));
+          img.src = url;
+        });
+        return { data: blob, isBase64: false };
+      } catch (canvasErr) {
+        console.warn('Canvas fallback also failed:', canvasErr);
+      }
+    }
+
+    throw new Error('Dosya sunucudan çekilemedi');
+  };
+
   const handleDownloadAllZip = async () => {
     if (!photos || photos.length === 0) {
-      Alert.alert('İndirilecek Fotoğraf Yok', 'Galeride henüz indirilmeye hazır fotoğraf veya video bulunmuyor.');
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.alert('Galeride henüz indirilmeye hazır fotoğraf veya video bulunmuyor.');
+      } else {
+        Alert.alert('İndirilecek Fotoğraf Yok', 'Galeride henüz indirilmeye hazır fotoğraf veya video bulunmuyor.');
+      }
       return;
     }
 
     if (isZipping) return;
 
     setIsZipping(true);
+    setZipReadyData(null);
     setZipPercent(5);
     setZipProgressText(`Arşiv hazırlanıyor (0/${photos.length})...`);
 
     try {
-      const zip = new JSZip();
+      const JSZipConstructor = (JSZip as any)?.default || JSZip;
+      const zip = new JSZipConstructor();
       const folderName = `${event?.slug || 'etkinlik'}-fotograflar`;
       const imgFolder = zip.folder(folderName) || zip;
 
@@ -214,9 +284,9 @@ export default function HostPanelScreen() {
 
         try {
           const mediaUrl = photo.originalUrl || photo.thumbnailUrl;
-          const response = await fetch(mediaUrl);
-          if (!response.ok) throw new Error('Fetch failed');
-          const blob = await response.blob();
+          if (!mediaUrl) throw new Error('No media URL');
+
+          const { data, isBase64 } = await loadMediaForZip(mediaUrl);
 
           const isVideo = photo.mediaType === 'video';
           const ext = isVideo ? 'mp4' : 'jpg';
@@ -225,7 +295,11 @@ export default function HostPanelScreen() {
             .slice(0, 20);
           const filename = `${String(i + 1).padStart(3, '0')}_${guest}_${photo.id.slice(0, 6)}.${ext}`;
 
-          imgFolder.file(filename, blob);
+          if (isBase64) {
+            imgFolder.file(filename, data as string, { base64: true });
+          } else {
+            imgFolder.file(filename, data as Blob);
+          }
           downloadedCount++;
         } catch (fetchErr) {
           console.warn(`Photo ${photo.id} could not be downloaded into ZIP:`, fetchErr);
@@ -234,37 +308,76 @@ export default function HostPanelScreen() {
       }
 
       if (downloadedCount === 0) {
-        throw new Error('Dosyalar indirilemedi. İnternet bağlantınızı kontrol edin.');
+        if (failedCount > 0) {
+          throw new Error(
+            'Fotoğraflar sunucu CORS (Cross-Origin) kısıtlaması nedeniyle indirilemedi.\nFirebase Storage üzerinde CORS yapılandırmasının etkinleştirilmesi gerekmektedir.'
+          );
+        }
+        throw new Error('Dosyalar indirilemedi. Lütfen internet bağlantınızı kontrol edin.');
       }
 
       setZipProgressText('ZIP arşivi sıkıştırılıyor...');
       setZipPercent(85);
 
-      const zipBlob = await zip.generateAsync(
+      const zipBlob: Blob = await zip.generateAsync(
         {
           type: 'blob',
+          mimeType: 'application/zip',
           compression: 'DEFLATE',
           compressionOptions: { level: 6 },
         },
-        (metadata) => {
+        (metadata: any) => {
           if (metadata.percent) {
-            setZipPercent(Math.round(85 + (metadata.percent * 0.14)));
+            setZipPercent(Math.round(85 + metadata.percent * 0.14));
           }
         }
       );
 
       setZipPercent(100);
-      setZipProgressText('İndirme başlatılıyor...');
+      setZipProgressText('İndirme hazırlanıyor...');
 
-      if (Platform.OS === 'web' && typeof document !== 'undefined') {
-        const downloadUrl = URL.createObjectURL(zipBlob);
+      const rawSlug = event?.slug || 'etkinlik';
+      const cleanSlug = rawSlug
+        .toLowerCase()
+        .replace(/ğ/g, 'g')
+        .replace(/ü/g, 'u')
+        .replace(/ş/g, 's')
+        .replace(/ı/g, 'i')
+        .replace(/ö/g, 'o')
+        .replace(/ç/g, 'c')
+        .replace(/[^a-z0-9_-]/g, '_');
+      const fileName = `${cleanSlug}-tum-fotograflar.zip`;
+      const sizeMB = (zipBlob.size / (1024 * 1024)).toFixed(1);
+
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof document !== 'undefined') {
+        const downloadUrl = window.URL.createObjectURL(zipBlob);
+
+        // Always show the guaranteed download modal so the host can click directly if auto-download is blocked
+        setZipReadyData({
+          url: downloadUrl,
+          fileName,
+          count: downloadedCount,
+          sizeMB,
+          skippedCount: failedCount,
+        });
+
+        // Trigger native download with a.click() ensuring .zip extension and clean filename are preserved
         const a = document.createElement('a');
+        a.style.display = 'none';
         a.href = downloadUrl;
-        a.download = `${event?.slug || 'etkinlik'}-tum-fotograflar.zip`;
+        a.download = fileName;
+        a.setAttribute('download', fileName);
         document.body.appendChild(a);
         a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(downloadUrl), 5000);
+
+        // Delay cleanup of the DOM node so browser has time to register the download
+        setTimeout(() => {
+          try {
+            if (a.parentNode) {
+              a.parentNode.removeChild(a);
+            }
+          } catch (_e) {}
+        }, 3000);
       } else {
         Alert.alert('Tamamlandı', `${downloadedCount} adet medya dosyası ZIP olarak paketlendi.`);
       }
@@ -273,23 +386,38 @@ export default function HostPanelScreen() {
         setIsZipping(false);
         setZipProgressText('');
         setZipPercent(0);
-        if (failedCount > 0) {
-          Alert.alert(
-            'İndirme Tamamlandı 📦',
-            `${downloadedCount} adet medya dosyası ZIP olarak indirildi. (${failedCount} dosya sunucu erişim kısıtı nedeniyle atlandı.)`
-          );
-        }
-      }, 1000);
+      }, 600);
     } catch (err: any) {
       console.error('ZIP creation error:', err);
       setIsZipping(false);
       setZipProgressText('');
       setZipPercent(0);
-      Alert.alert(
-        'İndirme Başarısız',
-        'ZIP arşivi oluşturulurken bir hata meydana geldi: ' + (err?.message || 'Bilinmeyen hata')
-      );
+      const errMsg = err?.message || 'Bilinmeyen hata';
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.alert('ZIP arşivi oluşturulamadı:\n' + errMsg);
+      } else {
+        Alert.alert(
+          'İndirme Başarısız',
+          'ZIP arşivi oluşturulurken bir hata meydana geldi: ' + errMsg
+        );
+      }
     }
+  };
+
+  const handleTriggerManualZipDownload = () => {
+    if (!zipReadyData || typeof window === 'undefined' || typeof document === 'undefined') return;
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = zipReadyData.url;
+    a.download = zipReadyData.fileName;
+    a.setAttribute('download', zipReadyData.fileName);
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      try {
+        if (a.parentNode) a.parentNode.removeChild(a);
+      } catch (_e) {}
+    }, 2000);
   };
 
   const handleDeletePhoto = async (photoId: string) => {
@@ -513,17 +641,6 @@ export default function HostPanelScreen() {
             <Text style={styles.actionDesc}>Yazdırılabilir QR masa standı şablonunu hazırla.</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => setIsShareModalOpen(true)}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.actionIconWrap, { backgroundColor: '#F0FDF4' }]}>
-              <Ionicons name="logo-whatsapp" size={24} color="#25D366" />
-            </View>
-            <Text style={styles.actionTitle}>WhatsApp'ta Paylaş</Text>
-            <Text style={styles.actionDesc}>Misafirlere hazır davet ve yükleme linki gönder.</Text>
-          </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.actionCard, isZipping && { borderColor: '#10B981', backgroundColor: '#F0FDF4' }]}
@@ -847,6 +964,59 @@ export default function HostPanelScreen() {
           </View>
           <Text style={styles.zipFloatingSub}>{zipProgressText}</Text>
         </View>
+      )}
+
+      {/* ZIP Ready Success Modal */}
+      {zipReadyData && (
+        <Modal
+          transparent
+          animationType="fade"
+          visible={!!zipReadyData}
+          onRequestClose={() => setZipReadyData(null)}
+        >
+          <View style={styles.zipModalBackdrop}>
+            <View style={styles.zipModalCard}>
+              <View style={styles.zipModalIconCircle}>
+                <Ionicons name="checkmark-circle" size={44} color="#10B981" />
+              </View>
+              <Text style={styles.zipModalTitle}>ZIP Arşivi Hazır!</Text>
+              <Text style={styles.zipModalSub}>
+                {zipReadyData.count} adet medya dosyası ({zipReadyData.sizeMB} MB) başarıyla paketlendi.
+                {zipReadyData.skippedCount > 0
+                  ? ` (${zipReadyData.skippedCount} dosya sunucu kısıtı nedeniyle atlandı)`
+                  : ''}
+              </Text>
+
+              <View style={styles.zipFileNameBadge}>
+                <Ionicons name="archive-outline" size={16} color="#8A6D3B" />
+                <Text style={styles.zipFileNameText}>{zipReadyData.fileName}</Text>
+              </View>
+
+              <Text style={styles.zipModalHint}>
+                Tarayıcınızda otomatik indirme başlamadıysa lütfen aşağıdaki butona tıklayın:
+              </Text>
+
+              <TouchableOpacity
+                style={styles.zipModalDownloadBtn}
+                onPress={handleTriggerManualZipDownload}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="cloud-download" size={20} color="#FFF" />
+                <Text style={styles.zipModalDownloadBtnText}>
+                  ZIP Dosyasını İndir ({zipReadyData.sizeMB} MB)
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.zipModalCloseBtn}
+                onPress={() => setZipReadyData(null)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.zipModalCloseBtnText}>Kapat</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       )}
 
       {/* Share Event Modal */}
@@ -1551,6 +1721,112 @@ const styles = StyleSheet.create({
   zipFloatingSub: {
     color: '#94A3B8',
     fontSize: 12,
+  },
+  zipModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  zipModalCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 24,
+    width: '100%',
+    maxWidth: 420,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  zipModalIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#ECFDF5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    borderWidth: 1.5,
+    borderColor: '#A7F3D0',
+  },
+  zipModalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  zipModalSub: {
+    fontSize: 14,
+    color: '#475569',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  zipFileNameBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FAF7F2',
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  zipFileNameText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#8A6D3B',
+    fontFamily: Platform.OS === 'web' ? 'monospace' : undefined,
+  },
+  zipModalHint: {
+    fontSize: 12,
+    color: '#94A3B8',
+    textAlign: 'center',
+    lineHeight: 17,
+    marginBottom: 20,
+  },
+  zipModalDownloadBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#10B981',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    width: '100%',
+    marginBottom: 10,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  zipModalDownloadBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  zipModalCloseBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    width: '100%',
+    alignItems: 'center',
+  },
+  zipModalCloseBtnText: {
+    color: '#64748B',
+    fontSize: 14,
+    fontWeight: '600',
   },
   modFilterBar: {
     marginBottom: 16,

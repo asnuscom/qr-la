@@ -9,7 +9,8 @@ import {
   useWindowDimensions,
   Platform,
 } from 'react-native';
-import { useRouter, Stack } from 'expo-router';
+import { useRouter } from 'expo-router';
+import Head from 'expo-router/head';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { PLAN_TIERS } from '@/services/mockData';
@@ -80,6 +81,32 @@ export default function LandingScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <Head>
+        <title>QR-la | Masadaki Kodu QR'la, En Mutlu Anları Paylaş &amp; Kutla</title>
+        <meta
+          name="description"
+          content="Düğün, nikah ve özel davetiye etkinliklerinizde masalardaki karekodla misafirlerinizden anında yüksek çözünürlüklü fotoğraf toplayın. Uygulama indirmeden karekodla fotoğraf yüklemesi, canlı TV/projeksiyon yayını ve tek tıkla ZIP arşiv indirme."
+        />
+        <meta
+          name="keywords"
+          content="davetiye etkinlik, düğünde nikahta karekodla fotoğraf yüklemesi, düğün karekod fotoğraf, nikah karekod fotoğraf, karekodla fotoğraf toplama, masada qr kod fotoğraf, dijital davetiye etkinlik fotoğraf albümü, etkinlik karekod galeri, düğün masa kartı qr kod, kına gecesi karekod, canlı projeksiyon düğün slayt"
+        />
+        <meta property="og:title" content="QR-la | Masadaki Kodu QR'la, En Mutlu Anları Paylaş &amp; Kutla" />
+        <meta
+          property="og:description"
+          content="Misafirlerinizin çektiği yüzlerce eşsiz fotoğraf WhatsApp gruplarında kaybolmasın. Tek bir QR kodla tüm fotoğrafları toplayın ve salondaki dev ekrana anında yansıtın!"
+        />
+        <meta property="og:url" content="https://qr-la.com" />
+        <meta property="og:type" content="website" />
+        <meta property="og:image" content="https://qr-la.com/assets/images/icon.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="QR-la | Masadaki Kodu QR'la, En Mutlu Anları Paylaş &amp; Kutla" />
+        <meta
+          name="twitter:description"
+          content="Düğün ve etkinliklerde uygulama indirmeden misafir fotoğraflarını toplayın ve canlı slaytta yayınlayın."
+        />
+        <link rel="canonical" href="https://qr-la.com" />
+      </Head>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
