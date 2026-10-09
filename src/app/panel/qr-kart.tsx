@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Platform,
   ScrollView,
   StyleSheet,
@@ -45,6 +46,37 @@ export default function QRCardScreen() {
     load();
   }, []);
 
+  const handleLogout = async () => {
+    const executeLogout = async () => {
+      try {
+        await authService.signOut();
+      } catch (e) {
+        console.warn('SignOut error:', e);
+      }
+      router.replace('/giris' as any);
+    };
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const confirmed = window.confirm('Yönetim panelinden ve hesabınızdan çıkış yapmak istediğinize emin misiniz?');
+      if (confirmed) {
+        await executeLogout();
+      }
+    } else {
+      Alert.alert(
+        'Çıkış Yap',
+        'Yönetim panelinden ve hesabınızdan çıkış yapmak istediğinize emin misiniz?',
+        [
+          { text: 'Vazgeç', style: 'cancel' },
+          {
+            text: 'Çıkış Yap',
+            style: 'destructive',
+            onPress: executeLogout,
+          },
+        ]
+      );
+    }
+  };
+
   if (isLoading || !event) {
     return (
       <View style={styles.center}>
@@ -70,7 +102,14 @@ export default function QRCardScreen() {
             <Text style={styles.navTitle}>Masa & Stand QR Kartı</Text>
             <Text style={styles.navSub}>Masanosuz / Masa Standı & Baskı</Text>
           </View>
-          <View style={{ width: 40 }} />
+          <TouchableOpacity
+            style={styles.logoutBtn}
+            onPress={handleLogout}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="log-out-outline" size={16} color="#EF4444" />
+            <Text style={styles.logoutText}>Çıkış</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Printable Card Template */}
@@ -125,5 +164,21 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#8A6D3B',
     fontWeight: '600',
+  },
+  logoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 10,
+  },
+  logoutText: {
+    color: '#EF4444',
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

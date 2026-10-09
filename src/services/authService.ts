@@ -379,10 +379,8 @@ class AuthService {
   async updateUserEventSlug(uid: string, oldSlug: string, newSlug: string): Promise<void> {
     if (this.state.user && this.state.user.uid === uid) {
       const currentList = this.state.user.events || [];
-      const updatedEvents = currentList.map((s) => (s === oldSlug ? newSlug : s));
-      if (!updatedEvents.includes(newSlug)) {
-        updatedEvents.unshift(newSlug);
-      }
+      const filtered = currentList.filter((s) => s !== oldSlug && s !== newSlug);
+      const updatedEvents = [newSlug, ...filtered];
       const updatedUser = { ...this.state.user, events: updatedEvents };
       appStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(updatedUser));
       this.updateState({ user: updatedUser });

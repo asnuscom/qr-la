@@ -413,30 +413,125 @@ class EventService {
     // 8. Sync Firestore if active
     if (isRealFirebaseConfigured && db) {
       try {
+        const isOldReserved = RESERVED_SLUGS.has(cleanOldSlug);
+
+        // 8a. Write new event document
         const newEventDocRef = doc(db, 'events', cleanNewSlug);
         await setDoc(newEventDocRef, sanitizeForFirestore(mergedEvent));
 
+        // 8b. Migrate all albums in Firestore and purge from old doc
+        try {
+          const oldAlbumsRef = collection(db, 'events', cleanOldSlug, 'albums');
+          const oldAlbumsSnap = await getDocs(oldAlbumsRef);
+          for (const aDoc of oldAlbumsSnap.docs) {
+            const data = aDoc.data();
+            await setDoc(
+              doc(db, 'events', cleanNewSlug, 'albums', aDoc.id),
+              sanitizeForFirestore(data),
+              { merge: true }
+            );
+            if (!isOldReserved) {
+              try {
+                await deleteDoc(doc(db, 'events', cleanOldSlug, 'albums', aDoc.id));
+              } catch (_) { }
+            }
+          }
+        } catch (albErr) {
+          console.warn('Firestore rename albums migration error:', albErr);
+        }
+
+        // Ensure currentAlbums are preserved on new slug in Firestore
+        if (currentAlbums && currentAlbums.length > 0) {
+          const newAlbumsRef = collection(db, 'events', cleanNewSlug, 'albums');
+          for (const album of currentAlbums) {
+            await setDoc(
+              doc(newAlbumsRef, album.id),
+              sanitizeForFirestore(album),
+              { merge: true }
+            );
+          }
+        }
+
+        // 8c. Migrate all photos directly from Firestore and purge from old doc
+        try {
+          const oldPhotosRef = collection(db, 'events', cleanOldSlug, 'photos');
+          const oldPhotosSnap = await getDocs(oldPhotosRef);
+          for (const pDoc of oldPhotosSnap.docs) {
+            const data = pDoc.data();
+            await setDoc(
+              doc(db, 'events', cleanNewSlug, 'photos', pDoc.id),
+              sanitizeForFirestore({
+                ...data,
+                eventSlug: cleanNewSlug,
+              }),
+              { merge: true }
+            );
+            if (!isOldReserved) {
+              try {
+                await deleteDoc(doc(db, 'events', cleanOldSlug, 'photos', pDoc.id));
+              } catch (_) { }
+            }
+          }
+        } catch (phErr) {
+          console.warn('Firestore rename photos migration error:', phErr);
+        }
+
+        // Also sync updatedPhotos from memory
         for (const p of updatedPhotos) {
           await setDoc(
             doc(db, 'events', cleanNewSlug, 'photos', p.id),
-            sanitizeForFirestore(p)
+            sanitizeForFirestore(p),
+            { merge: true }
           );
-          try {
-            await deleteDoc(doc(db, 'events', cleanOldSlug, 'photos', p.id));
-          } catch (_) { }
+          if (!isOldReserved) {
+            try {
+              await deleteDoc(doc(db, 'events', cleanOldSlug, 'photos', p.id));
+            } catch (_) { }
+          }
         }
 
+        // 8d. Migrate all guestbook entries directly from Firestore and purge from old doc
+        try {
+          const oldGbRef = collection(db, 'events', cleanOldSlug, 'guestbook');
+          const oldGbSnap = await getDocs(oldGbRef);
+          for (const gDoc of oldGbSnap.docs) {
+            const data = gDoc.data();
+            await setDoc(
+              doc(db, 'events', cleanNewSlug, 'guestbook', gDoc.id),
+              sanitizeForFirestore({
+                ...data,
+                eventSlug: cleanNewSlug,
+              }),
+              { merge: true }
+            );
+            if (!isOldReserved) {
+              try {
+                await deleteDoc(doc(db, 'events', cleanOldSlug, 'guestbook', gDoc.id));
+              } catch (_) { }
+            }
+          }
+        } catch (gbErr) {
+          console.warn('Firestore rename guestbook migration error:', gbErr);
+        }
+
+        // Also sync updatedGuestbook from memory
         for (const g of updatedGuestbook) {
           await setDoc(
             doc(db, 'events', cleanNewSlug, 'guestbook', g.id),
-            sanitizeForFirestore(g)
+            sanitizeForFirestore(g),
+            { merge: true }
           );
-          try {
-            await deleteDoc(doc(db, 'events', cleanOldSlug, 'guestbook', g.id));
-          } catch (_) { }
+          if (!isOldReserved) {
+            try {
+              await deleteDoc(doc(db, 'events', cleanOldSlug, 'guestbook', g.id));
+            } catch (_) { }
+          }
         }
 
-        await deleteDoc(doc(db, 'events', cleanOldSlug));
+        // 8e. Purge old parent document completely if not reserved system slug
+        if (!isOldReserved) {
+          await deleteDoc(doc(db, 'events', cleanOldSlug));
+        }
       } catch (err) {
         console.warn('Firestore rename sync error:', err);
       }

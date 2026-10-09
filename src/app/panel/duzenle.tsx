@@ -5,6 +5,7 @@ import { slugify } from '@/services/mockData';
 import { convertHeicToJpegIfNeeded } from '@/services/compression';
 import { DatePickerModal, TimePickerModal } from '@/components/DateTimePickerModal';
 import { AlbumModel, EventModel, EventType, ScheduleItem } from '@/types';
+import { DraggableScrollView } from '@/components/DraggableScrollView';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
@@ -132,8 +133,10 @@ export default function EventFormScreen() {
         (s) => s && s !== 'demo-panel' && s !== 'samet-ve-sule'
       )) ||
     user?.events?.[0];
-  const currentSlug = paramSlug || userSlug || 'demo-panel';
-  const isDemo = currentSlug === 'demo-panel' || !user || user.uid === 'demo-host-yavuz';
+  const initialSlug = paramSlug || userSlug || 'demo-panel';
+  const [loadedSlug, setLoadedSlug] = useState<string>(initialSlug);
+  const activeSavedSlug = loadedSlug || initialSlug;
+  const isDemo = activeSavedSlug === 'demo-panel' || !user || user.uid === 'demo-host-yavuz';
 
   const showDemoLockedNotice = (fieldName: string) => {
     Alert.alert(
@@ -159,7 +162,7 @@ export default function EventFormScreen() {
   }, [isDemo]);
 
   // Form State initialized with rich defaults
-  const [slug, setSlug] = useState(currentSlug);
+  const [slug, setSlug] = useState(initialSlug);
   const [hasUserEditedSlug, setHasUserEditedSlug] = useState(false);
   const [slugCheckStatus, setSlugCheckStatus] = useState<{ checked: boolean; available: boolean; message?: string } | null>(null);
   const [isCheckingSlug, setIsCheckingSlug] = useState(false);
@@ -225,8 +228,10 @@ export default function EventFormScreen() {
     const load = async () => {
       setIsLoading(true);
       try {
-        const ev = await eventService.getEvent(currentSlug, user?.displayName);
+        const slugToLoad = paramSlug || initialSlug;
+        const ev = await eventService.getEvent(slugToLoad, user?.displayName);
         if (ev) {
+          setLoadedSlug(ev.slug);
           setSlug(ev.slug);
           setHasUserEditedSlug(false);
           setSlugCheckStatus(null);
@@ -261,7 +266,7 @@ export default function EventFormScreen() {
           setEventTimeStr(timeStr);
         }
 
-        const alb = await eventService.getAlbums(currentSlug);
+        const alb = await eventService.getAlbums(ev?.slug || slugToLoad);
         setAlbums(alb);
       } catch (err) {
         console.warn('Load event form err:', err);
@@ -271,11 +276,11 @@ export default function EventFormScreen() {
     };
 
     load();
-  }, [currentSlug, user?.displayName]);
+  }, [paramSlug, initialSlug, user?.displayName]);
 
   // Debounced slug availability verification
   useEffect(() => {
-    if (!slug || isDemo || slug === currentSlug) {
+    if (!slug || isDemo || slug === activeSavedSlug) {
       setSlugCheckStatus(null);
       setIsCheckingSlug(false);
       return;
@@ -307,7 +312,7 @@ export default function EventFormScreen() {
     }, 350);
 
     return () => clearTimeout(timer);
-  }, [slug, currentSlug, isDemo, user?.uid]);
+  }, [slug, activeSavedSlug, isDemo, user?.uid]);
 
   // When bride or groom names change, automatically update suggested title and slug
   const handleNameChange = (newBride: string, newGroom: string) => {
@@ -450,7 +455,7 @@ export default function EventFormScreen() {
           blobToUpload = await response.blob();
         }
         const fileExt = 'jpg';
-        const coverRef = ref(storage, `events/${slug || currentSlug}/covers/cover-${Date.now()}.${fileExt}`);
+        const coverRef = ref(storage, `events/${slug || activeSavedSlug}/covers/cover-${Date.now()}.${fileExt}`);
         await uploadBytes(coverRef, blobToUpload, { contentType: 'image/jpeg' });
         const downloadUrl = await getDownloadURL(coverRef);
         setCoverPhotoUrl(downloadUrl);
@@ -493,7 +498,7 @@ export default function EventFormScreen() {
           blobToUpload = await response.blob();
         }
         const fileExt = 'jpg';
-        const invRef = ref(storage, `events/${slug || currentSlug}/invitations/davetiye-${Date.now()}.${fileExt}`);
+        const invRef = ref(storage, `events/${slug || activeSavedSlug}/invitations/davetiye-${Date.now()}.${fileExt}`);
         await uploadBytes(invRef, blobToUpload, { contentType: 'image/jpeg' });
         const downloadUrl = await getDownloadURL(invRef);
         setInvitationUrl(downloadUrl);
@@ -547,7 +552,7 @@ export default function EventFormScreen() {
           const response = await fetch(uploadUri);
           uploadBlob = await response.blob();
         }
-        const invRef = ref(storage, `events/${slug || currentSlug}/invitations/davetiye-${Date.now()}.${fileExt}`);
+        const invRef = ref(storage, `events/${slug || activeSavedSlug}/invitations/davetiye-${Date.now()}.${fileExt}`);
         await uploadBytes(invRef, uploadBlob, { contentType });
         const downloadUrl = await getDownloadURL(invRef);
         setInvitationUrl(downloadUrl);
@@ -591,7 +596,7 @@ export default function EventFormScreen() {
       return;
     }
 
-    if (slugCheckStatus && !slugCheckStatus.available && cleanSlug !== currentSlug) {
+    if (slugCheckStatus && !slugCheckStatus.available && cleanSlug !== activeSavedSlug) {
       Alert.alert('Bağlantı Kullanılamıyor', slugCheckStatus.message || 'Lütfen farklı bir bağlantı adı seçin.');
       return;
     }
@@ -637,12 +642,19 @@ export default function EventFormScreen() {
         },
       };
 
-      if (cleanSlug !== currentSlug) {
+      if (cleanSlug !== activeSavedSlug) {
         // Slug changed! Migrate all albums, photos, guestbook, and user profile
-        await eventService.renameEventSlug(currentSlug, cleanSlug, updatedData);
+        await eventService.renameEventSlug(activeSavedSlug, cleanSlug, updatedData);
         await eventService.saveAlbums(cleanSlug, albums);
         if (user) {
-          await authService.updateUserEventSlug(user.uid, currentSlug, cleanSlug);
+          await authService.updateUserEventSlug(user.uid, activeSavedSlug, cleanSlug);
+        }
+        setLoadedSlug(cleanSlug);
+        setSlug(cleanSlug);
+        setHasUserEditedSlug(false);
+        setSlugCheckStatus(null);
+        if (router.setParams) {
+          router.setParams({ slug: cleanSlug });
         }
       } else {
         await eventService.saveEvent(cleanSlug, updatedData);
@@ -650,6 +662,10 @@ export default function EventFormScreen() {
         if (user) {
           await authService.addEventToUser(user.uid, cleanSlug);
         }
+        setLoadedSlug(cleanSlug);
+        setSlug(cleanSlug);
+        setHasUserEditedSlug(false);
+        setSlugCheckStatus(null);
       }
 
       setIsSaving(false);
@@ -697,6 +713,37 @@ export default function EventFormScreen() {
     }
   } catch (_e) { }
 
+  const handleLogout = async () => {
+    const executeLogout = async () => {
+      try {
+        await authService.signOut();
+      } catch (e) {
+        console.warn('SignOut error:', e);
+      }
+      router.replace('/giris' as any);
+    };
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const confirmed = window.confirm('Yönetim panelinden ve hesabınızdan çıkış yapmak istediğinize emin misiniz?');
+      if (confirmed) {
+        await executeLogout();
+      }
+    } else {
+      Alert.alert(
+        'Çıkış Yap',
+        'Yönetim panelinden ve hesabınızdan çıkış yapmak istediğinize emin misiniz?',
+        [
+          { text: 'Vazgeç', style: 'cancel' },
+          {
+            text: 'Çıkış Yap',
+            style: 'destructive',
+            onPress: executeLogout,
+          },
+        ]
+      );
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -709,14 +756,25 @@ export default function EventFormScreen() {
           >
             <Ionicons name="arrow-back" size={20} color="#1A1817" />
           </TouchableOpacity>
-          <Text style={styles.navTitle}>Etkinlik Bilgilerini Düzenle</Text>
-          <TouchableOpacity
-            style={styles.saveHeaderBtn}
-            onPress={handleSave}
-            disabled={isSaving}
-          >
-            <Text style={styles.saveHeaderBtnText}>{isSaving ? '...' : 'Kaydet'}</Text>
-          </TouchableOpacity>
+          <Text style={styles.navTitle} numberOfLines={1}>Etkinlik Bilgilerini Düzenle</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <TouchableOpacity
+              style={styles.headerLogoutBtn}
+              onPress={handleLogout}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="log-out-outline" size={15} color="#EF4444" />
+              <Text style={styles.headerLogoutText}>Çıkış</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.saveHeaderBtn}
+              onPress={handleSave}
+              disabled={isSaving}
+            >
+              <Text style={styles.saveHeaderBtnText}>{isSaving ? '...' : 'Kaydet'}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Demo Warning Banner */}
@@ -754,7 +812,7 @@ export default function EventFormScreen() {
               </View>
             )}
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.typeChipsScroll}>
+          <DraggableScrollView contentContainerStyle={styles.typeChipsScroll}>
             {EVENT_TYPES.map((t) => {
               const isSelected = eventType === t.id;
               return (
@@ -775,7 +833,7 @@ export default function EventFormScreen() {
                 </TouchableOpacity>
               );
             })}
-          </ScrollView>
+          </DraggableScrollView>
 
           <View style={styles.row}>
             <View style={[styles.inputGroup, { flex: 1 }]}>
@@ -887,7 +945,7 @@ export default function EventFormScreen() {
                   <Ionicons name="lock-closed" size={10} color="#B45309" />
                   <Text style={styles.lockedBadgeText}>Demoda Kilitli</Text>
                 </View>
-              ) : slugCheckStatus && slug !== currentSlug ? (
+              ) : slugCheckStatus && slug !== activeSavedSlug ? (
                 <View
                   style={[
                     styles.slugStatusBadge,
@@ -928,7 +986,7 @@ export default function EventFormScreen() {
                 style={[
                   styles.slugInputContainer,
                   slugCheckStatus && !slugCheckStatus.available && styles.slugInputContainerError,
-                  slugCheckStatus && slugCheckStatus.available && slug !== currentSlug && styles.slugInputContainerSuccess,
+                  slugCheckStatus && slugCheckStatus.available && slug !== activeSavedSlug && styles.slugInputContainerSuccess,
                 ]}
               >
                 <View style={styles.slugPrefixWrap}>
@@ -945,10 +1003,10 @@ export default function EventFormScreen() {
                 />
                 {isCheckingSlug ? (
                   <ActivityIndicator size="small" color="#C5A059" style={{ marginRight: 8 }} />
-                ) : slug !== currentSlug ? (
+                ) : slug !== activeSavedSlug ? (
                   <TouchableOpacity
                     onPress={() => {
-                      setSlug(currentSlug);
+                      setSlug(activeSavedSlug);
                       setHasUserEditedSlug(false);
                       setSlugCheckStatus(null);
                     }}
@@ -975,7 +1033,7 @@ export default function EventFormScreen() {
               >
                 {slugCheckStatus.available ? `✅ ${slugCheckStatus.message}` : `⚠️ ${slugCheckStatus.message}`}
               </Text>
-            ) : slug !== currentSlug ? (
+            ) : slug !== activeSavedSlug ? (
               <Text style={styles.slugNoticeText}>
                 ⚠️ Bağlantıyı değiştirdiğinizde misafirlerin erişeceği adres ve QR kartlarınız "qr-la.com/{slug}" olarak güncellenecektir.
               </Text>
@@ -1278,7 +1336,7 @@ export default function EventFormScreen() {
           </View>
 
           <Text style={styles.label}>Veya Hazır Kapak Fotoğraflarından Seçin:</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetsScroll}>
+          <DraggableScrollView contentContainerStyle={styles.presetsScroll}>
             {COVER_PRESETS.map((preset) => {
               const isSelected = coverPhotoUrl === preset.url;
               return (
@@ -1297,7 +1355,7 @@ export default function EventFormScreen() {
                 </TouchableOpacity>
               );
             })}
-          </ScrollView>
+          </DraggableScrollView>
 
           <View style={[styles.inputGroup, { marginTop: 14 }]}>
             <Text style={styles.label}>Veya Özel Kapak Görseli Linkinizi Girin (URL):</Text>
@@ -1393,7 +1451,7 @@ export default function EventFormScreen() {
 
           {/* Quick Schedule Templates */}
           <Text style={[styles.label, { marginTop: 6 }]}>Hızlı Şablon Ekle:</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickScheduleScroll}>
+          <DraggableScrollView contentContainerStyle={styles.quickScheduleScroll}>
             <TouchableOpacity
               style={styles.quickScheduleChip}
               onPress={() => handleQuickAddSchedule('18:30', 'Karşılama Kokteyli', 'Canlı müzik ve ikramlar')}
@@ -1424,7 +1482,7 @@ export default function EventFormScreen() {
             >
               <Text style={styles.quickScheduleChipText}>+ After Party (23:00)</Text>
             </TouchableOpacity>
-          </ScrollView>
+          </DraggableScrollView>
 
           {/* Existing Schedule Items List */}
           <View style={styles.scheduleList}>
@@ -1841,6 +1899,22 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
+  headerLogoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 10,
+  },
+  headerLogoutText: {
+    color: '#EF4444',
+    fontSize: 12,
+    fontWeight: '700',
+  },
   formCard: {
     backgroundColor: '#FFF',
     borderRadius: 20,
@@ -1881,6 +1955,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAF7F2',
     borderWidth: 1,
     borderColor: '#EFE7DA',
+    // @ts-ignore
+    userSelect: Platform.OS === 'web' ? 'none' : undefined,
   },
   typeChipActive: {
     backgroundColor: '#C5A059',
@@ -1951,6 +2027,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'transparent',
     position: 'relative',
+    // @ts-ignore
+    userSelect: Platform.OS === 'web' ? 'none' : undefined,
   },
   presetCardActive: {
     borderColor: '#C5A059',
@@ -2019,6 +2097,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
+    // @ts-ignore
+    userSelect: Platform.OS === 'web' ? 'none' : undefined,
   },
   quickScheduleChipText: {
     fontSize: 11,

@@ -8,13 +8,13 @@ import {
   TextInput,
   Platform,
   Switch,
-  ScrollView,
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import QRCode from 'qrcode';
 import { EventModel } from '@/types';
+import { DraggableScrollView } from '@/components/DraggableScrollView';
 
 interface QRCardTemplateProps {
   event: EventModel;
@@ -663,8 +663,50 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
     const frameSvg = currentFrame ? currentFrame.getSvg(theme.border, theme.innerBorder) : '';
 
     const sizeConf = CARD_SIZES[cardSize] || CARD_SIZES.standard_10x15;
-    const cardW = sizeConf.widthMm;
-    const cardH = sizeConf.heightMm;
+    let cardW = sizeConf.widthMm;
+    let cardH = sizeConf.heightMm;
+
+    if (cardLayout === 'tent') {
+      cardW = Math.min(cardW, 140);
+      cardH = Math.min(cardH, 130);
+    } else if (cardLayout === 'double') {
+      cardW = Math.min(cardW, 140);
+      cardH = Math.min(cardH, 130);
+    } else if (cardLayout === 'quad') {
+      cardW = Math.min(cardW, 94);
+      cardH = Math.min(cardH, 134);
+    }
+
+    const isLandscapeMini = cardSize === 'mini_85x55' || (cardW > cardH * 1.2 && cardH <= 75);
+
+    // Baseline reference: 100mm x 150mm standard card
+    // Responsive scale factor based on card dimensions
+    const scale = isLandscapeMini
+      ? 0.72
+      : Math.min(1.4, Math.max(0.68, Math.min(cardW / 100, cardH / 150)));
+
+    const qrPx = isLandscapeMini
+      ? 80
+      : cardDesign === 'bold_qr'
+      ? Math.round(170 * scale)
+      : cardDesign === 'letter'
+      ? Math.round(125 * scale)
+      : cardDesign === 'table_hero'
+      ? Math.round(135 * scale)
+      : cardDesign === 'polaroid'
+      ? Math.round(140 * scale)
+      : Math.round(140 * scale);
+
+    const coupleNamePx = isLandscapeMini ? 15 : Math.max(14, Math.round(24 * scale));
+    const badgeFontPx = isLandscapeMini ? 8.5 : Math.max(8.5, Math.round(11 * scale));
+    const actionTitlePx = isLandscapeMini ? 11 : Math.max(10, Math.round(14 * scale));
+    const sloganPx = isLandscapeMini ? 8 : Math.max(7.5, Math.round(10.5 * scale));
+    const dateTagPx = isLandscapeMini ? 8 : Math.max(8, Math.round(10 * scale));
+    const footerLinkPx = isLandscapeMini ? 8.5 : Math.max(8.5, Math.round(11.5 * scale));
+    const stepFontPx = Math.max(7, Math.round(9 * scale));
+    const stepCirclePx = Math.max(10, Math.round(14 * scale));
+    const cardBoxPadMm = isLandscapeMini ? 2 : Math.max(2, Math.round(3.5 * scale));
+    const innerFramePadMm = isLandscapeMini ? 3 : Math.max(3, Math.round(5.5 * scale));
 
     let gridStyles = '';
     let cardDimensionStyles = '';
@@ -680,7 +722,10 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
       `;
       cardDimensionStyles = `
         width: ${cardW}mm;
-        min-height: ${cardH}mm;
+        height: ${cardH}mm;
+        max-height: ${cardH}mm;
+        box-sizing: border-box;
+        overflow: hidden;
         margin: 0 auto;
       `;
     } else if (cardLayout === 'tent') {
@@ -693,8 +738,11 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
         page-break-after: always;
       `;
       cardDimensionStyles = `
-        width: ${Math.min(cardW, 140)}mm;
-        height: ${Math.min(cardH, 130)}mm;
+        width: ${cardW}mm;
+        height: ${cardH}mm;
+        max-height: ${cardH}mm;
+        box-sizing: border-box;
+        overflow: hidden;
         margin: 0 auto;
       `;
     } else if (cardLayout === 'double') {
@@ -708,8 +756,11 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
         page-break-after: always;
       `;
       cardDimensionStyles = `
-        width: ${Math.min(cardW, 140)}mm;
-        height: ${Math.min(cardH, 130)}mm;
+        width: ${cardW}mm;
+        height: ${cardH}mm;
+        max-height: ${cardH}mm;
+        box-sizing: border-box;
+        overflow: hidden;
         margin: 0 auto;
       `;
     } else {
@@ -723,8 +774,11 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
         page-break-after: always;
       `;
       cardDimensionStyles = `
-        width: ${Math.min(cardW, 94)}mm;
-        height: ${Math.min(cardH, 134)}mm;
+        width: ${cardW}mm;
+        height: ${cardH}mm;
+        max-height: ${cardH}mm;
+        box-sizing: border-box;
+        overflow: hidden;
         margin: 0 auto;
       `;
     }
@@ -795,25 +849,66 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
         </div>
       `;
 
+      // SPECIAL LANDSCAPE MINI CARD LAYOUT (8.5 x 5.5 cm)
+      if (isLandscapeMini) {
+        return `
+          <div class="card-box" style="${cardDimensionStyles}; background: ${theme.cardBg}; border-color: ${theme.border}; padding: 2.5mm;">
+            ${customBgHtml}
+            ${overlayHtml}
+            ${frameSvgHtml}
+            <div class="inner-frame" style="border-color: ${theme.innerBorder}; background-color: ${innerBgColor}; padding: 3mm 4mm; display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 3.5mm; height: 100%;">
+              <!-- Left Column: Details -->
+              <div style="flex: 1.15; display: flex; flex-direction: column; justify-content: center; text-align: left; overflow: hidden; height: 100%;">
+                <div class="date-tag" style="color: ${isDark ? '#A1A1AA' : '#6B7280'}; font-size: 8px; margin-bottom: 2px;">
+                  ${customDateOrSub}
+                </div>
+                <div style="color: ${theme.namesColor}; font-family: ${selectedFont.family}; font-size: 14px; font-weight: 800; line-height: 1.15; margin-bottom: 3px; word-break: break-word;">
+                  ${brideName || 'Gelin'} & ${groomName || 'Damat'}
+                </div>
+                <div class="badge" style="background: ${theme.badgeBg}; border-color: ${theme.badgeBorder}; color: ${theme.badgeTextColor}; font-size: 8px; padding: 2px 7px; margin-bottom: 3px; display: inline-block; width: fit-content;">
+                  ${badgeDisplay}
+                </div>
+                <div class="action-title" style="color: ${theme.primaryTextColor}; font-size: 9px; font-weight: 700; margin-bottom: 1px;">
+                  ${actionTitle}
+                </div>
+                <div class="slogan" style="color: ${isDark ? '#D4D4D8' : '#4B5563'}; font-size: 7.5px; line-height: 1.2; margin: 0;">
+                  ${customSlogan}
+                </div>
+              </div>
+              <!-- Right Column: QR Target -->
+              <div style="flex: 0.85; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;">
+                <div class="qr-wrapper" style="border-color: ${theme.border}; background: ${isDark ? '#141312' : '#FFFFFF'}; margin-bottom: 2px; padding: 3px;">
+                  <img src="${base64Qr}" alt="QR Kod" style="width: 78px; height: 78px; display: block;" />
+                  ${centerIconSymbol ? `<div class="qr-center-icon" style="background: ${theme.accentColor}; color: #FFF; width: 18px; height: 18px; font-size: 9px;">${centerIconSymbol}</div>` : ''}
+                </div>
+                <div class="footer-link" style="color: ${theme.namesColor}; font-size: 7.5px;">
+                  ${footerText}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
       // ARCHETYPE 1: POLAROID PHOTO
       if (cardDesign === 'polaroid') {
         return `
-          <div class="card-box polaroid-box" style="${cardDimensionStyles}; background: #FFF; border-color: #E5E7EB; border-width: 1px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); padding: 16px 16px 36px 16px;">
+          <div class="card-box polaroid-box" style="${cardDimensionStyles}; background: #FFF; border-color: #E5E7EB; border-width: 1px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); padding: ${Math.round(14 * scale)}px ${Math.round(14 * scale)}px ${Math.round(26 * scale)}px ${Math.round(14 * scale)}px;">
             ${customBgHtml}
             ${overlayHtml}
-            <div class="polaroid-photo-frame" style="background: ${customBgUrl ? (isDark ? 'rgba(28, 25, 23, 0.92)' : 'rgba(249, 250, 251, 0.94)') : (isDark ? '#1C1917' : '#F9FAFB')}; border: 1.5px solid ${theme.border}; border-radius: 10px; padding: 22px 14px; position: relative;">
-              ${currentTable ? `<div class="polaroid-table-tag" style="background: ${theme.accentColor}; color: #FFF;">MASA ${currentTable}</div>` : ''}
-              <div class="qr-wrapper" style="border-color: ${theme.border}; background: #FFF; margin: 0 auto 10px auto;">
-                <img src="${base64Qr}" alt="QR Kod" class="qr-img" style="width: 155px; height: 155px;" />
+            <div class="polaroid-photo-frame" style="background: ${customBgUrl ? (isDark ? 'rgba(28, 25, 23, 0.92)' : 'rgba(249, 250, 251, 0.94)') : (isDark ? '#1C1917' : '#F9FAFB')}; border: 1.5px solid ${theme.border}; border-radius: 10px; padding: ${Math.round(16 * scale)}px ${Math.round(10 * scale)}px; position: relative;">
+              ${currentTable ? `<div class="polaroid-table-tag" style="background: ${theme.accentColor}; color: #FFF; font-size: ${badgeFontPx}px;">MASA ${currentTable}</div>` : ''}
+              <div class="qr-wrapper" style="border-color: ${theme.border}; background: #FFF; margin: 0 auto ${Math.round(8 * scale)}px auto;">
+                <img src="${base64Qr}" alt="QR Kod" class="qr-img" style="width: ${qrPx}px; height: ${qrPx}px;" />
                 ${centerIconSymbol ? `<div class="qr-center-icon" style="background: ${theme.accentColor}; color: #FFF;">${centerIconSymbol}</div>` : ''}
               </div>
-              <div class="action-title" style="color: ${theme.primaryTextColor}; font-size: 14px; margin-top: 6px;">
+              <div class="action-title" style="color: ${theme.primaryTextColor}; font-size: ${actionTitlePx}px; margin-top: 4px;">
                 📸 ${isBackSide ? 'Anı Defterimize Not Bırakın' : actionTitle}
               </div>
             </div>
-            <div class="polaroid-caption" style="margin-top: 10px; text-align: center;">
-              ${buildCoupleNamesHtml('28px', true, '130px')}
-              <div class="date-tag" style="color: #6B7280; font-size: 10px; margin-top: 2px;">
+            <div class="polaroid-caption" style="margin-top: ${Math.round(8 * scale)}px; text-align: center;">
+              ${buildCoupleNamesHtml(coupleNamePx + 'px', true, Math.round(130 * scale) + 'px')}
+              <div class="date-tag" style="color: #6B7280; font-size: ${dateTagPx}px; margin-top: 2px;">
                 ${customDateOrSub} • ${footerText}
               </div>
             </div>
@@ -823,35 +918,36 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
 
       // ARCHETYPE 2: TABLE NUMBER HERO
       if (cardDesign === 'table_hero') {
+        const medSize = Math.round(58 * scale);
         return `
           <div class="card-box ${isDark ? 'dark-card' : ''}" style="${cardDimensionStyles}; background: ${theme.cardBg}; border-color: ${theme.border};">
             ${customBgHtml}
             ${overlayHtml}
             ${frameSvgHtml}
-            <div class="inner-frame" style="border-color: ${theme.innerBorder}; background-color: ${innerBgColor}; padding: 16px;">
+            <div class="inner-frame" style="border-color: ${theme.innerBorder}; background-color: ${innerBgColor}; padding: ${innerFramePadMm}mm;">
               <!-- Giant Table Number Medallion -->
-              <div class="table-hero-medallion" style="border: 2.5px solid ${theme.accentColor}; background: ${theme.badgeBg};">
-                <div class="table-hero-label" style="color: ${theme.badgeTextColor};">MASA</div>
-                <div class="table-hero-num" style="color: ${theme.namesColor}; font-family: ${selectedFont.family};">
+              <div class="table-hero-medallion" style="border: 2px solid ${theme.accentColor}; background: ${theme.badgeBg}; width: ${medSize}px; height: ${medSize}px; border-radius: ${Math.round(medSize / 2)}px; margin-bottom: ${Math.round(6 * scale)}px;">
+                <div class="table-hero-label" style="color: ${theme.badgeTextColor}; font-size: ${Math.max(7, Math.round(8.5 * scale))}px;">MASA</div>
+                <div class="table-hero-num" style="color: ${theme.namesColor}; font-family: ${selectedFont.family}; font-size: ${Math.round(24 * scale)}px;">
                   ${currentTable || '1'}
                 </div>
               </div>
 
-              ${buildCoupleNamesHtml('20px', false, '120px')}
+              ${buildCoupleNamesHtml(Math.round(coupleNamePx * 0.9) + 'px', false, Math.round(120 * scale) + 'px')}
 
               <div class="qr-wrapper" style="border-color: ${theme.border}; background: ${isDark ? '#141312' : '#FFFFFF'};">
-                <img src="${base64Qr}" alt="QR Kod" class="qr-img" style="width: 140px; height: 140px;" />
+                <img src="${base64Qr}" alt="QR Kod" class="qr-img" style="width: ${qrPx}px; height: ${qrPx}px;" />
                 ${centerIconSymbol ? `<div class="qr-center-icon" style="background: ${theme.accentColor}; color: #FFF;">${centerIconSymbol}</div>` : ''}
               </div>
 
-              <div class="action-title" style="color: ${theme.primaryTextColor}; font-size: 14px;">
+              <div class="action-title" style="color: ${theme.primaryTextColor}; font-size: ${actionTitlePx}px;">
                 ${isBackSide ? 'Anı Defterine Not Bırakın' : actionTitle}
               </div>
-              <div class="slogan" style="color: ${isDark ? '#D4D4D8' : '#4B5563'}; font-size: 10px;">
+              <div class="slogan" style="color: ${isDark ? '#D4D4D8' : '#4B5563'}; font-size: ${sloganPx}px;">
                 ${customSlogan}
               </div>
               ${stepsHtml}
-              <div class="footer-link" style="color: ${theme.namesColor};">${footerText}</div>
+              <div class="footer-link" style="color: ${theme.namesColor}; font-size: ${footerLinkPx}px;">${footerText}</div>
             </div>
           </div>
         `;
@@ -864,26 +960,26 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
             ${customBgHtml}
             ${overlayHtml}
             ${frameSvgHtml}
-            <div class="inner-frame" style="border-color: ${theme.innerBorder}; background-color: ${innerBgColor}; padding: 14px;">
-              ${buildCoupleNamesHtml('19px', false, '100px')}
-              <div class="date-tag" style="color: ${isDark ? '#A1A1AA' : '#6B7280'}; font-size: 10px; margin-bottom: 8px;">
+            <div class="inner-frame" style="border-color: ${theme.innerBorder}; background-color: ${innerBgColor}; padding: ${innerFramePadMm}mm;">
+              ${buildCoupleNamesHtml(Math.round(coupleNamePx * 0.85) + 'px', false, Math.round(100 * scale) + 'px')}
+              <div class="date-tag" style="color: ${isDark ? '#A1A1AA' : '#6B7280'}; font-size: ${dateTagPx}px; margin-bottom: ${Math.round(6 * scale)}px;">
                 ${badgeDisplay} • ${customDateOrSub}
               </div>
 
               <!-- Giant Scan Target -->
-              <div class="bold-qr-container" style="border: 3px solid ${theme.border}; background: ${isDark ? '#141312' : '#FFFFFF'}; padding: 12px; border-radius: 20px;">
-                <img src="${base64Qr}" alt="QR Kod" style="width: 180px; height: 180px; display: block;" />
+              <div class="bold-qr-container" style="border: 2.5px solid ${theme.border}; background: ${isDark ? '#141312' : '#FFFFFF'}; padding: ${Math.round(8 * scale)}px; border-radius: ${Math.round(16 * scale)}px;">
+                <img src="${base64Qr}" alt="QR Kod" style="width: ${qrPx}px; height: ${qrPx}px; display: block;" />
                 ${centerIconSymbol ? `<div class="qr-center-icon" style="background: ${theme.accentColor}; color: #FFF;">${centerIconSymbol}</div>` : ''}
               </div>
 
-              <div class="bold-scan-banner" style="background: ${theme.badgeBg}; color: ${theme.badgeTextColor}; font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 12px; padding: 6px 18px; border-radius: 20px; margin: 10px 0 6px 0;">
+              <div class="bold-scan-banner" style="background: ${theme.badgeBg}; color: ${theme.badgeTextColor}; font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: ${Math.max(9, Math.round(11 * scale))}px; padding: ${Math.round(4 * scale)}px ${Math.round(14 * scale)}px; border-radius: 20px; margin: ${Math.round(8 * scale)}px 0 ${Math.round(4 * scale)}px 0;">
                 ⚡ KAMERANI AÇ & ANINDA TARA
               </div>
 
-              <div class="slogan" style="color: ${isDark ? '#D4D4D8' : '#4B5563'}; font-size: 10px; margin-bottom: 8px;">
+              <div class="slogan" style="color: ${isDark ? '#D4D4D8' : '#4B5563'}; font-size: ${sloganPx}px; margin-bottom: ${Math.round(6 * scale)}px;">
                 ${customSlogan}
               </div>
-              <div class="footer-link" style="color: ${theme.namesColor};">${footerText}</div>
+              <div class="footer-link" style="color: ${theme.namesColor}; font-size: ${footerLinkPx}px;">${footerText}</div>
             </div>
           </div>
         `;
@@ -896,27 +992,27 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
             ${customBgHtml}
             ${overlayHtml}
             ${frameSvgHtml}
-            <div class="inner-frame" style="border-color: ${theme.innerBorder}; background-color: ${innerBgColor}; padding: 18px;">
-              <div class="letter-stamp" style="font-size: 20px; color: ${theme.accentColor}; margin-bottom: 4px;">💌</div>
-              <h2 style="font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 800; letter-spacing: 1px; color: ${theme.badgeTextColor}; text-transform: uppercase; margin: 0 0 6px 0;">
+            <div class="inner-frame" style="border-color: ${theme.innerBorder}; background-color: ${innerBgColor}; padding: ${innerFramePadMm}mm;">
+              <div class="letter-stamp" style="font-size: ${Math.round(18 * scale)}px; color: ${theme.accentColor}; margin-bottom: 2px;">💌</div>
+              <h2 style="font-family: 'Montserrat', sans-serif; font-size: ${Math.max(9, Math.round(12 * scale))}px; font-weight: 800; letter-spacing: 1px; color: ${theme.badgeTextColor}; text-transform: uppercase; margin: 0 0 4px 0;">
                 Sevgili Misafirimiz,
               </h2>
-              <div class="letter-body" style="font-family: 'Playfair Display', Georgia, serif; font-style: italic; font-size: 12px; line-height: 1.5; color: ${isDark ? '#E5E7EB' : '#374151'}; text-align: center; margin-bottom: 12px; padding: 0 10px;">
+              <div class="letter-body" style="font-family: 'Playfair Display', Georgia, serif; font-style: italic; font-size: ${Math.max(8.5, Math.round(11 * scale))}px; line-height: 1.35; color: ${isDark ? '#E5E7EB' : '#374151'}; text-align: center; margin-bottom: ${Math.round(8 * scale)}px; padding: 0 6px;">
                 "Bu mutlu günümüzde yanımızda olduğunuz için teşekkür ederiz. Bugün yaşadığımız mutluluğu sizin gözünüzden görmek istiyoruz."
               </div>
 
-              <div class="qr-wrapper" style="border-color: ${theme.border}; background: ${isDark ? '#141312' : '#FFFFFF'}; margin-bottom: 8px;">
-                <img src="${base64Qr}" alt="QR Kod" class="qr-img" style="width: 135px; height: 135px;" />
+              <div class="qr-wrapper" style="border-color: ${theme.border}; background: ${isDark ? '#141312' : '#FFFFFF'}; margin-bottom: ${Math.round(6 * scale)}px;">
+                <img src="${base64Qr}" alt="QR Kod" class="qr-img" style="width: ${qrPx}px; height: ${qrPx}px;" />
                 ${centerIconSymbol ? `<div class="qr-center-icon" style="background: ${theme.accentColor}; color: #FFF;">${centerIconSymbol}</div>` : ''}
               </div>
 
-              <div class="action-title" style="color: ${theme.primaryTextColor}; font-size: 13px;">
+              <div class="action-title" style="color: ${theme.primaryTextColor}; font-size: ${actionTitlePx}px;">
                 ${isBackSide ? 'Anı Defterimize Not Bırakın' : actionTitle}
               </div>
-              <div class="badge" style="background: ${theme.badgeBg}; border-color: ${theme.badgeBorder}; color: ${theme.badgeTextColor}; margin: 6px 0;">
+              <div class="badge" style="background: ${theme.badgeBg}; border-color: ${theme.badgeBorder}; color: ${theme.badgeTextColor}; margin: ${Math.round(4 * scale)}px 0;">
                 ${badgeDisplay}
               </div>
-              <div style="font-family: 'Great Vibes', cursive; font-size: 26px; color: ${theme.namesColor}; margin-top: 4px;">
+              <div style="font-family: 'Great Vibes', cursive; font-size: ${Math.round(coupleNamePx * 1.1)}px; color: ${theme.namesColor}; margin-top: 2px;">
                 Sevgiyle, ${brideName || 'Gelin'} & ${groomName || 'Damat'}
               </div>
             </div>
@@ -931,35 +1027,35 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
           ${overlayHtml}
           ${frameSvgHtml}
 
-          <div class="inner-frame" style="border-color: ${theme.innerBorder}; background-color: ${innerBgColor};">
+          <div class="inner-frame" style="border-color: ${theme.innerBorder}; background-color: ${innerBgColor}; padding: ${innerFramePadMm}mm;">
             <div class="top-ornament">
               <span class="sparkle" style="color: ${theme.accentColor}">✦</span>
               <span class="date-tag" style="color: ${isDark ? '#A1A1AA' : '#6B7280'}">${customDateOrSub}</span>
               <span class="sparkle" style="color: ${theme.accentColor}">✦</span>
             </div>
 
-            ${buildCoupleNamesHtml('25px', false, '130px')}
+            ${buildCoupleNamesHtml(coupleNamePx + 'px', false, Math.round(130 * scale) + 'px')}
 
             <div class="badge" style="background: ${theme.badgeBg}; border-color: ${theme.badgeBorder}; color: ${theme.badgeTextColor};">
               ${badgeDisplay}
             </div>
 
             <div class="qr-wrapper" style="border-color: ${theme.border}; background: ${isDark ? '#141312' : '#FFFFFF'};">
-              <img src="${base64Qr}" alt="QR Kod" class="qr-img" />
+              <img src="${base64Qr}" alt="QR Kod" class="qr-img" style="width: ${qrPx}px; height: ${qrPx}px;" />
               ${centerIconSymbol ? `<div class="qr-center-icon" style="background: ${theme.accentColor}; color: #FFF;">${centerIconSymbol}</div>` : ''}
             </div>
 
-            <div class="action-title" style="color: ${theme.primaryTextColor};">
+            <div class="action-title" style="color: ${theme.primaryTextColor}; font-size: ${actionTitlePx}px;">
               ${isBackSide ? 'Anı Defterimize Not Bırakın' : actionTitle}
             </div>
 
-            <div class="slogan" style="color: ${isDark ? '#D4D4D8' : '#4B5563'};">
+            <div class="slogan" style="color: ${isDark ? '#D4D4D8' : '#4B5563'}; font-size: ${sloganPx}px;">
               ${customSlogan}
             </div>
 
             ${stepsHtml}
 
-            <div class="footer-link" style="color: ${theme.namesColor}; font-family: ${selectedFont.family};">
+            <div class="footer-link" style="color: ${theme.namesColor}; font-family: ${selectedFont.family}; font-size: ${footerLinkPx}px;">
               ${footerText}
             </div>
           </div>
@@ -979,7 +1075,7 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
               </div>
               <div class="tent-fold-line" style="width: 100%; max-width: ${Math.min(cardW, 140)}mm;">
                 <span class="fold-dash"></span>
-                <span class="fold-text">✂ KATLAMA ÇİZGİSİ (180° BAŞ AŞAĞI KATLAYIN)</span>
+                <span class="fold-text">✂ KATLAMA ÇİZGİSİ</span>
                 <span class="fold-dash"></span>
               </div>
               <div class="tent-card-wrapper tent-bottom-card">
@@ -1061,15 +1157,16 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
           }
           .card-box {
             position: relative;
-            border: 3.5px solid;
-            border-radius: 20px;
-            padding: 10px;
+            border: ${Math.max(2, Math.round(3.5 * scale))}px solid;
+            border-radius: ${Math.round(20 * scale)}px;
+            padding: ${cardBoxPadMm}mm;
             text-align: center;
             box-shadow: none;
             overflow: hidden;
             display: flex;
             flex-direction: column;
             justify-content: center;
+            page-break-inside: avoid;
           }
           .custom-bg-layer {
             position: absolute;
@@ -1097,9 +1194,9 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
           .inner-frame {
             position: relative;
             z-index: 3;
-            border: 1.5px solid;
-            border-radius: 14px;
-            padding: 18px 16px;
+            border: ${Math.max(1, Math.round(1.5 * scale))}px solid;
+            border-radius: ${Math.round(14 * scale)}px;
+            padding: ${innerFramePadMm}mm;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -1114,14 +1211,14 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
-            margin-bottom: 6px;
+            gap: ${Math.round(6 * scale)}px;
+            margin-bottom: ${Math.round(4 * scale)}px;
           }
           .sparkle {
-            font-size: 13px;
+            font-size: ${Math.round(12 * scale)}px;
           }
           .date-tag {
-            font-size: 11px;
+            font-size: ${dateTagPx}px;
             font-weight: 800;
             letter-spacing: 1.2px;
             text-transform: uppercase;
@@ -1132,11 +1229,11 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            margin: 4px 0 6px 0;
+            margin: ${Math.round(2 * scale)}px 0 ${Math.round(4 * scale)}px 0;
             width: 100%;
           }
           .couple-name-line {
-            font-size: 24px;
+            font-size: ${coupleNamePx}px;
             line-height: 1.15;
             font-weight: 800;
             letter-spacing: 0.8px;
@@ -1147,10 +1244,10 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
+            gap: ${Math.round(8 * scale)}px;
             width: 100%;
-            max-width: 140px;
-            margin: 2px 0;
+            max-width: ${Math.round(130 * scale)}px;
+            margin: 1px 0;
           }
           .amp-line {
             flex: 1;
@@ -1159,14 +1256,14 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
           }
           .ampersand-char {
             font-family: 'Playfair Display', Georgia, serif;
-            font-size: 15px;
+            font-size: ${Math.round(14 * scale)}px;
             font-style: italic;
             font-weight: 700;
             line-height: 1;
           }
           .couple-title {
-            margin: 4px 0 8px 0;
-            font-size: 28px;
+            margin: ${Math.round(2 * scale)}px 0 ${Math.round(5 * scale)}px 0;
+            font-size: ${coupleNamePx}px;
             line-height: 1.2;
             font-weight: 800;
             letter-spacing: 0.5px;
@@ -1174,61 +1271,61 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
           .badge {
             display: inline-block;
             font-family: 'Montserrat', sans-serif;
-            font-size: 11px;
+            font-size: ${badgeFontPx}px;
             font-weight: 800;
             letter-spacing: 1px;
-            padding: 5px 16px;
-            border-radius: 20px;
+            padding: ${Math.round(4 * scale)}px ${Math.round(12 * scale)}px;
+            border-radius: ${Math.round(18 * scale)}px;
             border: 1px solid;
-            margin-bottom: 12px;
+            margin-bottom: ${Math.round(8 * scale)}px;
           }
           .qr-wrapper {
             position: relative;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            border: 2px solid;
-            border-radius: 16px;
-            padding: 8px;
-            margin-bottom: 10px;
+            border: ${Math.max(1.5, Math.round(2 * scale))}px solid;
+            border-radius: ${Math.round(14 * scale)}px;
+            padding: ${Math.round(6 * scale)}px;
+            margin-bottom: ${Math.round(8 * scale)}px;
           }
           .qr-img {
             display: block;
-            width: 145px;
-            height: 145px;
+            width: ${qrPx}px;
+            height: ${qrPx}px;
             object-fit: contain;
           }
           .qr-center-icon {
             position: absolute;
-            width: 32px;
-            height: 32px;
-            border-radius: 16px;
-            border: 2.5px solid #FFF;
+            width: ${Math.round(28 * scale)}px;
+            height: ${Math.round(28 * scale)}px;
+            border-radius: ${Math.round(14 * scale)}px;
+            border: 2px solid #FFF;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 15px;
+            font-size: ${Math.round(13 * scale)}px;
           }
           .action-title {
             font-family: 'Montserrat', sans-serif;
-            font-size: 15px;
+            font-size: ${actionTitlePx}px;
             font-weight: 800;
-            margin-bottom: 4px;
+            margin-bottom: ${Math.round(3 * scale)}px;
             letter-spacing: 0.3px;
           }
           .slogan {
             font-family: 'Montserrat', sans-serif;
-            font-size: 11px;
+            font-size: ${sloganPx}px;
             line-height: 1.4;
             max-width: 90%;
-            margin: 0 auto 12px auto;
+            margin: 0 auto ${Math.round(8 * scale)}px auto;
           }
           .steps-row {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
-            margin-bottom: 12px;
+            gap: ${Math.round(5 * scale)}px;
+            margin-bottom: ${Math.round(8 * scale)}px;
             width: 100%;
           }
           .step-box {
@@ -1238,57 +1335,57 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
             gap: 2px;
           }
           .step-circle {
-            font-size: 14px;
+            font-size: ${stepCirclePx}px;
           }
           .step-text {
-            font-size: 9px;
+            font-size: ${stepFontPx}px;
             font-weight: 700;
             font-family: 'Montserrat', sans-serif;
             color: #6B7280;
           }
           .step-divider {
-            width: 18px;
+            width: ${Math.round(14 * scale)}px;
             height: 1px;
             background: #D1D5DB;
-            margin-bottom: 10px;
+            margin-bottom: ${Math.round(6 * scale)}px;
           }
           .footer-link {
-            font-size: 12px;
+            font-size: ${footerLinkPx}px;
             font-weight: 800;
             letter-spacing: 0.5px;
           }
           /* Specialized Archetype Print Styles */
           .polaroid-box {
-            border-bottom: 30px solid #FFF !important;
+            border-bottom: ${Math.round(26 * scale)}px solid #FFF !important;
           }
           .polaroid-table-tag {
             position: absolute;
             top: 6px;
             right: 8px;
-            font-size: 10px;
+            font-size: ${Math.max(7, Math.round(9 * scale))}px;
             font-weight: 800;
             padding: 3px 8px;
             border-radius: 6px;
             font-family: 'Montserrat', sans-serif;
           }
           .table-hero-medallion {
-            width: 66px;
-            height: 66px;
-            border-radius: 33px;
+            width: ${Math.round(56 * scale)}px;
+            height: ${Math.round(56 * scale)}px;
+            border-radius: ${Math.round(28 * scale)}px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 8px auto;
+            margin: 0 auto ${Math.round(6 * scale)}px auto;
           }
           .table-hero-label {
-            font-size: 9px;
+            font-size: ${Math.max(7, Math.round(8.5 * scale))}px;
             font-weight: 800;
             letter-spacing: 1px;
             font-family: 'Montserrat', sans-serif;
           }
           .table-hero-num {
-            font-size: 26px;
+            font-size: ${Math.max(16, Math.round(24 * scale))}px;
             font-weight: 900;
             line-height: 1;
           }
@@ -1299,11 +1396,14 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
             justify-content: center;
             width: 100%;
             margin: 0 auto;
+            gap: 0;
           }
           .tent-card-wrapper {
             width: 100%;
             display: flex;
             justify-content: center;
+            margin: 0;
+            padding: 0;
           }
           .tent-top-card {
             transform: rotate(180deg);
@@ -1311,38 +1411,58 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
             margin-bottom: 0;
           }
           .tent-top-card .card-box {
-            border-bottom-left-radius: 4px !important;
-            border-bottom-right-radius: 4px !important;
+            border-top-left-radius: 2px !important;
+            border-top-right-radius: 2px !important;
+            border-bottom-left-radius: ${Math.round(18 * scale)}px !important;
+            border-bottom-right-radius: ${Math.round(18 * scale)}px !important;
+          }
+          .tent-top-card .inner-frame {
+            border-top-left-radius: 2px !important;
+            border-top-right-radius: 2px !important;
+            border-bottom-left-radius: ${Math.round(12 * scale)}px !important;
+            border-bottom-right-radius: ${Math.round(12 * scale)}px !important;
           }
           .tent-bottom-card {
             margin-top: 0;
           }
           .tent-bottom-card .card-box {
-            border-top-left-radius: 4px !important;
-            border-top-right-radius: 4px !important;
+            border-top-left-radius: 2px !important;
+            border-top-right-radius: 2px !important;
+            border-bottom-left-radius: ${Math.round(18 * scale)}px !important;
+            border-bottom-right-radius: ${Math.round(18 * scale)}px !important;
+          }
+          .tent-bottom-card .inner-frame {
+            border-top-left-radius: 2px !important;
+            border-top-right-radius: 2px !important;
+            border-bottom-left-radius: ${Math.round(12 * scale)}px !important;
+            border-bottom-right-radius: ${Math.round(12 * scale)}px !important;
           }
           .tent-fold-line {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
+            gap: 6px;
             width: 100%;
-            margin: 2mm 0;
-            padding: 1mm 0;
+            margin: 0.5mm 0;
+            padding: 0;
+            height: 2.5mm;
+            line-height: 1;
           }
           .tent-fold-line .fold-dash,
           .dash-line {
             flex: 1;
-            border-top: 1.5px dashed #9CA3AF;
+            border-top: 1px dashed #9CA3AF;
           }
           .tent-fold-line .fold-text,
           .fold-text {
-            font-size: 8.5px;
+            font-size: 6.5px;
             font-weight: 800;
             color: #6B7280;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
             font-family: 'Montserrat', sans-serif;
             text-transform: uppercase;
+            padding: 0 4px;
+            white-space: nowrap;
           }
           .print-cut-divider {
             display: flex;
@@ -1459,7 +1579,22 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
     }
   };
 
-  // Render on-screen live card based on active Archetype
+  const selectedSizeConfig = CARD_SIZES[cardSize] || CARD_SIZES.standard_10x15;
+  const cardAspectRatio = selectedSizeConfig.widthMm / selectedSizeConfig.heightMm;
+  const isLandscapeMini = cardSize === 'mini_85x55' || (selectedSizeConfig.widthMm > selectedSizeConfig.heightMm * 1.2 && selectedSizeConfig.heightMm <= 75);
+  const baseCardWidth = 370;
+  const calculatedCardMinHeight = isLandscapeMini
+    ? 240
+    : Math.min(620, Math.max(260, Math.round(baseCardWidth / cardAspectRatio)));
+
+  const cardPaperDimensionStyle = {
+    width: baseCardWidth,
+    minHeight: calculatedCardMinHeight,
+    borderColor: theme.border,
+    backgroundColor: theme.cardBg,
+  };
+
+  // Render on-screen live card based on active Archetype and responsive cardSize
   const renderLiveCardContent = (tableNumToDisplay: string | null, isBackSide = false) => {
     const isDark = theme.isDark;
     const badgeContent = tableNumToDisplay ? `MASA ${tableNumToDisplay}` : badgeText;
@@ -1468,11 +1603,40 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
       ? `data:image/svg+xml;utf8,${encodeURIComponent(frameSvgString.trim())}`
       : null;
 
+    // Responsive scaling based on cardSize (relative to 100x150 mm baseline)
+    const liveScale = isLandscapeMini
+      ? 0.72
+      : Math.min(1.25, Math.max(0.68, Math.min(selectedSizeConfig.widthMm / 100, selectedSizeConfig.heightMm / 150)));
+
+    const liveQrSize = isLandscapeMini
+      ? 82
+      : cardDesign === 'bold_qr'
+      ? Math.round(180 * liveScale)
+      : cardDesign === 'letter'
+      ? Math.round(135 * liveScale)
+      : cardDesign === 'table_hero'
+      ? Math.round(140 * liveScale)
+      : Math.round(152 * liveScale);
+
+    const liveCoupleNameSize = isLandscapeMini ? 15 : Math.max(14, Math.round(23 * liveScale));
+    const liveBadgeFontSize = isLandscapeMini ? 8.5 : Math.max(8.5, Math.round(11 * liveScale));
+    const liveActionTitleSize = isLandscapeMini ? 11 : Math.max(10, Math.round(14.5 * liveScale));
+    const liveSloganFontSize = isLandscapeMini ? 8 : Math.max(8, Math.round(10.5 * liveScale));
+    const liveDateTagSize = isLandscapeMini ? 8 : Math.max(8, Math.round(10 * liveScale));
+    const liveFooterFontSize = isLandscapeMini ? 8.5 : Math.max(8.5, Math.round(11.5 * liveScale));
+    const liveInnerPadding = isLandscapeMini ? 10 : Math.max(10, Math.round(18 * liveScale));
+    const liveSpacing = Math.max(4, Math.round(9 * liveScale));
+
     const qrElement = (
       <View
         style={[
           styles.qrContainer,
           {
+            width: liveQrSize,
+            height: liveQrSize,
+            padding: Math.max(4, Math.round(6 * liveScale)),
+            borderRadius: Math.round(16 * liveScale),
+            marginBottom: liveSpacing,
             borderColor: theme.border,
             backgroundColor: isDark ? '#141312' : '#FFFFFF',
           },
@@ -1480,14 +1644,24 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
       >
         {isGeneratingQr || !base64Qr ? (
           <View style={styles.qrLoadingBox}>
-            <Text style={{ color: '#9CA3AF', fontSize: 11 }}>QR Yükleniyor...</Text>
+            <Text style={{ color: '#9CA3AF', fontSize: Math.round(11 * liveScale) }}>QR Yükleniyor...</Text>
           </View>
         ) : (
           <Image source={{ uri: base64Qr }} style={styles.qrImage} resizeMode="contain" />
         )}
 
         {qrIcon !== 'none' && (
-          <View style={[styles.qrCenterBadge, { backgroundColor: theme.accentColor }]}>
+          <View
+            style={[
+              styles.qrCenterBadge,
+              {
+                backgroundColor: theme.accentColor,
+                width: Math.round(30 * liveScale),
+                height: Math.round(30 * liveScale),
+                borderRadius: Math.round(15 * liveScale),
+              },
+            ]}
+          >
             <Ionicons
               name={
                 qrIcon === 'camera'
@@ -1496,7 +1670,7 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
                   ? 'heart'
                   : 'sparkles'
               }
-              size={14}
+              size={Math.max(10, Math.round(13 * liveScale))}
               color="#FFF"
             />
           </View>
@@ -1504,12 +1678,12 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
       </View>
     );
 
-    const renderCoupleNamesBlock = (fontSize = 24, isScript = false, maxWidth = 230) => {
+    const renderCoupleNamesBlock = (fontSize = liveCoupleNameSize, isScript = false, maxWidth = Math.round(230 * liveScale)) => {
       const b = brideName.trim() || 'Gelin';
       const g = groomName.trim() || 'Damat';
       const fontFam = Platform.OS === 'web' ? (isScript ? "'Great Vibes', cursive" : selectedFont.family) : undefined;
       return (
-        <View style={[styles.coupleNamesBlock, { maxWidth }]}>
+        <View style={[styles.coupleNamesBlock, { maxWidth, marginVertical: Math.max(2, Math.round(3 * liveScale)) }]}>
           <Text
             style={[
               styles.coupleNamePrimary,
@@ -1524,7 +1698,7 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
           >
             {b}
           </Text>
-          <View style={styles.ampersandWrap}>
+          <View style={[styles.ampersandWrap, { maxWidth: Math.round(130 * liveScale), marginVertical: 1 }]}>
             <View style={[styles.ampersandLine, { backgroundColor: theme.accentColor + '55' }]} />
             <Text
               style={[
@@ -1533,6 +1707,8 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
                   color: theme.accentColor,
                   // @ts-ignore
                   fontFamily: Platform.OS === 'web' ? "'Playfair Display', Georgia, serif" : undefined,
+                  fontSize: Math.round(14 * liveScale),
+                  lineHeight: Math.round(16 * liveScale),
                 },
               ]}
             >
@@ -1558,33 +1734,189 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
       );
     };
 
+    // SPECIAL 2-COLUMN LANDSCAPE LAYOUT FOR MINI (8.5 x 5.5 cm) CARDS
+    if (isLandscapeMini) {
+      return (
+        <View
+          style={[
+            styles.innerBorder,
+            cardLayout === 'tent' && styles.tentInnerBorder,
+            {
+              borderColor: theme.innerBorder,
+              backgroundColor: customBgUrl
+                ? isDark
+                  ? `rgba(20, 19, 18, ${1 - overlayOpacity})`
+                  : `rgba(255, 255, 255, ${1 - overlayOpacity})`
+                : theme.cardBg,
+              padding: 10,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              height: '100%',
+              minHeight: 216,
+            },
+          ]}
+        >
+          {frameDataUri && (
+            <Image
+              source={{ uri: frameDataUri }}
+              style={styles.frameSvgOverlay}
+              resizeMode="stretch"
+            />
+          )}
+
+          {/* Left Column: Information & Names */}
+          <View style={{ flex: 1.15, justifyContent: 'center', height: '100%', zIndex: 2 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+              <Text style={{ color: theme.accentColor, fontSize: 10 }}>✦</Text>
+              <Text style={[styles.dateTag, { color: isDark ? '#A1A1AA' : '#6B7280', fontSize: 8.5 }]}>
+                {customDateOrSub}
+              </Text>
+            </View>
+
+            <Text
+              style={{
+                color: theme.namesColor,
+                // @ts-ignore
+                fontFamily: Platform.OS === 'web' ? selectedFont.family : undefined,
+                fontSize: 15,
+                fontWeight: '800',
+                lineHeight: 18,
+                marginBottom: 5,
+              }}
+              numberOfLines={2}
+            >
+              {brideName.trim() || 'Gelin'} & {groomName.trim() || 'Damat'}
+            </Text>
+
+            <View
+              style={[
+                styles.badgeContainer,
+                {
+                  backgroundColor: theme.badgeBg,
+                  borderColor: theme.badgeBorder,
+                  paddingVertical: 3,
+                  paddingHorizontal: 8,
+                  marginBottom: 6,
+                  alignSelf: 'flex-start',
+                },
+              ]}
+            >
+              <Ionicons
+                name={tableNumToDisplay ? 'restaurant-outline' : 'camera-outline'}
+                size={10}
+                color={theme.badgeTextColor}
+              />
+              <Text style={[styles.badgeText, { color: theme.badgeTextColor, fontSize: 8.5 }]}>
+                {badgeContent}
+              </Text>
+            </View>
+
+            <Text style={[styles.actionTitle, { color: theme.primaryTextColor, fontSize: 11, marginBottom: 2, textAlign: 'left' }]}>
+              {isBackSide ? 'Anı Defterine Not Bırakın' : actionTitle}
+            </Text>
+
+            <Text
+              style={[
+                styles.actionDesc,
+                {
+                  color: isDark ? '#D4D4D8' : '#4B5563',
+                  fontSize: 8.5,
+                  lineHeight: 12,
+                  marginBottom: 0,
+                  paddingHorizontal: 0,
+                  textAlign: 'left',
+                },
+              ]}
+              numberOfLines={2}
+            >
+              {customSlogan}
+            </Text>
+          </View>
+
+          {/* Right Column: Target QR and Link */}
+          <View style={{ flex: 0.85, alignItems: 'center', justifyContent: 'center', height: '100%', zIndex: 2 }}>
+            <View
+              style={[
+                styles.qrContainer,
+                {
+                  width: 98,
+                  height: 98,
+                  padding: 5,
+                  borderRadius: 12,
+                  marginBottom: 6,
+                  borderColor: theme.border,
+                  backgroundColor: isDark ? '#141312' : '#FFFFFF',
+                },
+              ]}
+            >
+              {isGeneratingQr || !base64Qr ? (
+                <View style={styles.qrLoadingBox}>
+                  <Text style={{ color: '#9CA3AF', fontSize: 9 }}>QR...</Text>
+                </View>
+              ) : (
+                <Image source={{ uri: base64Qr }} style={styles.qrImage} resizeMode="contain" />
+              )}
+              {qrIcon !== 'none' && (
+                <View style={[styles.qrCenterBadge, { backgroundColor: theme.accentColor, width: 22, height: 22, borderRadius: 11 }]}>
+                  <Ionicons
+                    name={qrIcon === 'camera' ? 'camera' : qrIcon === 'heart' ? 'heart' : 'sparkles'}
+                    size={10}
+                    color="#FFF"
+                  />
+                </View>
+              )}
+            </View>
+
+            <Text
+              style={[
+                styles.footerLink,
+                {
+                  color: theme.namesColor,
+                  // @ts-ignore
+                  fontFamily: Platform.OS === 'web' ? selectedFont.family : undefined,
+                  fontSize: 8.5,
+                  textAlign: 'center',
+                },
+              ]}
+              numberOfLines={1}
+            >
+              {footerText}
+            </Text>
+          </View>
+        </View>
+      );
+    }
+
     // 1. POLAROID DESIGN
     if (cardDesign === 'polaroid') {
       return (
-        <View style={styles.polaroidContainer}>
+        <View style={[styles.polaroidContainer, { paddingBottom: Math.round(20 * liveScale) }]}>
           <View
             style={[
               styles.polaroidPhotoArea,
               {
                 borderColor: theme.border,
                 backgroundColor: isDark ? '#1C1917' : '#F9FAFB',
+                padding: Math.round(12 * liveScale),
               },
             ]}
           >
             {tableNumToDisplay && (
-              <View style={[styles.polaroidTag, { backgroundColor: theme.accentColor }]}>
-                <Text style={styles.polaroidTagText}>MASA {tableNumToDisplay}</Text>
+              <View style={[styles.polaroidTag, { backgroundColor: theme.accentColor, paddingVertical: Math.round(2 * liveScale), paddingHorizontal: Math.round(6 * liveScale) }]}>
+                <Text style={[styles.polaroidTagText, { fontSize: Math.max(7.5, Math.round(9 * liveScale)) }]}>MASA {tableNumToDisplay}</Text>
               </View>
             )}
             {qrElement}
-            <Text style={[styles.actionTitle, { color: theme.primaryTextColor, fontSize: 14 }]}>
+            <Text style={[styles.actionTitle, { color: theme.primaryTextColor, fontSize: liveActionTitleSize, marginBottom: 2 }]}>
               📸 {isBackSide ? 'Anı Defterimize Not Bırakın' : actionTitle}
             </Text>
           </View>
 
-          <View style={styles.polaroidBottomArea}>
-            {renderCoupleNamesBlock(28, true, 260)}
-            <Text style={[styles.dateTag, { color: '#6B7280', fontSize: 10, marginTop: 2 }]}>
+          <View style={[styles.polaroidBottomArea, { marginTop: Math.round(6 * liveScale) }]}>
+            {renderCoupleNamesBlock(Math.round(26 * liveScale), true, Math.round(250 * liveScale))}
+            <Text style={[styles.dateTag, { color: '#6B7280', fontSize: liveDateTagSize, marginTop: 2 }]}>
               {customDateOrSub} • {footerText}
             </Text>
           </View>
@@ -1594,12 +1926,15 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
 
     // 2. TABLE NUMBER HERO DESIGN
     if (cardDesign === 'table_hero') {
+      const medSize = Math.round(58 * liveScale);
       return (
         <View
           style={[
             styles.innerBorder,
+            cardLayout === 'tent' && styles.tentInnerBorder,
             {
               borderColor: theme.innerBorder,
+              padding: liveInnerPadding,
               backgroundColor: customBgUrl
                 ? isDark
                   ? `rgba(20, 19, 18, ${1 - overlayOpacity})`
@@ -1623,10 +1958,14 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
               {
                 borderColor: theme.accentColor,
                 backgroundColor: theme.badgeBg,
+                width: medSize,
+                height: medSize,
+                borderRadius: Math.round(medSize / 2),
+                marginBottom: liveSpacing,
               },
             ]}
           >
-            <Text style={[styles.tableHeroLabel, { color: theme.badgeTextColor }]}>MASA</Text>
+            <Text style={[styles.tableHeroLabel, { color: theme.badgeTextColor, fontSize: Math.max(7, Math.round(8.5 * liveScale)) }]}>MASA</Text>
             <Text
               style={[
                 styles.tableHeroNum,
@@ -1634,6 +1973,7 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
                   color: theme.namesColor,
                   // @ts-ignore
                   fontFamily: Platform.OS === 'web' ? selectedFont.family : undefined,
+                  fontSize: Math.max(16, Math.round(24 * liveScale)),
                 },
               ]}
             >
@@ -1641,14 +1981,14 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
             </Text>
           </View>
 
-          {renderCoupleNamesBlock(20, false, 220)}
+          {renderCoupleNamesBlock(Math.round(20 * liveScale), false, Math.round(210 * liveScale))}
 
           {qrElement}
 
-          <Text style={[styles.actionTitle, { color: theme.primaryTextColor, fontSize: 14 }]}>
+          <Text style={[styles.actionTitle, { color: theme.primaryTextColor, fontSize: liveActionTitleSize, marginBottom: 2 }]}>
             {isBackSide ? 'Anı Defterine Not Bırakın' : actionTitle}
           </Text>
-          <Text style={[styles.actionDesc, { color: isDark ? '#D4D4D8' : '#4B5563', fontSize: 10 }]}>
+          <Text style={[styles.actionDesc, { color: isDark ? '#D4D4D8' : '#4B5563', fontSize: liveSloganFontSize, marginBottom: liveSpacing }]}>
             {customSlogan}
           </Text>
 
@@ -1659,6 +1999,7 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
                 color: theme.namesColor,
                 // @ts-ignore
                 fontFamily: Platform.OS === 'web' ? selectedFont.family : undefined,
+                fontSize: liveFooterFontSize,
               },
             ]}
           >
@@ -1674,8 +2015,10 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
         <View
           style={[
             styles.innerBorder,
+            cardLayout === 'tent' && styles.tentInnerBorder,
             {
               borderColor: theme.innerBorder,
+              padding: liveInnerPadding,
               backgroundColor: customBgUrl
                 ? isDark
                   ? `rgba(20, 19, 18, ${1 - overlayOpacity})`
@@ -1692,9 +2035,9 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
             />
           )}
 
-          {renderCoupleNamesBlock(19, false, 210)}
+          {renderCoupleNamesBlock(Math.round(19 * liveScale), false, Math.round(200 * liveScale))}
 
-          <Text style={[styles.dateTag, { color: isDark ? '#A1A1AA' : '#6B7280', marginBottom: 8 }]}>
+          <Text style={[styles.dateTag, { color: isDark ? '#A1A1AA' : '#6B7280', fontSize: liveDateTagSize, marginBottom: liveSpacing }]}>
             {badgeContent} • {customDateOrSub}
           </Text>
 
@@ -1705,26 +2048,29 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
               {
                 borderColor: theme.border,
                 backgroundColor: isDark ? '#141312' : '#FFFFFF',
+                padding: Math.round(6 * liveScale),
+                borderRadius: Math.round(16 * liveScale),
+                marginBottom: liveSpacing,
               },
             ]}
           >
             {base64Qr ? (
-              <Image source={{ uri: base64Qr }} style={{ width: 180, height: 180 }} resizeMode="contain" />
+              <Image source={{ uri: base64Qr }} style={{ width: liveQrSize, height: liveQrSize }} resizeMode="contain" />
             ) : (
               <Text style={{ color: '#9CA3AF' }}>QR Yükleniyor...</Text>
             )}
           </View>
 
-          <View style={[styles.boldScanBadge, { backgroundColor: theme.badgeBg }]}>
-            <Text style={[styles.boldScanBadgeText, { color: theme.badgeTextColor }]}>
+          <View style={[styles.boldScanBadge, { backgroundColor: theme.badgeBg, paddingVertical: Math.round(3 * liveScale), paddingHorizontal: Math.round(12 * liveScale), marginBottom: liveSpacing }]}>
+            <Text style={[styles.boldScanBadgeText, { color: theme.badgeTextColor, fontSize: Math.max(8.5, Math.round(11 * liveScale)) }]}>
               ⚡ KAMERANI AÇ & ANINDA TARA
             </Text>
           </View>
 
-          <Text style={[styles.actionDesc, { color: isDark ? '#D4D4D8' : '#4B5563', fontSize: 10, marginTop: 4 }]}>
+          <Text style={[styles.actionDesc, { color: isDark ? '#D4D4D8' : '#4B5563', fontSize: liveSloganFontSize, marginBottom: liveSpacing }]}>
             {customSlogan}
           </Text>
-          <Text style={[styles.footerLink, { color: theme.namesColor }]}>{footerText}</Text>
+          <Text style={[styles.footerLink, { color: theme.namesColor, fontSize: liveFooterFontSize }]}>{footerText}</Text>
         </View>
       );
     }
@@ -1735,8 +2081,10 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
         <View
           style={[
             styles.innerBorder,
+            cardLayout === 'tent' && styles.tentInnerBorder,
             {
               borderColor: theme.innerBorder,
+              padding: liveInnerPadding,
               backgroundColor: customBgUrl
                 ? isDark
                   ? `rgba(20, 19, 18, ${1 - overlayOpacity})`
@@ -1753,8 +2101,8 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
             />
           )}
 
-          <Text style={{ fontSize: 24, marginBottom: 4 }}>💌</Text>
-          <Text style={[styles.letterHeading, { color: theme.badgeTextColor }]}>
+          <Text style={{ fontSize: Math.round(22 * liveScale), marginBottom: 2 }}>💌</Text>
+          <Text style={[styles.letterHeading, { color: theme.badgeTextColor, fontSize: Math.max(9, Math.round(12 * liveScale)) }]}>
             Sevgili Misafirimiz,
           </Text>
           <Text
@@ -1764,6 +2112,9 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
                 color: isDark ? '#E5E7EB' : '#374151',
                 // @ts-ignore
                 fontFamily: Platform.OS === 'web' ? "'Playfair Display', Georgia, serif" : undefined,
+                fontSize: Math.max(8.5, Math.round(10.5 * liveScale)),
+                lineHeight: Math.round(15 * liveScale),
+                marginBottom: liveSpacing,
               },
             ]}
           >
@@ -1772,12 +2123,12 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
 
           {qrElement}
 
-          <Text style={[styles.actionTitle, { color: theme.primaryTextColor, fontSize: 13 }]}>
+          <Text style={[styles.actionTitle, { color: theme.primaryTextColor, fontSize: liveActionTitleSize, marginBottom: 2 }]}>
             {isBackSide ? 'Anı Defterimize Not Bırakın' : actionTitle}
           </Text>
 
-          <View style={[styles.badgeContainer, { backgroundColor: theme.badgeBg, borderColor: theme.badgeBorder, marginVertical: 6 }]}>
-            <Text style={[styles.badgeText, { color: theme.badgeTextColor }]}>{badgeContent}</Text>
+          <View style={[styles.badgeContainer, { backgroundColor: theme.badgeBg, borderColor: theme.badgeBorder, paddingVertical: Math.round(3 * liveScale), paddingHorizontal: Math.round(10 * liveScale), marginVertical: liveSpacing }]}>
+            <Text style={[styles.badgeText, { color: theme.badgeTextColor, fontSize: liveBadgeFontSize }]}>{badgeContent}</Text>
           </View>
 
           <Text
@@ -1787,7 +2138,7 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
                 color: theme.namesColor,
                 // @ts-ignore
                 fontFamily: Platform.OS === 'web' ? "'Great Vibes', cursive" : undefined,
-                fontSize: 26,
+                fontSize: Math.round(24 * liveScale),
                 marginTop: 2,
               },
             ]}
@@ -1803,8 +2154,10 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
       <View
         style={[
           styles.innerBorder,
+          cardLayout === 'tent' && styles.tentInnerBorder,
           {
             borderColor: theme.innerBorder,
+            padding: liveInnerPadding,
             backgroundColor: customBgUrl
               ? isDark
                 ? `rgba(20, 19, 18, ${1 - overlayOpacity})`
@@ -1822,16 +2175,16 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
         )}
 
         {/* Top Ornament */}
-        <View style={styles.ornamentRow}>
-          <Text style={[styles.sparkleText, { color: theme.accentColor }]}>✦</Text>
-          <Text style={[styles.dateTag, { color: isDark ? '#A1A1AA' : '#6B7280' }]}>
+        <View style={[styles.ornamentRow, { marginBottom: Math.max(2, Math.round(4 * liveScale)), gap: Math.round(6 * liveScale) }]}>
+          <Text style={[styles.sparkleText, { color: theme.accentColor, fontSize: Math.round(12 * liveScale) }]}>✦</Text>
+          <Text style={[styles.dateTag, { color: isDark ? '#A1A1AA' : '#6B7280', fontSize: liveDateTagSize }]}>
             {customDateOrSub}
           </Text>
-          <Text style={[styles.sparkleText, { color: theme.accentColor }]}>✦</Text>
+          <Text style={[styles.sparkleText, { color: theme.accentColor, fontSize: Math.round(12 * liveScale) }]}>✦</Text>
         </View>
 
         {/* Couple Names / Title */}
-        {renderCoupleNamesBlock(25, false, 240)}
+        {renderCoupleNamesBlock(liveCoupleNameSize, false, Math.round(230 * liveScale))}
 
         {/* Badge */}
         <View
@@ -1840,15 +2193,18 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
             {
               backgroundColor: theme.badgeBg,
               borderColor: theme.badgeBorder,
+              paddingVertical: Math.max(3, Math.round(4 * liveScale)),
+              paddingHorizontal: Math.round(12 * liveScale),
+              marginBottom: liveSpacing,
             },
           ]}
         >
           <Ionicons
             name={tableNumToDisplay ? 'restaurant-outline' : 'camera-outline'}
-            size={12}
+            size={Math.max(9, Math.round(11 * liveScale))}
             color={theme.badgeTextColor}
           />
-          <Text style={[styles.badgeText, { color: theme.badgeTextColor }]}>
+          <Text style={[styles.badgeText, { color: theme.badgeTextColor, fontSize: liveBadgeFontSize }]}>
             {badgeContent}
           </Text>
         </View>
@@ -1856,54 +2212,54 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
         {qrElement}
 
         {/* Call to action & Slogan */}
-        <Text style={[styles.actionTitle, { color: theme.primaryTextColor }]}>
+        <Text style={[styles.actionTitle, { color: theme.primaryTextColor, fontSize: liveActionTitleSize, marginBottom: Math.max(2, Math.round(3 * liveScale)) }]}>
           {isBackSide ? 'Anı Defterimize Not Bırakın' : actionTitle}
         </Text>
-        <Text style={[styles.actionDesc, { color: isDark ? '#D4D4D8' : '#4B5563' }]}>
+        <Text style={[styles.actionDesc, { color: isDark ? '#D4D4D8' : '#4B5563', fontSize: liveSloganFontSize, marginBottom: liveSpacing }]}>
           {customSlogan}
         </Text>
 
         {/* 3 Step Guide */}
         {showSteps && (
-          <View style={styles.stepsRow}>
+          <View style={[styles.stepsRow, { marginBottom: liveSpacing, gap: Math.round(5 * liveScale) }]}>
             <View style={styles.stepItem}>
               <View
                 style={[
                   styles.stepCircle,
-                  { backgroundColor: theme.badgeBg, borderColor: theme.badgeBorder },
+                  { backgroundColor: theme.badgeBg, borderColor: theme.badgeBorder, width: Math.round(24 * liveScale), height: Math.round(24 * liveScale) },
                 ]}
               >
-                <Ionicons name="scan-outline" size={13} color={theme.badgeTextColor} />
+                <Ionicons name="scan-outline" size={Math.max(10, Math.round(12 * liveScale))} color={theme.badgeTextColor} />
               </View>
-              <Text style={[styles.stepText, { color: isDark ? '#D4D4D8' : '#4B5563' }]}>
+              <Text style={[styles.stepText, { color: isDark ? '#D4D4D8' : '#4B5563', fontSize: Math.max(7, Math.round(8.5 * liveScale)) }]}>
                 {step1}
               </Text>
             </View>
-            <View style={[styles.stepLine, { backgroundColor: theme.accentColor + '50' }]} />
+            <View style={[styles.stepLine, { backgroundColor: theme.accentColor + '50', width: Math.round(12 * liveScale) }]} />
             <View style={styles.stepItem}>
               <View
                 style={[
                   styles.stepCircle,
-                  { backgroundColor: theme.badgeBg, borderColor: theme.badgeBorder },
+                  { backgroundColor: theme.badgeBg, borderColor: theme.badgeBorder, width: Math.round(24 * liveScale), height: Math.round(24 * liveScale) },
                 ]}
               >
-                <Ionicons name="cloud-upload-outline" size={13} color={theme.badgeTextColor} />
+                <Ionicons name="cloud-upload-outline" size={Math.max(10, Math.round(12 * liveScale))} color={theme.badgeTextColor} />
               </View>
-              <Text style={[styles.stepText, { color: isDark ? '#D4D4D8' : '#4B5563' }]}>
+              <Text style={[styles.stepText, { color: isDark ? '#D4D4D8' : '#4B5563', fontSize: Math.max(7, Math.round(8.5 * liveScale)) }]}>
                 {step2}
               </Text>
             </View>
-            <View style={[styles.stepLine, { backgroundColor: theme.accentColor + '50' }]} />
+            <View style={[styles.stepLine, { backgroundColor: theme.accentColor + '50', width: Math.round(12 * liveScale) }]} />
             <View style={styles.stepItem}>
               <View
                 style={[
                   styles.stepCircle,
-                  { backgroundColor: theme.badgeBg, borderColor: theme.badgeBorder },
+                  { backgroundColor: theme.badgeBg, borderColor: theme.badgeBorder, width: Math.round(24 * liveScale), height: Math.round(24 * liveScale) },
                 ]}
               >
-                <Ionicons name="tv-outline" size={13} color={theme.badgeTextColor} />
+                <Ionicons name="tv-outline" size={Math.max(10, Math.round(12 * liveScale))} color={theme.badgeTextColor} />
               </View>
-              <Text style={[styles.stepText, { color: isDark ? '#D4D4D8' : '#4B5563' }]}>
+              <Text style={[styles.stepText, { color: isDark ? '#D4D4D8' : '#4B5563', fontSize: Math.max(7, Math.round(8.5 * liveScale)) }]}>
                 {step3}
               </Text>
             </View>
@@ -1918,6 +2274,7 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
               color: theme.namesColor,
               // @ts-ignore
               fontFamily: Platform.OS === 'web' ? selectedFont.family : undefined,
+              fontSize: liveFooterFontSize,
             },
           ]}
         >
@@ -1925,18 +2282,6 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
         </Text>
       </View>
     );
-  };
-
-  const selectedSizeConfig = CARD_SIZES[cardSize] || CARD_SIZES.standard_10x15;
-  const cardAspectRatio = selectedSizeConfig.widthMm / selectedSizeConfig.heightMm;
-  const baseCardWidth = 370;
-  const calculatedCardMinHeight = Math.min(620, Math.max(260, Math.round(baseCardWidth / cardAspectRatio)));
-
-  const cardPaperDimensionStyle = {
-    width: baseCardWidth,
-    minHeight: calculatedCardMinHeight,
-    borderColor: theme.border,
-    backgroundColor: theme.cardBg,
   };
 
   return (
@@ -1956,10 +2301,11 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
         </View>
 
         {/* SECTION 0: KART TASARIM KONSEPTİ (NEW 5 DIFFERENT ARCHETYPES) */}
-        <Text style={styles.sectionHeaderLabel}>1. KART TASARIM KONSEPTİ (5 FARKLI DÜZEN):</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionHeaderLabel}>1. KART TASARIM KONSEPTİ (5 FARKLI DÜZEN):</Text>
+          <Text style={styles.dragHintText}>↔ Sürükleyin veya kaydırın</Text>
+        </View>
+        <DraggableScrollView
           contentContainerStyle={styles.cardDesignsRow}
         >
           {(Object.keys(CARD_DESIGNS) as CardDesignArchetype[]).map((dId) => {
@@ -1989,16 +2335,17 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
               </TouchableOpacity>
             );
           })}
-        </ScrollView>
+        </DraggableScrollView>
 
         {/* SECTION 1: Çerçeve & Arka Plan Seçimi */}
         <View style={styles.sectionDivider} />
-        <Text style={styles.sectionHeaderLabel}>2. ÇERÇEVE & ARKA PLAN RESMİ:</Text>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionHeaderLabel}>2. ÇERÇEVE & ARKA PLAN RESMİ:</Text>
+          <Text style={styles.dragHintText}>↔ Sürükleyin veya kaydırın</Text>
+        </View>
         
         {/* Frame Presets Carousel */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
+        <DraggableScrollView
           contentContainerStyle={styles.framePresetsRow}
         >
           {(Object.keys(FRAME_PRESETS) as FramePresetId[]).map((fId) => {
@@ -2029,7 +2376,7 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
               </TouchableOpacity>
             );
           })}
-        </ScrollView>
+        </DraggableScrollView>
 
         {/* Custom Background Image Upload Card */}
         <View style={styles.uploadBoxContainer}>
@@ -2101,10 +2448,11 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
 
         {/* SECTION 2: Renk & Tema Paleti */}
         <View style={styles.sectionDivider} />
-        <Text style={styles.sectionHeaderLabel}>3. RENK TEMASI PALETİ:</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionHeaderLabel}>3. RENK TEMASI PALETİ:</Text>
+          <Text style={styles.dragHintText}>↔ Sürükleyin veya kaydırın</Text>
+        </View>
+        <DraggableScrollView
           contentContainerStyle={styles.themePillsRow}
         >
           {(Object.keys(THEME_CONFIGS) as CardThemeId[]).map((tId) => {
@@ -2127,7 +2475,7 @@ export const QRCardTemplate: React.FC<QRCardTemplateProps> = ({ event }) => {
               </TouchableOpacity>
             );
           })}
-        </ScrollView>
+        </DraggableScrollView>
 
         {/* SECTION 3: Typography & Font Selector */}
         <View style={styles.sectionDivider} />
@@ -2788,13 +3136,24 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     lineHeight: 17,
   },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    marginTop: 2,
+  },
   sectionHeaderLabel: {
     fontSize: 11,
     fontWeight: '900',
     color: '#8A6D3B',
     letterSpacing: 0.8,
-    marginBottom: 10,
-    marginTop: 2,
+  },
+  dragHintText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#9CA3AF',
+    letterSpacing: 0.3,
   },
   sectionDivider: {
     height: 1,
@@ -2816,6 +3175,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 12,
     justifyContent: 'space-between',
+    // @ts-ignore
+    userSelect: Platform.OS === 'web' ? 'none' : undefined,
   },
   cardDesignTileActive: {
     borderColor: '#C5A059',
@@ -2865,6 +3226,8 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 10,
     justifyContent: 'space-between',
+    // @ts-ignore
+    userSelect: Platform.OS === 'web' ? 'none' : undefined,
   },
   framePresetCardActive: {
     borderColor: '#C5A059',
@@ -3021,6 +3384,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 16,
+    // @ts-ignore
+    userSelect: Platform.OS === 'web' ? 'none' : undefined,
   },
   themePillActive: {
     borderColor: '#C5A059',
@@ -3612,7 +3977,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   tentWrapper: {
-    gap: 16,
+    gap: 3,
     alignItems: 'center',
     width: '100%',
   },
@@ -3636,10 +4001,10 @@ const styles = StyleSheet.create({
   foldLineContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     width: 370,
     maxWidth: '100%',
-    paddingVertical: 6,
+    paddingVertical: 2,
   },
   foldDash: {
     flex: 1,
@@ -3651,24 +4016,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     backgroundColor: '#F3F4F6',
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: 10,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 8,
   },
   foldBadgeText: {
-    fontSize: 9,
+    fontSize: 8.5,
     fontWeight: '700',
     color: '#6B7280',
     letterSpacing: 0.5,
   },
   tentTopCard: {
     transform: [{ rotate: '180deg' }],
-    borderBottomLeftRadius: 6,
-    borderBottomRightRadius: 6,
+    borderTopLeftRadius: 2,
+    borderTopRightRadius: 2,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
   tentBottomCard: {
-    borderTopLeftRadius: 6,
-    borderTopRightRadius: 6,
+    borderTopLeftRadius: 2,
+    borderTopRightRadius: 2,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  tentInnerBorder: {
+    borderTopLeftRadius: 2,
+    borderTopRightRadius: 2,
+    borderBottomLeftRadius: 18,
+    borderBottomRightRadius: 18,
   },
   a4DoubleWrapper: {
     width: '100%',

@@ -4,7 +4,7 @@ import { eventService } from '@/services/eventService';
 import { DEMO_PHOTOS, slugify } from '@/services/mockData';
 import { EventModel, PhotoModel, UserModel } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import JSZip from 'jszip';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -25,6 +25,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function HostPanelScreen() {
   const router = useRouter();
+  const { slug: paramSlug } = useLocalSearchParams<{ slug?: string }>();
   const [event, setEvent] = useState<EventModel | null>(null);
   const [photos, setPhotos] = useState<PhotoModel[]>([]);
   const [currentUser, setCurrentUser] = useState<UserModel | null>(authService.getState().user);
@@ -59,6 +60,7 @@ export default function HostPanelScreen() {
 
 
   const resolveActiveSlug = (user: UserModel | null): string => {
+    if (paramSlug && paramSlug !== 'demo-panel') return paramSlug;
     if (!user) return 'demo-panel';
     if (user.uid === 'demo-host-yavuz') return 'demo-panel';
     const personal = user.events?.find((s) => s && s !== 'demo-panel' && s !== 'samet-ve-sule');
@@ -92,7 +94,7 @@ export default function HostPanelScreen() {
       const u = authService.getState().user;
       setCurrentUser(u);
       loadData(u);
-    }, [])
+    }, [paramSlug])
   );
 
   // Live real-time listener for photos
@@ -102,12 +104,52 @@ export default function HostPanelScreen() {
       setPhotos(updatedPhotos);
     });
     return () => unsub();
-  }, [currentUser]);
+  }, [currentUser, paramSlug]);
+
+  // Live subscription to auth state changes
+  useEffect(() => {
+    const unsub = authService.subscribe((state) => {
+      setCurrentUser(state.user);
+    });
+    return () => unsub();
+  }, []);
 
   const onRefresh = async () => {
     setIsRefreshing(true);
     await loadData(currentUser);
     setIsRefreshing(false);
+  };
+
+  const handleLogout = async () => {
+    const executeLogout = async () => {
+      try {
+        await authService.signOut();
+      } catch (e) {
+        console.warn('SignOut error:', e);
+      }
+      setCurrentUser(null);
+      router.replace('/giris' as any);
+    };
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const confirmed = window.confirm('Yönetim panelinden ve hesabınızdan çıkış yapmak istediğinize emin misiniz?');
+      if (confirmed) {
+        await executeLogout();
+      }
+    } else {
+      Alert.alert(
+        'Çıkış Yap',
+        'Yönetim panelinden ve hesabınızdan çıkış yapmak istediğinize emin misiniz?',
+        [
+          { text: 'Vazgeç', style: 'cancel' },
+          {
+            text: 'Çıkış Yap',
+            style: 'destructive',
+            onPress: executeLogout,
+          },
+        ]
+      );
+    }
   };
 
   const handleLoadSamplePhotos = async () => {
@@ -400,13 +442,25 @@ export default function HostPanelScreen() {
             <Text style={styles.navTitle}>Ev Sahibi Kontrol Paneli</Text>
             <Text style={styles.navSub}>{event.title}</Text>
           </View>
-          <TouchableOpacity
-            style={styles.viewEventBtn}
-            onPress={() => router.push(`/${event.slug}` as any)}
-          >
-            <Ionicons name="eye-outline" size={16} color="#FFF" />
-            <Text style={styles.viewEventText}>Sayfayı Gör</Text>
-          </TouchableOpacity>
+          <View style={styles.navRightActions}>
+            <TouchableOpacity
+              style={styles.viewEventBtn}
+              onPress={() => router.push(`/${event.slug}` as any)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="eye-outline" size={15} color="#FFF" />
+              <Text style={styles.viewEventText}>Sayfayı Gör</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.navLogoutBtn}
+              onPress={handleLogout}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="log-out-outline" size={16} color="#EF4444" />
+              <Text style={styles.navLogoutText}>Çıkış Yap</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* User Account Bar */}
@@ -425,13 +479,11 @@ export default function HostPanelScreen() {
             </View>
             <TouchableOpacity
               style={styles.logoutBtn}
-              onPress={() => {
-                authService.signOut();
-                Alert.alert('Çıkış Yapıldı', 'Hesabınızdan güvenle çıkış yaptınız.');
-              }}
+              onPress={handleLogout}
+              activeOpacity={0.8}
             >
               <Ionicons name="log-out-outline" size={16} color="#EF4444" />
-              <Text style={styles.logoutText}>Çıkış</Text>
+              <Text style={styles.logoutText}>Çıkış Yap</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -1024,6 +1076,11 @@ const styles = StyleSheet.create({
     color: '#8A6D3B',
     fontWeight: '600',
   },
+  navRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   viewEventBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1035,6 +1092,22 @@ const styles = StyleSheet.create({
   },
   viewEventText: {
     color: '#FFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  navLogoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+    paddingVertical: 7,
+    paddingHorizontal: 11,
+    borderRadius: 12,
+  },
+  navLogoutText: {
+    color: '#EF4444',
     fontSize: 12,
     fontWeight: '700',
   },
