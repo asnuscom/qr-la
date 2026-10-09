@@ -1,3 +1,4 @@
+import { ShareEventModal } from '@/components/ShareEventModal';
 import { authService } from '@/services/authService';
 import { eventService } from '@/services/eventService';
 import { slugify } from '@/services/mockData';
@@ -15,12 +16,15 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function EventSettingsScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isMobile = width < 640;
   const { slug: paramSlug } = useLocalSearchParams<{ slug?: string }>();
 
   const user = authService.getState().user;
@@ -37,6 +41,7 @@ export default function EventSettingsScreen() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [eventData, setEventData] = useState<EventModel | null>(null);
 
   // Slug settings
@@ -271,18 +276,34 @@ export default function EventSettingsScreen() {
               {eventData?.title || 'Etkinlik Ayarları'}
             </Text>
           </View>
-          <TouchableOpacity
-            style={styles.saveHeaderBtn}
-            onPress={handleSave}
-            disabled={isSaving}
-            activeOpacity={0.8}
-          >
-            {isSaving ? (
-              <ActivityIndicator color="#FFF" size="small" />
-            ) : (
-              <Text style={styles.saveHeaderBtnText}>Kaydet</Text>
-            )}
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <TouchableOpacity
+              style={[styles.shareHeaderBtn, isMobile && styles.iconOnlyHeaderBtn]}
+              onPress={() => setIsShareModalOpen(true)}
+              activeOpacity={0.8}
+              accessibilityLabel="Paylaş"
+            >
+              <Ionicons name="share-social-outline" size={17} color="#8A6D3B" />
+              {!isMobile && <Text style={styles.shareHeaderBtnText}>Paylaş</Text>}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.saveHeaderBtn, isMobile && styles.iconOnlyHeaderBtn]}
+              onPress={handleSave}
+              disabled={isSaving}
+              activeOpacity={0.8}
+              accessibilityLabel="Kaydet"
+            >
+              {isSaving ? (
+                <ActivityIndicator color="#FFF" size="small" />
+              ) : (
+                <>
+                  <Ionicons name="checkmark" size={18} color="#FFF" />
+                  {!isMobile && <Text style={styles.saveHeaderBtnText}>Kaydet</Text>}
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Demo Warning Banner */}
@@ -429,6 +450,24 @@ export default function EventSettingsScreen() {
                 Misafirleriniz bu kısa bağlantı üzerinden fotoğraflara ulaşır (Örn: qr-la.com/{slug}). Sadece küçük harf, rakam ve tire (-) içerebilir.
               </Text>
             )}
+
+            {/* Quick Share Link & WhatsApp Action */}
+            <TouchableOpacity
+              style={styles.shareActionCardBtn}
+              onPress={() => setIsShareModalOpen(true)}
+              activeOpacity={0.8}
+            >
+              <View style={styles.shareActionIconWrap}>
+                <Ionicons name="logo-whatsapp" size={20} color="#25D366" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.shareActionTitle}>WhatsApp ile Paylaş</Text>
+                <Text style={styles.shareActionSub}>
+                  Hazır davet metniyle qr-la.com/{activeSavedSlug} adresini gönderin.
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#25D366" />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -639,6 +678,13 @@ export default function EventSettingsScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Share Event Modal */}
+      <ShareEventModal
+        visible={isShareModalOpen}
+        event={eventData}
+        onClose={() => setIsShareModalOpen(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -693,18 +739,75 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   saveHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
     backgroundColor: '#C5A059',
     paddingHorizontal: 16,
     paddingVertical: 9,
     borderRadius: 12,
     minWidth: 70,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   saveHeaderBtnText: {
     color: '#FFF',
     fontSize: 13,
     fontWeight: '700',
+  },
+  shareHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#FAF5EA',
+    borderWidth: 1,
+    borderColor: '#EAD7BB',
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 12,
+  },
+  shareHeaderBtnText: {
+    color: '#8A6D3B',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  iconOnlyHeaderBtn: {
+    width: 38,
+    height: 38,
+    minWidth: 38,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shareActionCardBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1.5,
+    borderColor: '#BBF7D0',
+    borderRadius: 14,
+    padding: 12,
+    marginTop: 12,
+  },
+  shareActionIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#25D366',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  shareActionTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#166534',
+    marginBottom: 2,
+  },
+  shareActionSub: {
+    fontSize: 11,
+    color: '#4B5563',
+    lineHeight: 15,
   },
   demoWarningBanner: {
     flexDirection: 'row',

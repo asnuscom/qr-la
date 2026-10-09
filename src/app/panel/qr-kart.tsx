@@ -14,12 +14,15 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function QRCardScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isMobile = width < 640;
   const [event, setEvent] = useState<EventModel | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -103,12 +106,13 @@ export default function QRCardScreen() {
             <Text style={styles.navSub}>Masanosuz / Masa Standı & Baskı</Text>
           </View>
           <TouchableOpacity
-            style={styles.logoutBtn}
+            style={[styles.logoutBtn, isMobile && styles.iconOnlyHeaderBtn]}
             onPress={handleLogout}
             activeOpacity={0.8}
+            accessibilityLabel="Çıkış"
           >
-            <Ionicons name="log-out-outline" size={16} color="#EF4444" />
-            <Text style={styles.logoutText}>Çıkış</Text>
+            <Ionicons name="log-out-outline" size={17} color="#EF4444" />
+            {!isMobile && <Text style={styles.logoutText}>Çıkış</Text>}
           </TouchableOpacity>
         </View>
 
@@ -180,5 +184,13 @@ const styles = StyleSheet.create({
     color: '#EF4444',
     fontSize: 12,
     fontWeight: '700',
+  },
+  iconOnlyHeaderBtn: {
+    width: 38,
+    height: 38,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

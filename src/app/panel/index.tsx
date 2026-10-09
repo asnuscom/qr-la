@@ -1,4 +1,5 @@
 import { StorageMeter } from '@/components/StorageMeter';
+import { ShareEventModal } from '@/components/ShareEventModal';
 import { authService } from '@/services/authService';
 import { eventService } from '@/services/eventService';
 import { DEMO_PHOTOS, slugify } from '@/services/mockData';
@@ -18,18 +19,22 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function HostPanelScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isMobile = width < 640;
   const { slug: paramSlug } = useLocalSearchParams<{ slug?: string }>();
   const [event, setEvent] = useState<EventModel | null>(null);
   const [photos, setPhotos] = useState<PhotoModel[]>([]);
   const [currentUser, setCurrentUser] = useState<UserModel | null>(authService.getState().user);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingSamples, setIsLoadingSamples] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   // ZIP Download progress state
   const [isZipping, setIsZipping] = useState(false);
@@ -382,12 +387,23 @@ export default function HostPanelScreen() {
           </View>
           <View style={styles.navRightActions}>
             <TouchableOpacity
-              style={styles.viewEventBtn}
+              style={[styles.shareEventBtn, isMobile && styles.iconOnlyHeaderBtn]}
+              onPress={() => setIsShareModalOpen(true)}
+              activeOpacity={0.8}
+              accessibilityLabel="Paylaş"
+            >
+              <Ionicons name="share-social-outline" size={17} color="#8A6D3B" />
+              {!isMobile && <Text style={styles.shareEventText}>Paylaş</Text>}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.viewEventBtn, isMobile && styles.iconOnlyHeaderBtn]}
               onPress={() => router.push(`/${event.slug}` as any)}
               activeOpacity={0.8}
+              accessibilityLabel="Sayfayı Gör"
             >
-              <Ionicons name="eye-outline" size={15} color="#FFF" />
-              <Text style={styles.viewEventText}>Sayfayı Gör</Text>
+              <Ionicons name="eye-outline" size={17} color="#FFF" />
+              {!isMobile && <Text style={styles.viewEventText}>Sayfayı Gör</Text>}
             </TouchableOpacity>
           </View>
         </View>
@@ -495,6 +511,18 @@ export default function HostPanelScreen() {
             </View>
             <Text style={styles.actionTitle}>Masa Kartları</Text>
             <Text style={styles.actionDesc}>Yazdırılabilir QR masa standı şablonunu hazırla.</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => setIsShareModalOpen(true)}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.actionIconWrap, { backgroundColor: '#F0FDF4' }]}>
+              <Ionicons name="logo-whatsapp" size={24} color="#25D366" />
+            </View>
+            <Text style={styles.actionTitle}>WhatsApp'ta Paylaş</Text>
+            <Text style={styles.actionDesc}>Misafirlere hazır davet ve yükleme linki gönder.</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -820,6 +848,13 @@ export default function HostPanelScreen() {
           <Text style={styles.zipFloatingSub}>{zipProgressText}</Text>
         </View>
       )}
+
+      {/* Share Event Modal */}
+      <ShareEventModal
+        visible={isShareModalOpen}
+        event={event}
+        onClose={() => setIsShareModalOpen(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -871,6 +906,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  shareEventBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FAF5EA',
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+  },
+  shareEventText: {
+    color: '#8A6D3B',
+    fontSize: 12,
+    fontWeight: '700',
+  },
   viewEventBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -884,6 +935,14 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 12,
     fontWeight: '700',
+  },
+  iconOnlyHeaderBtn: {
+    width: 38,
+    height: 38,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   actionGrid: {
     flexDirection: 'row',

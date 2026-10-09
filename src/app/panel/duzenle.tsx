@@ -23,6 +23,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -122,6 +123,8 @@ const formatEventDateToTurkeyIso = (dateStr: string, timeStr: string): string =>
 
 export default function EventFormScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isMobile = width < 640;
   const { slug: paramSlug } = useLocalSearchParams<{ slug?: string }>();
 
   const user = authService.getState().user;
@@ -591,37 +594,6 @@ export default function EventFormScreen() {
     }
   } catch (_e) { }
 
-  const handleLogout = async () => {
-    const executeLogout = async () => {
-      try {
-        await authService.signOut();
-      } catch (e) {
-        console.warn('SignOut error:', e);
-      }
-      router.replace('/giris' as any);
-    };
-
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      const confirmed = window.confirm('Yönetim panelinden ve hesabınızdan çıkış yapmak istediğinize emin misiniz?');
-      if (confirmed) {
-        await executeLogout();
-      }
-    } else {
-      Alert.alert(
-        'Çıkış Yap',
-        'Yönetim panelinden ve hesabınızdan çıkış yapmak istediğinize emin misiniz?',
-        [
-          { text: 'Vazgeç', style: 'cancel' },
-          {
-            text: 'Çıkış Yap',
-            style: 'destructive',
-            onPress: executeLogout,
-          },
-        ]
-      );
-    }
-  };
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -637,20 +609,20 @@ export default function EventFormScreen() {
           <Text style={styles.navTitle} numberOfLines={1}>Etkinlik Bilgilerini Düzenle</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <TouchableOpacity
-              style={styles.headerLogoutBtn}
-              onPress={handleLogout}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="log-out-outline" size={15} color="#EF4444" />
-              <Text style={styles.headerLogoutText}>Çıkış</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.saveHeaderBtn}
+              style={[styles.saveHeaderBtn, isMobile && styles.iconOnlyHeaderBtn]}
               onPress={handleSave}
               disabled={isSaving}
+              activeOpacity={0.8}
+              accessibilityLabel="Kaydet"
             >
-              <Text style={styles.saveHeaderBtnText}>{isSaving ? '...' : 'Kaydet'}</Text>
+              {isSaving ? (
+                <ActivityIndicator color="#FFF" size="small" />
+              ) : (
+                <>
+                  <Ionicons name="checkmark" size={18} color="#FFF" />
+                  {!isMobile && <Text style={styles.saveHeaderBtnText}>Kaydet</Text>}
+                </>
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -1562,31 +1534,28 @@ const styles = StyleSheet.create({
     color: '#1A1817',
   },
   saveHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
     backgroundColor: '#C5A059',
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 10,
+    paddingVertical: 9,
+    borderRadius: 12,
+    minHeight: 38,
   },
   saveHeaderBtnText: {
     color: '#FFF',
     fontSize: 13,
     fontWeight: '700',
   },
-  headerLogoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FEE2E2',
-    paddingHorizontal: 11,
-    paddingVertical: 7,
-    borderRadius: 10,
-  },
-  headerLogoutText: {
-    color: '#EF4444',
-    fontSize: 12,
-    fontWeight: '700',
+  iconOnlyHeaderBtn: {
+    width: 38,
+    height: 38,
+    minHeight: 38,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    borderRadius: 12,
   },
   formCard: {
     backgroundColor: '#FFF',
