@@ -14,14 +14,26 @@ import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { eventService } from '@/services/eventService';
+import { vehicleService } from '@/services/vehicleService';
+import { petService } from '@/services/petService';
+import { vcardService } from '@/services/vcardService';
+import { menuService } from '@/services/menuService';
 import { appStorage } from '@/services/storage';
-import { EventModel, PhotoModel } from '@/types';
+import { EventModel, PhotoModel, VehicleData, PetData, VCardData, RestaurantData } from '@/types';
 import { EventHeader } from '@/components/EventHeader';
 import { ScheduleTimeline } from '@/components/ScheduleTimeline';
+import { TagDisplay } from '@/modules/vehicle/TagDisplay';
+import { PetTagDisplay } from '@/modules/pet/PetTagDisplay';
+import { VCardDisplay } from '@/modules/vcard/VCardDisplay';
+import { MenuDisplay } from '@/modules/menu/MenuDisplay';
 
-export default function EventHomeScreen() {
+export default function SmartQRDispatcherScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const router = useRouter();
+  const [vehicle, setVehicle] = useState<VehicleData | null>(null);
+  const [pet, setPet] = useState<PetData | null>(null);
+  const [vcard, setVcard] = useState<VCardData | null>(null);
+  const [restaurant, setRestaurant] = useState<RestaurantData | null>(null);
   const [event, setEvent] = useState<EventModel | null>(null);
   const [recentPhotos, setRecentPhotos] = useState<PhotoModel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -30,12 +42,85 @@ export default function EventHomeScreen() {
   const fetchDetails = useCallback(async () => {
     if (!slug) return;
     setIsLoading(true);
-    const ev = await eventService.getEvent(slug);
-    const ph = await eventService.getPhotos(slug);
-    setEvent(ev);
-    setRecentPhotos(ph.slice(0, 4));
-    const unlocked = appStorage.getItem(`qr_la_unlocked_${slug}`) === 'true';
-    setIsUnlocked(unlocked);
+
+    // 1. Check if slug matches a vehicle tag (e.g. 34abc123)
+    try {
+      const veh = await vehicleService.getVehicleBySlug(slug);
+      if (veh) {
+        setVehicle(veh);
+        setPet(null);
+        setEvent(null);
+        setIsLoading(false);
+        return;
+      }
+    } catch {}
+
+    // 2. Check if slug matches a pet collar tag (e.g. duman, pamuk, k9x2)
+    try {
+      const p = await petService.getPetBySlug(slug);
+      if (p) {
+        setPet(p);
+        setVehicle(null);
+        setVcard(null);
+        setEvent(null);
+        setIsLoading(false);
+        return;
+      }
+    } catch {}
+
+    // 3. Check if slug matches a digital business card (e.g. samet-sunman, avukat-ali-yilmaz)
+    try {
+      const vc = await vcardService.getCardBySlug(slug);
+      if (vc) {
+        setVcard(vc);
+        setVehicle(null);
+        setPet(null);
+        setRestaurant(null);
+        setEvent(null);
+        setIsLoading(false);
+        return;
+      }
+    } catch {}
+
+    // 4. Check if slug matches a restaurant menu (e.g. lucca-bistrot, bogazici-balik)
+    try {
+      const rest = await menuService.getRestaurantBySlug(slug);
+      if (rest) {
+        setRestaurant(rest);
+        setVehicle(null);
+        setPet(null);
+        setVcard(null);
+        setEvent(null);
+        menuService.recordView(slug);
+        setIsLoading(false);
+        return;
+      }
+    } catch {}
+
+    // 5. Check if slug matches an event (e.g. samet-ve-sule, demo)
+    try {
+      const ev = await eventService.getEvent(slug);
+      if (ev) {
+        setEvent(ev);
+        setVehicle(null);
+        setPet(null);
+        setVcard(null);
+        setRestaurant(null);
+        const ph = await eventService.getPhotos(slug);
+        setRecentPhotos(ph.slice(0, 4));
+        const unlocked = appStorage.getItem(`qr_la_unlocked_${slug}`) === 'true';
+        setIsUnlocked(unlocked);
+        setIsLoading(false);
+        return;
+      }
+    } catch {}
+
+    // 6. Not found
+    setVehicle(null);
+    setPet(null);
+    setVcard(null);
+    setRestaurant(null);
+    setEvent(null);
     setIsLoading(false);
   }, [slug]);
 
@@ -74,11 +159,56 @@ export default function EventHomeScreen() {
     }, [slug])
   );
 
-  if (isLoading || !event) {
+  if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#C5A059" />
       </View>
+    );
+  }
+
+  // 1. Vehicle Tag Screen
+  if (vehicle) {
+    return <TagDisplay vehicle={vehicle} />;
+  }
+
+  // 2. Pet Collar Tag Screen
+  if (pet) {
+    return <PetTagDisplay pet={pet} />;
+  }
+
+  // 3. Digital Business Card Screen
+  if (vcard) {
+    return <VCardDisplay card={vcard} />;
+  }
+
+  // 4. Restaurant Menu Screen
+  if (restaurant) {
+    return <MenuDisplay restaurant={restaurant} />;
+  }
+
+  // 5. Not Found Screen
+  if (!event) {
+    return (
+      <SafeAreaView style={styles.notFoundSafeArea}>
+        <View style={styles.notFoundCard}>
+          <View style={styles.notFoundIconCircle}>
+            <Ionicons name="qr-code-outline" size={48} color="#C5A059" />
+          </View>
+          <Text style={styles.notFoundTitle}>Karekod Bulunamadı</Text>
+          <Text style={styles.notFoundDesc}>
+            Aradığınız etkinlik veya araç etiketi (<Text style={{ fontWeight: '700' }}>{slug}</Text>) henüz oluşturulmamış veya silinmiş olabilir.
+          </Text>
+          <TouchableOpacity
+            style={styles.notFoundBtn}
+            onPress={() => router.push('/')}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="home-outline" size={18} color="#FFF" />
+            <Text style={styles.notFoundBtnText}>Ana Sayfaya Dön</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -453,4 +583,68 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
+  notFoundSafeArea: {
+    flex: 1,
+    backgroundColor: '#FAF7F2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  notFoundCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 32,
+    alignItems: 'center',
+    maxWidth: 400,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#EFE7DA',
+    shadowColor: '#C5A059',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 4,
+  },
+  notFoundIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#FAF7F2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 1.5,
+    borderColor: '#EFE7DA',
+  },
+  notFoundTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#1A1817',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  notFoundDesc: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  notFoundBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#1A1817',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 14,
+    width: '100%',
+  },
+  notFoundBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
 });
+

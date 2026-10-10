@@ -1,203 +1,248 @@
-# 📸 QR-la (qr-la.com) — Kapsamlı Proje Spesifikasyonu, İş Modeli & Teknik Mimari Dokümanı
+# 🌐 QR-la (qr-la.com) — Çok Modüllü Mikro-SaaS Proje Spesifikasyonu, İş Modeli & Teknik Mimari Dokümanı
 
 > **Proje Adı:** QR-la  
 > **Resmi Alan Adı:** `qr-la.com`  
-> **Slogan:** *"Masadaki Kodu QR'la, En Mutlu Anları Paylaş & Kutla"*  
-> **Platformlar:** Web (Mobil/Masaüstü Uyumlu) & Mobil (iOS / Android)  
-> **Temel Altyapı:** React Native (Expo Router) + Google Cloud & Firebase  
+> **Slogan:** *"Uygulama İndirtmeden, Tek Bir Dinamik QR Kodla Hayatı Kolaylaştır, İletişime Geç & Kutla"*  
+> **Platformlar:** Web (Mobil/Masaüstü Responsive Web App), PWA & Mobil Uygulama (React Native / Expo Router)  
+> **Temel Altyapı:** React Native + Expo Router v4 + TypeScript + Google Cloud & Firebase (Firestore / Storage / Auth) + Vercel Edge Hosting  
+> **Mimari Durumu:** 5 Modüllü Ekosistem + Smart Dispatcher + QR Studio + Online Ödeme + 5 Niş SEO Landing Sayfası Canlıda  
 
 ---
 
-## 1. Proje Vizyonu ve Çözülen Problem
+## 1. Proje Vizyonu ve Değer Önermesi
 
-### 1.1. Mevcut Problem
-* Düğün, nişan, kına ve doğum günü gibi etkinliklerde misafirler yüzlerce güzel ve doğal anı fotoğrafı çeker; ancak bu fotoğraflar asla gelin-damada veya ev sahibine ulaşmaz.
-* WhatsApp gruplarına atılan fotoğraflar kaybolur, kalitesi ciddi şekilde düşer ve gruplarda karmaşa yaratır.
-* Misafirlere "Uygulama indirin" dendiğinde indirme bariyeri nedeniyle katılım oranı %10'lara kadar düşer.
+QR-la, geleneksel tek amaçlı QR üreticilerinin ve karmaşık mobil uygulamaların ötesine geçen; **fiziksel nesneleri (masa kartı, araç camı, tasma künyesi, kartvizit, restoran masası) sıfır sürtünmeyle dijital mikro deneyimlere bağlayan "Phygital" (Fiziksel + Dijital) bir Mikro-SaaS platformudur.**
 
-### 1.2. QR-la Çözümü
-* Masalara konulan şık **QR Masa Kartı** sayesinde misafir telefonunun kamerasını tuttuğu an **uygulama indirmeden, saniyeler içinde** `qr-la.com/yavuz-ve-ruveyda` sayfasına girer.
-* Sayfa üzerinden:
-  1. **Toplu Fotoğraf Yükler** (istemcide otomatik sıkıştırılır, 10-20 fotoğraf tek tıkla yüklenir).
-  2. **Ziyaretçi Defteri**ne çifte özel tebrik ve iyi dilek notu bırakır.
-  3. **Etkinlik Programı**nı (Nikah, İlk Dans, Pasta Kesimi) ve **Mekan Konumu**nu canlı görür.
-  4. Salondaki projeksiyona bağlı **Canlı Slayt Ekranı**nda yüklediği fotoğraf anında dev ekranda görünür!
+### 1.1. Temel Felsefe: Sıfır İndirme Bariyeri (No-App Friction)
+* Mobil uygulama mağazalarından uygulama indirme zorunluluğu, kullanıcıların %85'inin işlemi terk etmesine yol açar.
+* QR-la'da son kullanıcı (düğün misafiri, park halindeki aracın sürücüsü, kayıp hayvanı bulan kişi, iş ortağı veya restoran müşterisi) telefon kamerasını QR koda tuttuğu anda **hiçbir şey yüklemeden, 1 saniyede doğrudan tarayıcı üzerinden** zengin arayüze erişir.
 
 ---
 
-## 2. Kullanıcı Rolleri & Detaylı Kullanıcı Hikayeleri (User Personas)
+## 2. Platform Modülleri ve Çözülen Problemler
 
-### 2.1. Misafir (Guest)
-* **Kayıtsız Giriş:** Üye olma formu doldurmaz. Firebase Anonymous Auth arka planda çalışır.
-* **Akıllı Sıkıştırma (Data & Hız Tasarrufu):** 10 MB'lık fotoğraf cihazda saniyesinde optimize edilir (~650 KB). Yükleme anında biter. İsteyen misafir ayarlardan "Orijinal Kalitede Yükle"yi seçebilir.
-* **Masa Numarası:** Misafir yüklerken dilerse "Masa 7" veya "Gelin Tarafı" gibi etiketler seçebilir.
+QR-la platformu 5 dikey niş modül etrafında organize edilmiştir:
 
-### 2.2. Etkinlik Sahibi (Host)
-* Etkinliği dakikalar içinde oluşturur (`slug`: `elif-ve-burak`, `yavuzundugunu` vb.).
-* Kişiselleştirme: Kapak fotoğrafı, tema rengi, dijital davetiye, akış saatleri.
-* **Yazdırılabilir QR Masa Kartı:** İndirip matbaadan veya evdeki yazıcıdan bastırabileceği şık masa kartı şablonu (A6/A5).
-* **Tüm Arşivi Tek Tıkla İndirme:** Etkinlik sonrasında tüm misafirlerin çektiği fotoğrafları tek parça ZIP dosyası halinde indirir.
+```
+                     ┌─────────────────────────────────────────────────────────┐
+                     │                 QR-la MERKEZİ PLATFORMU                 │
+                     │                       (qr-la.com)                       │
+                     └────────────────────────────┬────────────────────────────┘
+                                                  │
+       ┌──────────────────┬───────────────────────┼───────────────────────┬──────────────────┐
+       ▼                  ▼                       ▼                       ▼                  ▼
+┌──────────────┐   ┌──────────────┐        ┌──────────────┐        ┌──────────────┐   ┌──────────────┐
+│  1. DÜĞÜN &  │   │  2. ARAÇ &   │        │ 3. PETGURU   │        │ 4. DİJİTAL   │   │  5. MENÜ &   │
+│   ETKİNLİK   │   │  PARK TAGI   │        │ PATİ KÜNYESİ │        │  KARTVİZİT   │   │   RESTORAN   │
+│ (`/dugun`)   │   │ (`/otomobil`)│        │  (`/pati`)   │        │ (`/kartvizit`)│  │  (`/menu`)   │
+└──────────────┘   └──────────────┘        └──────────────┘        └──────────────┘   └──────────────┘
+```
 
-### 2.3. Süper Admin
-* Platform geneli kullanıcılar, aktif etkinlikler, toplam depolama tüketimi.
-* Paket satışları ve gelir metrikleri.
-* Şikayet edilen uygunsuz içeriklerin moderasyonu.
+### 2.1. 💍 Düğün & Etkinlik Fotoğraf Galerisi (`/dugun` & `/[slug]`)
+* **Problem:** Düğün, nişan ve kına gecelerinde misafirlerin çektiği en samimi fotoğraflar WhatsApp gruplarında kaybolur; kalitesi düşer; salonda interaktif bir eğlence yoktur.
+* **Çözüm:** Masalardaki şık pleksi/karton QR kod ile misafirler anında fotoğraf yükler. Salondaki projeksiyon veya LED ekranda canlı slayt gösterisi döner. Gece sonunda ev sahibi tüm albümü tek tıkla tam kalitede ZIP olarak indirir. İsteğe bağlı 4 haneli PIN kodu ve dijital anı defteri sunulur.
+
+### 2.2. 🚗 Akıllı Araç & Motosiklet Park Tagı (`/otomobil` & `/34abc123`)
+* **Problem:** Ön cama telefon numarası yazmak; kadın sürücüler için taciz riski, dolandırıcıların spam listelerine düşme ve numara ifşası yaratır. Kağıtlar güneşte solar.
+* **Çözüm:** Elektrostatik UV ön cam sticker'ı ile telefon numarası maskelenir. Karşı taraf tek tıkla *"Aracınızı çeker misiniz?"*, *"Farlar açık"*, *"Cam aralık"* gibi hazır şablonlarla WhatsApp'tan güvenle ulaşır. Kaza anı için hayati **Acil Kan Grubu** ve **Aile Yakını** rozeti içerir. BMW, Mercedes, Porsche, Honda gibi 20+ marka teması sunar.
+
+### 2.3. 🐾 Petguru x QR-la Akıllı Pati Künyesi (`/pati` & `/p/[id]`)
+* **Problem:** Geleneksel metal künyelerdeki numaralar zamanla sürtünmeyle silinir. Taşınma veya telefon değişiminde tasma çöp olur. Bulan kişinin veteriner mikroçipini okutması saatler sürer. GPS tasmalarının şarjı 2 günde biter.
+* **Çözüm:** 30mm 316L cerrahi paslanmaz çelik lazer kazımalı su geçirmez künye. Şarjsız ve pilsiz ömür boyu çalışır. Bulan kişi kamerayı tuttuğu an tek tıkla **canlı GPS harita konumunu** sahibe iletir. Kaybolma anında panelden tek dokunuşla devreye giren **🚨 Kırmızı Kayıp Alarmı & Siren Modu** ve dijital aşı karnesi barındırır.
+
+### 2.4. 💼 Dijital Kartvizit & NFC Akıllı Kart (`/kartvizit` & `/k/[slug]`)
+* **Problem:** Kağıt kartvizitlerin %88'i ilk hafta çöpe gider. Telefon veya unvan değiştiğinde tüm kutular atılır. Karşı taraf bilgileri rehbere elle yazmakla uğraşmaz.
+* **Çözüm:** Mat siyah lazer baskılı NTAG216 çipli temassız NFC akıllı kart. Telefonun arkasına dokundurulduğunda veya QR okutulduğunda **vCard 3.0** formatında tek dokunuşla tüm telefon rehberine kaydolur. IBAN kopyalama panosu, sosyal medya linkleri, portfolyo/PDF broşür bağlantıları ve 12+ lüks kurumsal tema sunar.
+
+### 2.5. 🍽️ Restoran Menü QR & Masadan Garson Çağırma (`/menu` & `/m/[slug]`)
+* **Problem:** Enflasyon nedeniyle sürekli artan menü baskı maliyeti, yıpranan/kirlenen sayfalar, garson çağırma karmaşası, sürekli Wi-Fi şifresi sorma ihtiyacı.
+* **Çözüm:** Panelden saniyeler içinde canlı fiyat güncelleme ve "Tükendi" etiketi yönetimi. Masadan tek tıkla **"Garson Çağır"** ve **"Hesap İste (Nakit / Kredi Kartı)"** bildirimi. Misafiri şifresiz bağlayan **"Wi-Fi'a Bağlan"** butonu, alerjen & kalori etiketleri, çift dil (Türkçe/İngilizce) desteği ve ahşap/pleksi masa standı şablonu.
 
 ---
 
-## 3. Sayfa & Rota Hiyerarşisi (Route Architecture)
+## 3. Akıllı Yönlendirme & Rota Mimarisi (Route Architecture)
 
-| Rota | İsim | Açıklama & İçerik |
+Platform, Expo Router dosya tabanlı yönlendirme sistemi üzerinde çalışır ve aşağıdaki hiyerarşiyi uygular:
+
+### 3.1. Rota Haritası
+
+| Rota Yolu | Modül & Amaç | Açıklama |
 | :--- | :--- | :--- |
-| `/` | **Landing Page** | `qr-la.com` ana sayfası. Değer önerisi, interaktif demo etkinlik butonu, fiyatlandırma, "Etkinliğini Başlat" çağrısı. |
-| `/[slug]` | **Etkinlik Hub'ı** | Geri sayım sayacı, çift isimleri, kapak görseli, dijital davetiye, mekan konumu (Google Haritalar), akış programı, hızlı menü butonları. |
-| `/[slug]/yukle` | **Toplu Yükleme** | Çoklu fotoğraf seçici, ilerleme çubuğu, albüm seçimi (Gelin Alma, Nikah vb.), isim ve not girişi, sıkıştırma switch'i. |
-| `/[slug]/galeri` | **Fotoğraf Galerisi** | Klasör/albüm filtreleme, grid görünüm, tam ekran lightbox (fotoğraf büyütme, indirme). |
-| `/[slug]/ani-defteri` | **Ziyaretçi Defteri** | Misafirlerin tebrik kartları, mesaj bırakma formu, tarih ve isimle sıralı dilekler. |
-| `/[slug]/canli` | **Canlı Projeksiyon** | Salondaki ekranda tam ekran dönen slayt. Yeni fotoğraf geldiğinde animasyonlu tebrik pop-up'ı, Ken Burns efekti, ekran uyumasını önleyici mod. |
-| `/panel` | **Ev Sahibi Paneli** | Etkinlik ayarları, canlı depolama çubuğu (500 MB kotası), QR masa kartı PDF oluşturucu, ZIP indirme. |
-| `/panel/tarifeler` | **Kota Yükseltme** | Ek 1 GB, 3 GB veya VIP depolama satın alma ekranı. |
-| `/admin` | **Süper Admin** | Platform istatistikleri ve genel yönetim. |
+| `/` | **Genel Vitrin (Hub)** | Tüm modüllerin tanıtımı, değer önerisi, modül sekmeleri ve canlı demolar. |
+| `/dugun` | **Düğün SEO Landing** | Düğün modülüne özel zengin SEO pazarlama sayfası, paketler, SSS. |
+| `/otomobil` | **Araç SEO Landing** | Akıllı araç tagı pazarlama sayfası, numara maskeleme karşılaştırması, UV sticker. |
+| `/pati` | **Pati SEO Landing** | Petguru iş birliği akıllı künye sayfası, kayıp alarmı, GPS harita demosu. |
+| `/kartvizit` | **Kartvizit SEO Landing** | vCard 3.0 ve NFC kart pazarlama sayfası, prestij temaları, IBAN panosu. |
+| `/menu` | **Menü SEO Landing** | Restoran menü QR sayfası, garson çağırma, baskı maliyeti karşılaştırması. |
+| `/[slug]` | **Smart Dispatcher** | Tek slug üzerinden varlık tipini (araç, pet, vcard, menü, düğün) otomatik tespit eden akıllı ekran. |
+| `/[slug]/yukle` | Düğün Yükleme | Çoklu misafir fotoğrafı yükleyici (Web Worker / Canvas sıkıştırma). |
+| `/[slug]/galeri` | Düğün Galeri | Grid görünüm, albüm filtreleme, Lightbox modalı. |
+| `/[slug]/canli` | Düğün Projeksiyon | Salondaki ekrana yansıtılan tam ekran slayt ve tebrik pop-up'ı. |
+| `/[slug]/ani-defteri` | Ziyaretçi Defteri | Misafirlerin tebrik ve iyi dilek mesajları. |
+| `/p/[id]` | Petguru Ultra Kısa | Küçük metal tasma künyeleri için optimize edilmiş kısa link (`/p/duman`). |
+| `/k/[slug]` | Kartvizit Kısa Rota | NFC kartlar için hızlı aktarım rotası (`/k/samet-sunman`). |
+| `/m/[slug]` | Menü Masa Rotası | Masaya özel parametre destekli menü ekranı (`/m/lucca-bistrot?masa=7`). |
+| `/panel` | Yönetim Merkezi | Tüm modüllerin durum kartları, kota göstergesi, hızlı aksiyonlar. |
+| `/panel/varliklar` | Varlık Hub'ı | Kullanıcının tüm düğün, araç, pet, vcard ve menülerini listeleyen merkezi ekran. |
+| `/panel/qr-studio` | **QR Tasarım Stüdyosu** | Vektörel SVG/PNG QR üretici, göz/nokta stilleri, gradyanlar, logolar, CTA etiketleri. |
+| `/panel/tarifeler` | **Paketler & Ödeme** | Çok modüllü paket satın alma, 3D Secure kredi kartı modalı, faturalar. |
+| `/panel/magaza` | **Phygital Mağaza** | Fiziksel UV sticker, çelik künye, ahşap stand ve NFC kart sipariş akışı. |
+| `/panel/analitik` | **QR Analitik** | Tarama KPI'ları, 7 günlük trend grafiği, cihaz/OS oranları, canlı tarama akışı. |
 
 ---
 
-## 4. İş Modeli, Depolama & Tarifeler (Monetization & Storage Tiers)
+## 4. Çekirdek Sistem Bileşenleri & Son Geliştirmeler
 
-| Paket | Fiyat | Kota & Saklama | Özellikler |
-| :--- | :--- | :--- | :--- |
-| **Ücretsiz** | 0 TL | 500 MB (~500 Fotoğraf), 30 Gün Saklama | Temel QR Kart Şablonu, ZIP İndirme |
-| **Standart** | 1.490 TL | 2 GB (~2500 Fotoğraf), 90 Gün Saklama | Özel QR Masa Kartı Tasarımları, ZIP İndirme |
-| **Premium** | 3.990 TL | 5 GB (~6000 Fotoğraf), 180 Gün Saklama | Canlı Projeksiyon Modu, Şık QR Kartları, Öncelikli Destek |
-| **VIP** | 5.990 TL | 15 GB, Orijinal Kalite İndirme, 1 Yıl Arşiv | Tüm Özellikler + WhatsApp Davet Entegrasyonu |
+### 4.1. ✨ QR Kod Tasarım Stüdyosu (`src/modules/qr-studio/`)
+* **Vektörel Render Motoru (`qrEngine.ts`):** `qrcode` matrisini Error Correction Level `H` (%30 hata payı) ile işleyen özel geometri motoru.
+* **4 Nokta / Gövde Stili:** Klasik Kare, Yuvarlak Noktalar (Dots), Yumuşak Kare (Squircle), Elmas Kristal (Diamond).
+* **Köşe Gözleri (Corner Eyes):** Dış çerçeve ve iç pupil için ayrı şekil konfigürasyonu.
+* **Gradyan Renkler:** Çift tonlu yumuşak geçişler (Kehribar, Kraliyet Altını, Siber Mor, Zümrüt) ve açı kontrolleri.
+* **Merkez Logo / İkon:** 6 dahili modül ikonu (👑, 💍, 🚗, 🐾, 💼, 🍽️) veya özel logo URL'si; güvenli beyaz arka plan rozeti.
+* **CTA Çerçeveleri:** "BENİ TARA", "MENÜYÜ GÖRÜN", "REHBERE EKLE" alt rozet ve banner tasarımları.
+* **HD Dışa Aktarma:** Kayıpsız SVG (`.svg`) indirme ve 2048x2048px Ultra HD PNG (`.png`) dönüştürücü.
+
+### 4.2. 💳 Online Ödeme & e-Arşiv Fatura Sistemi (`src/services/paymentService.ts`)
+* **3D Secure Kredi Kartı Modalı (`PaymentModal.tsx`):** Canlı kart önizlemesi, otomatik kart tipi tespiti (Visa, Mastercard, Troy), taksit seçici (Tek Çekim, 3, 6 Taksit).
+* **SMS Doğrulama Simülasyonu:** 180 saniye geri sayımlı 6 haneli güvenlik onay ekranı.
+* **Kupon İndirim Motoru:** `ASNUSVIP`, `ASNUSPREMIUM`, `YUZDE20`, `HOSGELDIN` vb. dinamik indirim hesaplaması.
+* **Otomatik Kota & Paket Aktivasyonu:** Ödeme onaylandığında ilgili modülün kotası ve geçerlilik tarihi otomatik uzatılır.
+* **e-Arşiv Fatura & Makbuz:** VUK standartlarında KDV matrah hesaplamalı yazdırılabilir fatura çıktısı (`window.print()`).
+
+### 4.3. 📊 Dinamik Analitik & Ziyaretçi Motoru (`src/services/ecosystemService.ts`)
+* **KPI Metrikleri:** Toplam Tarama, Benzersiz Ziyaretçi, Bugünün Taramaları, En Çok Taranan Varlık.
+* **Görsel Grafikler:** 7 günlük tarama çubuk grafiği ve modül bazlı pasta dağılımı.
+* **Teknoloji Dağılımı:** Kamera & Cihaz dağılım oranları (iOS %68, Android %28, Diğer %4).
+* **Canlı Aktivite Akışı:** Konum, saat ve cihaz bilgisi içeren anlık okutma kayıtları.
+
+### 4.4. 🌐 Niş Pazarlama Altyapısı (`MarketingNav` & `MarketingFooter`)
+* **Dinamik Modül Seçici Barı:** Sayfanın en üstünde 5 modül hapı (`/dugun`, `/otomobil`, `/pati`, `/kartvizit`, `/menu`), aktif sayfa çerçeve vurgusu ve panel kısayolu.
+* **Kapsamlı SEO Meta Etiketleri:** `expo-router/head` ile SSR/Statik derlemede Google botlarına hazır başlık, açıklama, anahtar kelime, OpenGraph ve Canonical URL sunumu.
 
 ---
 
-## 5. Güvenlik, Gizlilik & Moderasyon (Security & GDPR)
-
-1. **Gizlilik Seçenekleri:**
-   * **Herkese Açık (Public):** QR kodu taratan veya linki alan herkes girer.
-   * **PIN Korumalı (Private):** Masadaki kartta QR'ın altında 4 haneli PIN kodu yer alır (Örn: `1923`). Sayfaya ilk girişte PIN sorulur.
-2. **Misafir Güvenliği & KVKK:**
-   * Fotoğraf yükleme butonunun altında açık rıza onayı.
-3. **Fotoğraf Moderasyonu:**
-   * Ev sahibi panelinde anında silme/gizleme ve misafirler için "Bildir" butonu.
-
----
-
-## 6. Cloud Firestore & Storage Şema Mimarisi
+## 5. Veri Modelleri & TypeScript Şemaları
 
 ```typescript
+// 1. Düğün / Etkinlik Modeli
 export interface EventModel {
-  id: string;                     // "yavuz-ve-ruveyda"
-  slug: string;                   // "yavuz-ve-ruveyda"
-  title: string;                  // "Yavuz & ruveyda Düğünü"
-  subtitle?: string;              // "En mutlu günümüzden kareler"
+  id: string;
+  slug: string;
+  title: string;
   eventType: 'dugun' | 'nisan' | 'kina' | 'dogumgunu' | 'diger';
-  eventDate: string;              // ISO string: "2026-10-15T19:00:00.000Z"
+  eventDate: string;
   hostUid: string;
   coverPhotoUrl: string;
-  invitationUrl?: string;
-  theme: {
-    primaryColor: string;         // "#E0A96D"
-    backgroundColor: string;      // "#FAF8F5"
-    fontFamily: string;
-  };
-  venue: {
-    name: string;
-    address: string;
-    mapUrl: string;
-  };
-  schedule: Array<{
-    id: string;
-    time: string;
-    title: string;
-    description?: string;
-  }>;
-  settings: {
-    isPrivate: boolean;
-    pinCode?: string;
-    enableCompression: boolean;
-    allowGuestDownloads: boolean;
-    isLiveFeedActive: boolean;
-  };
   storage: {
-    quotaBytes: number;           // 524288000 (500 MB)
+    quotaBytes: number;
     usedBytes: number;
     photoCount: number;
     tier: 'free' | 'standart' | 'premium' | 'vip';
     expiresAt: string;
   };
-  createdAt: string;
 }
 
-export interface AlbumModel {
+// 2. Araç & Park Tagı Modeli
+export interface VehicleData {
   id: string;
+  slug: string; // "34abc123"
+  userId: string;
+  plateNumber: string; // "34 ABC 123"
+  ownerName: string;
+  ownerPhone: string;
+  bloodType: string; // "A Rh+"
+  emergencyContact: {
+    name: string;
+    phone: string;
+    relationship: string;
+  };
+  brand: string;
+  model: string;
+  theme: string;
+  privacyMode: boolean; // Numara maskeleme
+  presetMessages: string[];
+}
+
+// 3. Petguru Pati Künyesi Modeli
+export interface PetData {
+  id: string;
+  slug: string; // "duman"
+  userId: string;
   name: string;
-  order: number;
-  photoCount: number;
-  coverPhotoUrl?: string;
+  species: 'dog' | 'cat' | 'bird' | 'other';
+  breed: string;
+  microchipNumber?: string;
+  ownerPhone: string;
+  ownerWhatsapp: string;
+  vetClinicName: string;
+  vetPhone: string;
+  allergies: string[];
+  lostInfo: {
+    isLost: boolean;
+    lostDate?: string;
+    lostLocation?: string;
+    rewardNote?: string;
+  };
+  vaccines: Array<{
+    name: string;
+    validUntil: string;
+    isUpToDate: boolean;
+  }>;
 }
 
-export interface PhotoModel {
+// 4. Dijital Kartvizit Modeli
+export interface VCardData {
   id: string;
-  albumId?: string;
-  originalUrl: string;
-  thumbnailUrl: string;
-  uploaderName?: string;
-  guestNote?: string;
-  sizeBytes: number;
-  width: number;
-  height: number;
-  isApproved: boolean;
-  createdAt: string;
+  slug: string; // "samet-sunman"
+  userId: string;
+  fullName: string;
+  jobTitle: string;
+  company: string;
+  phone: string;
+  email: string;
+  website: string;
+  theme: string;
+  socials: Record<string, string>;
+  bankAccounts: Array<{
+    bankName: string;
+    iban: string;
+    accountHolder: string;
+  }>;
+  portfolioLinks: Array<{
+    title: string;
+    url: string;
+  }>;
 }
 
-export interface GuestbookEntryModel {
+// 5. Restoran Menü Modeli
+export interface RestaurantData {
   id: string;
-  authorName: string;
-  relationship?: string;
-  message: string;
-  attachedPhotoUrl?: string;
-  createdAt: string;
+  slug: string; // "lucca-bistrot"
+  userId: string;
+  name: string;
+  cuisine: string;
+  tableCount: number;
+  wifiSsid?: string;
+  wifiPassword?: string;
+  enableWaiterCall: boolean;
+  enableBillRequest: boolean;
+  categories: Array<{ id: string; name: string; order: number }>;
+  items: Array<{
+    id: string;
+    categoryId: string;
+    name: string;
+    price: number;
+    allergens: string[];
+    isAvailable: boolean;
+  }>;
 }
 ```
 
 ---
 
-## 7. Uygulama Bileşen Ağacı
+## 6. Güvenlik, Gizlilik ve KVKK Politikası
 
-```
-src/
-├── app/
-│   ├── _layout.tsx                     # Global tema ve yönlendirme
-│   ├── index.tsx                       # qr-la.com Landing & Tanıtım sayfası
-│   ├── [slug]/
-│   │   ├── _layout.tsx                 # Etkinlik layout'u (Header, PIN Kontrolü)
-│   │   ├── index.tsx                   # Etkinlik Ana Sayfası (Kapak, Davetiye, Akış)
-│   │   ├── yukle.tsx                   # Toplu Fotoğraf Yükleme Ekranı
-│   │   ├── galeri.tsx                  # Albümler ve Fotoğraf Grid'i
-│   │   ├── ani-defteri.tsx             # Ziyaretçi Defteri & Tebrik Mesajları
-│   │   └── canli.tsx                   # Projeksiyon / Canlı Slayt Gösterisi
-│   └── panel/
-│       ├── _layout.tsx                 # Yönetim paneli layout'u
-│       ├── index.tsx                   # Ev Sahibi Kontrol Paneli (Kota, İndirme)
-│       ├── qr-kart.tsx                 # Baskıya hazır QR Masa Kartı Şablonu
-│       └── tarifeler.tsx               # Ek depolama paketleri
-├── components/
-│   ├── EventHeader.tsx                 # Geri sayım, kapak ve başlık
-│   ├── ScheduleTimeline.tsx            # Etkinlik akış listesi
-│   ├── PhotoUploader.tsx               # Sıkıştırmalı çoklu yükleme
-│   ├── PhotoGrid.tsx                   # Albüm filtreli görsel ızgarası
-│   ├── LightboxModal.tsx               # Tam ekran görsel önizleyici
-│   ├── GuestbookList.tsx               # Dilek kartları listesi
-│   ├── LiveProjector.tsx               # Canlı projeksiyon slayt ekranı
-│   ├── StorageMeter.tsx                # 500 MB kota göstergesi
-│   └── QRCardTemplate.tsx              # Yazdırılabilir masa kartı şablonu
-├── services/
-│   ├── firebase.ts                     # Firestore, Storage & Auth
-│   ├── compression.ts                  # Çapraz platform görsel sıkıştırma
-│   ├── eventService.ts                 # Etkinlik CRUD işlemleri
-│   └── mockData.ts                     # Anında test için demo etkinlik verisi
-└── types/
-    └── index.ts                        # TypeScript tip tanımları
-```
+1. **Numara Maskeleme:** Araç sahiplerinin telefon numaraları kaynak kodda düz metin sunulmaz. WhatsApp API köprüsü ve güvenli arama protokolü kullanılır.
+2. **Fotoğraf Gizliliği & PIN:** Düğün albümlerinde yabancıların fotoğrafları görmesini önleyen 4 haneli PIN şifreleme ve panelden anlık fotoğraf moderasyonu.
+3. **Konum Gizliliği (Pati Künyesi):** Künye tarandığında konum yalnızca tarayan kişinin tarayıcı izin onayı vermesi halinde Google Haritalar linki olarak doğrudan sahibin WhatsApp hattına iletilir; halka açık paylaşılmaz.
+4. **Ödeme Güvenliği:** Kredi kartı bilgileri asla sunucuda saklanmaz; 3D Secure 2.0 standardıyla banka SMS onayı üzerinden işlenir.

@@ -132,7 +132,7 @@ export const EventHeader: React.FC<EventHeaderProps> = ({ event, activeTab = 'ho
           {isHost && (
             <TouchableOpacity
               style={styles.hostPanelBadge}
-              onPress={() => router.push(`/panel?slug=${event.slug}` as any)}
+              onPress={() => router.push(`/panel/etkinlik?slug=${event.slug}` as any)}
               activeOpacity={0.85}
             >
               <Ionicons name="shield-checkmark" size={13} color="#FFF" />
@@ -159,7 +159,7 @@ export const EventHeader: React.FC<EventHeaderProps> = ({ event, activeTab = 'ho
         {isHost && (
           <TouchableOpacity
             style={styles.hostBanner}
-            onPress={() => router.push(`/panel?slug=${event.slug}` as any)}
+            onPress={() => router.push(`/panel/etkinlik?slug=${event.slug}` as any)}
             activeOpacity={0.85}
           >
             <View style={styles.hostBannerLeft}>

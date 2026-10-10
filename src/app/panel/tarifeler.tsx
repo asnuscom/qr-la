@@ -1,33 +1,37 @@
-import { authService } from '@/services/authService';
-import { eventService } from '@/services/eventService';
-import { COUPON_CODES, PLAN_TIERS } from '@/services/mockData';
-import { EventModel, PlanTierConfig, StorageTier } from '@/types';
-import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
   ActivityIndicator,
   Alert,
-  Linking,
   Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
   useWindowDimensions,
-  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { authService } from '@/services/authService';
+import { eventService } from '@/services/eventService';
+import { COUPON_CODES, PLAN_TIERS, ECOSYSTEM_PACKAGES } from '@/services/mockData';
+import { EventModel, PlanTierConfig, StorageTier } from '@/types';
+import { paymentService, PaymentItem, TransactionRecord } from '@/services/paymentService';
+import PaymentModal from '@/components/PaymentModal';
+import { useTheme, ThemeColors } from '@/context/ThemeContext';
+import ThemeToggleBtn from '@/components/ThemeToggleBtn';
 
-const WHATSAPP_PHONE = '905415779166';
-const WHATSAPP_DISPLAY = '+90 541 577 91 66';
+type PricingTab = 'events' | 'modules' | 'suite' | 'history';
 
 export default function PricingUpgradeScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const isMobile = width < 640;
+  const isMobile = width < 768;
   const { slug: paramSlug } = useLocalSearchParams<{ slug?: string }>();
+  const { isDark, colors } = useTheme();
+  const styles = getStyles(isDark, colors);
 
   const currentUser = authService.getState().user;
   const userSlug =
@@ -38,69 +42,48 @@ export default function PricingUpgradeScreen() {
 
   const activeSlug = paramSlug || userSlug || 'demo-panel';
 
+  const [activeTab, setActiveTab] = useState<PricingTab>('events');
   const [event, setEvent] = useState<EventModel | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+
+  // Kupon Kodu
   const [couponInput, setCouponInput] = useState('');
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [couponSuccessMessage, setCouponSuccessMessage] = useState<string | null>(null);
 
+  // Ödeme Modalı
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [selectedPaymentItem, setSelectedPaymentItem] = useState<PaymentItem | null>(null);
+
+  // İşlem Geçmişi
+  const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
+
   useEffect(() => {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
-      document.title = 'Kota ve Paket Yükseltme | QR-la';
+      document.title = 'Paketler & Online Ödeme | QR-la';
     }
   }, []);
 
-  // Helper to open WhatsApp for purchasing / requesting coupons
-  const openWhatsApp = (customText?: string) => {
-    const defaultText = `Merhaba, qr-la.com/${activeSlug} etkinliğim için depolama paketi satın almak veya kupon kodu edinmek istiyorum.`;
-    const text = encodeURIComponent(customText || defaultText);
-    const url = `https://wa.me/${WHATSAPP_PHONE}?text=${text}`;
-
-    if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof document !== 'undefined') {
-      try {
-        const link = document.createElement('a');
-        link.href = url;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      } catch {
-        Linking.openURL(url).catch(() => { });
-      }
-    } else {
-      Linking.openURL(url).catch((err) => {
-        console.warn('WhatsApp açılamadı:', err);
-        Linking.openURL(`https://api.whatsapp.com/send?phone=${WHATSAPP_PHONE}&text=${text}`).catch(() => {
-          Alert.alert('WhatsApp İletişim', `Bize WhatsApp üzerinden ulaşabilirsiniz: ${WHATSAPP_DISPLAY}`);
-        });
-      });
+  // Etkinlik Verilerini Yükle
+  const loadEvent = async () => {
+    try {
+      const ev = await eventService.getEvent(activeSlug, currentUser?.displayName);
+      if (ev) setEvent(ev);
+    } catch (err) {
+      console.warn('Tarifeler getEvent error:', err);
     }
   };
 
-  // Load active event data
-  useEffect(() => {
-    let isMounted = true;
-    const load = async () => {
-      setIsLoading(true);
-      try {
-        const ev = await eventService.getEvent(activeSlug, currentUser?.displayName);
-        if (isMounted && ev) {
-          setEvent(ev);
-        }
-      } catch (err) {
-        console.warn('Tarifeler getEvent error:', err);
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    };
+  const loadTransactions = () => {
+    const list = paymentService.getTransactions();
+    setTransactions(list);
+  };
 
-    load();
-    return () => {
-      isMounted = false;
-    };
+  useEffect(() => {
+    loadEvent();
+    loadTransactions();
   }, [activeSlug]);
 
+  // Kupon Kodu Uygulama
   const applyCouponCode = async (codeToApply: string) => {
     const cleanCode = (codeToApply || '').trim().toUpperCase();
     if (!cleanCode) {
@@ -110,9 +93,13 @@ export default function PricingUpgradeScreen() {
 
     const coupon = COUPON_CODES[cleanCode];
     if (!coupon) {
-      openWhatsApp(
-        `Merhaba, qr-la.com/${activeSlug} etkinliğim için "${cleanCode}" kuponunu kullanmak veya indirimli paket satın almak istiyorum.`
-      );
+      // Eğer kupon indirim kuponuysa modalı aç
+      const disc = paymentService.checkCoupon(cleanCode, 3990);
+      if (disc.valid) {
+        handleSelectPlan(PLAN_TIERS[2], cleanCode);
+        return;
+      }
+      Alert.alert('Geçersiz Kupon', `"${cleanCode}" geçerli bir kupon kodu değildir.`);
       return;
     }
 
@@ -126,7 +113,9 @@ export default function PricingUpgradeScreen() {
       );
       setEvent(updated);
       setCouponInput('');
-      const successMsg = `🎉 "${cleanCode}" kuponu başarıyla uygulandı! Paketiniz "${coupon.tierName}" (${coupon.quotaMB >= 1024 ? coupon.quotaMB / 1024 + ' GB' : coupon.quotaMB + ' MB'}) olarak güncellendi.`;
+      const successMsg = `🎉 "${cleanCode}" kuponu başarıyla uygulandı! Paketiniz "${coupon.tierName}" (${
+        coupon.quotaMB >= 1024 ? coupon.quotaMB / 1024 + ' GB' : coupon.quotaMB + ' MB'
+      }) olarak güncellendi.`;
       setCouponSuccessMessage(successMsg);
 
       Alert.alert('Tebrikler! 🎉', successMsg, [
@@ -135,7 +124,7 @@ export default function PricingUpgradeScreen() {
       ]);
     } catch (e) {
       console.error(e);
-      Alert.alert('Hata', 'Kupon uygulanırken bir sorun oluştu. Lütfen tekrar deneyiniz.');
+      Alert.alert('Hata', 'Kupon uygulanırken bir sorun oluştu.');
     } finally {
       setIsApplyingCoupon(false);
     }
@@ -150,7 +139,23 @@ export default function PricingUpgradeScreen() {
     vip: 3,
   };
 
-  const handleSelectPlan = (tier: PlanTierConfig) => {
+  const getTierDisplay = (tier: StorageTier) => {
+    switch (tier) {
+      case 'vip':
+        return { name: 'VIP Masalsı Düğün', quota: '15 GB', color: '#8B5CF6' };
+      case 'premium':
+        return { name: 'Premium Düğün', quota: '5 GB', color: '#C5A059' };
+      case 'standart':
+        return { name: 'Standart Kutlama', quota: '2 GB', color: '#3B82F6' };
+      default:
+        return { name: 'Ücretsiz Başlangıç', quota: '500 MB', color: '#10B981' };
+    }
+  };
+
+  const currentTierInfo = getTierDisplay(currentTier);
+
+  // Düğün Paketi Seçildiğinde -> Ödeme Modalı Aç
+  const handleSelectPlan = (tier: PlanTierConfig, _prefilledCoupon?: string) => {
     const isCurrent = currentTier === tier.tier;
     if (isCurrent) {
       Alert.alert('Mevcut Paketiniz', `Zaten ${tier.name} paketini kullanmaktasınız.`);
@@ -173,97 +178,83 @@ export default function PricingUpgradeScreen() {
       return;
     }
 
-    openWhatsApp(
-      `Merhaba, qr-la.com/${activeSlug} etkinliğim için ${tier.name} (${tier.priceTL} ₺) depolama paketini satın almak ve yükseltmek istiyorum.`
-    );
+    setSelectedPaymentItem({
+      id: `plan-${tier.tier}`,
+      title: `${tier.name} (${tier.quotaMB >= 1024 ? tier.quotaMB / 1024 + ' GB' : tier.quotaMB + ' MB'})`,
+      category: 'event_tier',
+      price: tier.priceTL,
+      period: 'tek_seferlik',
+      targetSlug: activeSlug,
+      tier: tier.tier,
+      retentionDays: tier.retentionDays,
+      quotaMB: tier.quotaMB,
+      badge: tier.isPopular ? 'En Çok Tercih Edilen' : undefined,
+      description: `${tier.quotaMB >= 1024 ? tier.quotaMB / 1024 + ' GB' : tier.quotaMB + ' MB'} depolama ve ${
+        tier.retentionDays
+      } gün güvenli bulut arşivi.`,
+      features: tier.features,
+    });
+    setPaymentModalVisible(true);
   };
 
-  const getTierDisplay = (tier: StorageTier) => {
-    switch (tier) {
-      case 'vip':
-        return { name: 'VIP Masalsı Düğün', quota: '15 GB', color: '#8B5CF6' };
-      case 'premium':
-        return { name: 'Premium Düğün', quota: '5 GB', color: '#C5A059' };
-      case 'standart':
-        return { name: 'Standart Kutlama', quota: '2 GB', color: '#3B82F6' };
-      default:
-        return { name: 'Ücretsiz Başlangıç', quota: '500 MB', color: '#10B981' };
+  // Modül Paketi Seçildiğinde
+  const handleSelectEcosystemPackage = (pkg: (typeof ECOSYSTEM_PACKAGES)[0]) => {
+    setSelectedPaymentItem({
+      id: pkg.id,
+      title: pkg.title,
+      category: pkg.category,
+      price: pkg.price,
+      originalPrice: pkg.originalPrice,
+      period: pkg.period,
+      targetSlug: activeSlug,
+      badge: pkg.badge,
+      description: pkg.description,
+      features: pkg.features,
+    });
+    setPaymentModalVisible(true);
+  };
+
+  // Ödeme Başarıyla Tamamlandığında
+  const handlePaymentSuccess = (transaction: TransactionRecord) => {
+    if (transaction.category === 'event_tier') {
+      loadEvent();
     }
+    loadTransactions();
   };
-
-  const currentTierInfo = getTierDisplay(currentTier);
-
-  const handleLogout = async () => {
-    const executeLogout = async () => {
-      try {
-        await authService.signOut();
-      } catch (e) {
-        console.warn('SignOut error:', e);
-      }
-      router.replace('/giris' as any);
-    };
-
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      const confirmed = window.confirm('Yönetim panelinden ve hesabınızdan çıkış yapmak istediğinize emin misiniz?');
-      if (confirmed) {
-        await executeLogout();
-      }
-    } else {
-      Alert.alert(
-        'Çıkış Yap',
-        'Yönetim panelinden ve hesabınızdan çıkış yapmak istediğinize emin misiniz?',
-        [
-          { text: 'Vazgeç', style: 'cancel' },
-          {
-            text: 'Çıkış Yap',
-            style: 'destructive',
-            onPress: executeLogout,
-          },
-        ]
-      );
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.centerLoading}>
-          <ActivityIndicator size="large" color="#C5A059" />
-          <Text style={styles.loadingText}>Paket bilgileri yükleniyor...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        {/* Top Navbar */}
+        {/* Üst Navigasyon */}
         <View style={styles.navbar}>
           <TouchableOpacity
             style={styles.backBtn}
             onPress={() => router.push('/panel' as any)}
-            activeOpacity={0.7}
+            activeOpacity={0.8}
           >
-            <Ionicons name="arrow-back" size={20} color="#1A1817" />
+            <Ionicons name="arrow-back" size={20} color={isDark ? '#FFFFFF' : colors.text} />
           </TouchableOpacity>
+
           <View style={styles.navTitleBox}>
-            <Text style={styles.navTitle}>Depolama Paketleri</Text>
+            <Text style={styles.navTitle}>Paketler & Online Ödeme</Text>
             <Text style={styles.navSub}>qr-la.com/{activeSlug}</Text>
           </View>
-          <TouchableOpacity
-            style={[styles.logoutBtn, isMobile && styles.iconOnlyHeaderBtn]}
-            onPress={handleLogout}
-            activeOpacity={0.8}
-            accessibilityLabel="Çıkış"
-          >
-            <Ionicons name="log-out-outline" size={17} color="#EF4444" />
-            {!isMobile && <Text style={styles.logoutText}>Çıkış</Text>}
-          </TouchableOpacity>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <ThemeToggleBtn size="sm" />
+            <TouchableOpacity
+              style={styles.panelLinkBtn}
+              onPress={() => router.push('/panel' as any)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="apps-outline" size={16} color={colors.gold} />
+              {!isMobile && <Text style={styles.panelLinkText}>Panel</Text>}
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.content}>
-          {/* Active Plan Summary Banner */}
+          {/* Aktif Paket Özeti */}
           {event && (
             <View style={styles.currentPlanBanner}>
               <View style={styles.currentPlanHeader}>
@@ -271,16 +262,18 @@ export default function PricingUpgradeScreen() {
                   <Ionicons name="shield-checkmark" size={18} color={currentTierInfo.color} />
                   <Text style={styles.currentPlanLabel}>MEVCUT AKTİF PAKETİNİZ</Text>
                 </View>
-                <View style={[styles.currentTierBadge, { backgroundColor: currentTierInfo.color + '20' }]}>
+                <View style={[styles.currentTierBadge, { backgroundColor: currentTierInfo.color + '25' }]}>
                   <Text style={[styles.currentTierBadgeText, { color: currentTierInfo.color }]}>
                     {currentTier.toUpperCase()}
                   </Text>
                 </View>
               </View>
+
               <Text style={styles.currentPlanName}>{currentTierInfo.name}</Text>
+
               <View style={styles.currentPlanDetailsRow}>
                 <Text style={styles.currentPlanDetail}>
-                  📦 Toplam Kota: <Text style={{ fontWeight: '700', color: '#1A1817' }}>{currentTierInfo.quota}</Text>
+                  📦 Toplam Kota: <Text style={{ fontWeight: '700', color: '#F8FAFC' }}>{currentTierInfo.quota}</Text>
                 </Text>
                 {event.storage.expiresAt && (
                   <Text style={styles.currentPlanDetail}>
@@ -291,30 +284,28 @@ export default function PricingUpgradeScreen() {
             </View>
           )}
 
-          {/* Luxury Coupon Code & WhatsApp Card */}
+          {/* Kupon Kodu Alanı */}
           <View style={styles.couponCard}>
             <View style={styles.couponHeader}>
               <View style={styles.couponIconBox}>
-                <Ionicons name="gift" size={20} color="#C5A059" />
+                <Ionicons name="gift" size={20} color="#D4AF37" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.couponTitle}>Kupon / Promosyon Kodu</Text>
+                <Text style={styles.couponTitle}>Kupon & Promosyon Kodu</Text>
                 <Text style={styles.couponSubtitle}>
-                  Size tanımlanan özel etkinlik veya kupon kodunu girerek paketinizi anında etkinleştirin.
+                  Özel promosyon kodunuz varsa girerek paketinizi anında indirimli etkinleştirin.
                 </Text>
               </View>
             </View>
 
-            {/* Input Row */}
             <View style={styles.couponInputRow}>
               <TextInput
                 style={styles.couponInput}
                 value={couponInput}
                 onChangeText={(val) => setCouponInput(val.toUpperCase())}
-                placeholder="Kupon kodunuzu giriniz..."
-                placeholderTextColor="#9CA3AF"
+                placeholder="Örn: ASNUSVIP, YUZDE20, HOSGELDIN"
+                placeholderTextColor="#64748B"
                 autoCapitalize="characters"
-                autoCorrect={false}
               />
               <TouchableOpacity
                 style={[
@@ -326,563 +317,847 @@ export default function PricingUpgradeScreen() {
                 activeOpacity={0.8}
               >
                 {isApplyingCoupon ? (
-                  <ActivityIndicator size="small" color="#FFF" />
+                  <ActivityIndicator size="small" color="#0F172A" />
                 ) : (
                   <>
-                    <Ionicons name="sparkles" size={16} color="#FFF" />
+                    <Ionicons name="sparkles" size={15} color="#0F172A" />
                     <Text style={styles.applyCouponBtnText}>Uygula</Text>
                   </>
                 )}
               </TouchableOpacity>
             </View>
 
-            {/* WhatsApp Support & Purchase Banner */}
-            <TouchableOpacity
-              style={styles.whatsappBanner}
-              onPress={() => openWhatsApp()}
-              activeOpacity={0.85}
-            >
-              <View style={styles.whatsappIconCircle}>
-                <Ionicons name="logo-whatsapp" size={22} color="#25D366" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.whatsappBannerTitle}>Kupon veya Satın Alma İçin İletişime Geçin</Text>
-                <Text style={styles.whatsappBannerSubtitle}>
-                  WhatsApp ({WHATSAPP_DISPLAY}) üzerinden anında kupon kodu talep edebilir ya da paketinizi yükseltebilirsiniz.
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color="#059669" />
-            </TouchableOpacity>
-
             {couponSuccessMessage && (
               <View style={styles.successAlert}>
-                <Ionicons name="checkmark-circle" size={16} color="#059669" />
+                <Ionicons name="checkmark-circle" size={16} color="#10B981" />
                 <Text style={styles.successAlertText}>{couponSuccessMessage}</Text>
               </View>
             )}
           </View>
 
-          <Text style={styles.headerTitle}>
-            {currentTier === 'vip'
-              ? '👑 En Yüksek VIP Pakettesiniz'
-              : 'Düğün Anılarınız Asla Yarıda Kalmasın'}
-          </Text>
-          <Text style={styles.headerSubtitle}>
-            {currentTier === 'vip'
-              ? 'Etkinliğiniz için en üst düzey 15 GB depolama alanı ve tüm ayrıcalıklar sınırsız olarak tanımlanmıştır.'
-              : 'Ücretsiz 500 MB kotanız dolmak üzereyse veya salonda canlı projeksiyon özelliğini açmak istiyorsanız uygun paketi seçin.'}
-          </Text>
+          {/* 4 Ana Kategori Sekmesi */}
+          <View style={styles.categoryTabBar}>
+            <TouchableOpacity
+              style={[styles.categoryTabBtn, activeTab === 'events' && styles.categoryTabBtnActive]}
+              onPress={() => setActiveTab('events')}
+            >
+              <Ionicons
+                name="heart"
+                size={16}
+                color={activeTab === 'events' ? '#D4AF37' : '#94A3B8'}
+              />
+              <Text
+                style={[
+                  styles.categoryTabText,
+                  activeTab === 'events' && styles.categoryTabTextActive,
+                ]}
+              >
+                💍 Düğün Paketleri
+              </Text>
+            </TouchableOpacity>
 
-          {/* Pricing Plans Grid */}
-          <View style={styles.plansContainer}>
-            {PLAN_TIERS.map((tier) => {
-              const isCurrent = currentTier === tier.tier;
-              const currentRank = TIER_RANKS[currentTier] ?? 0;
-              const tierRank = TIER_RANKS[tier.tier] ?? 0;
-              const isLower = tierRank < currentRank;
-              const isDisabled = isCurrent || isLower;
+            <TouchableOpacity
+              style={[styles.categoryTabBtn, activeTab === 'modules' && styles.categoryTabBtnActive]}
+              onPress={() => setActiveTab('modules')}
+            >
+              <Ionicons
+                name="shapes"
+                size={16}
+                color={activeTab === 'modules' ? '#D4AF37' : '#94A3B8'}
+              />
+              <Text
+                style={[
+                  styles.categoryTabText,
+                  activeTab === 'modules' && styles.categoryTabTextActive,
+                ]}
+              >
+                🌐 Modül Paketleri
+              </Text>
+            </TouchableOpacity>
 
-              let btnText = 'WhatsApp ile Satın Al / Yükselt';
-              if (isCurrent) {
-                btnText = 'Şu Anki Aktif Paketiniz';
-              } else if (isLower) {
-                btnText = 'Mevcut Paketinizin Altında';
-              }
+            <TouchableOpacity
+              style={[styles.categoryTabBtn, activeTab === 'suite' && styles.categoryTabBtnActive]}
+              onPress={() => setActiveTab('suite')}
+            >
+              <Ionicons
+                name="diamond"
+                size={16}
+                color={activeTab === 'suite' ? '#D4AF37' : '#94A3B8'}
+              />
+              <Text
+                style={[
+                  styles.categoryTabText,
+                  activeTab === 'suite' && styles.categoryTabTextActive,
+                ]}
+              >
+                👑 Kurumsal Suite
+              </Text>
+            </TouchableOpacity>
 
-              return (
-                <View
-                  key={tier.tier}
-                  style={[
-                    styles.planCard,
-                    tier.isPopular && styles.planCardPopular,
-                    isCurrent && styles.planCardCurrent,
-                    isLower && styles.planCardLower,
-                  ]}
-                >
-                  {isCurrent ? (
-                    <View style={styles.currentBadge}>
-                      <Text style={styles.currentBadgeText}>AKTİF PAKETİNİZ</Text>
+            <TouchableOpacity
+              style={[styles.categoryTabBtn, activeTab === 'history' && styles.categoryTabBtnActive]}
+              onPress={() => setActiveTab('history')}
+            >
+              <Ionicons
+                name="receipt-outline"
+                size={16}
+                color={activeTab === 'history' ? '#D4AF37' : '#94A3B8'}
+              />
+              <Text
+                style={[
+                  styles.categoryTabText,
+                  activeTab === 'history' && styles.categoryTabTextActive,
+                ]}
+              >
+                🧾 Faturalarım ({transactions.length})
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* SEKME 1: DÜĞÜN & ETKİNLİK PAKETLERİ */}
+          {activeTab === 'events' && (
+            <View style={styles.plansContainer}>
+              {PLAN_TIERS.map((tier) => {
+                const isCurrent = currentTier === tier.tier;
+                const currentRank = TIER_RANKS[currentTier] ?? 0;
+                const tierRank = TIER_RANKS[tier.tier] ?? 0;
+                const isLower = tierRank < currentRank;
+                const isDisabled = isCurrent || isLower;
+
+                let btnText = 'Hemen Satın Al & Yükselt';
+                if (isCurrent) {
+                  btnText = 'Şu Anki Aktif Paketiniz';
+                } else if (isLower) {
+                  btnText = 'Mevcut Paketinizin Altında';
+                }
+
+                return (
+                  <View
+                    key={tier.tier}
+                    style={[
+                      styles.planCard,
+                      tier.isPopular && styles.planCardPopular,
+                      isCurrent && styles.planCardCurrent,
+                    ]}
+                  >
+                    {isCurrent ? (
+                      <View style={styles.currentBadge}>
+                        <Text style={styles.currentBadgeText}>AKTİF PAKETİNİZ</Text>
+                      </View>
+                    ) : tier.isPopular && !isLower ? (
+                      <View style={styles.badge}>
+                        <Text style={styles.badgeText}>EN ÇOK TERCİH EDİLEN</Text>
+                      </View>
+                    ) : null}
+
+                    <Text style={styles.tierName}>{tier.name}</Text>
+
+                    <View style={styles.priceRow}>
+                      <Text style={styles.priceText}>
+                        {tier.priceTL === 0 ? 'ÜCRETSİZ' : `${tier.priceTL} ₺`}
+                      </Text>
+                      {tier.priceTL > 0 && <Text style={styles.periodText}>/ tek seferlik</Text>}
                     </View>
-                  ) : tier.isPopular && !isLower ? (
-                    <View style={styles.badge}>
-                      <Text style={styles.badgeText}>EN ÇOK TERCİH EDİLEN</Text>
-                    </View>
-                  ) : null}
 
-                  <Text style={styles.tierName}>{tier.name}</Text>
-                  <View style={styles.priceRow}>
-                    <Text style={styles.priceText}>
-                      {tier.priceTL === 0 ? 'ÜCRETSİZ' : `${tier.priceTL} ₺`}
-                    </Text>
-                    {tier.priceTL > 0 && <Text style={styles.periodText}>/ tek seferlik</Text>}
+                    <View style={styles.quotaBox}>
+                      <Text style={styles.quotaText}>
+                        📦 {tier.quotaMB >= 1024 ? `${tier.quotaMB / 1024} GB` : `${tier.quotaMB} MB`} Bulut Depolama
+                      </Text>
+                      <Text style={styles.retentionText}>⏳ {tier.retentionDays} Gün Arşiv Süresi</Text>
+                    </View>
+
+                    <View style={styles.features}>
+                      {tier.features.map((feat, i) => (
+                        <View key={i} style={styles.featureRow}>
+                          <Ionicons name="checkmark-circle" size={15} color="#D4AF37" />
+                          <Text style={styles.featureText}>{feat}</Text>
+                        </View>
+                      ))}
+                    </View>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.chooseBtn,
+                        tier.isPopular && !isLower && styles.chooseBtnPopular,
+                        isCurrent && styles.chooseBtnCurrent,
+                        isLower && styles.chooseBtnLower,
+                      ]}
+                      onPress={() => handleSelectPlan(tier)}
+                      activeOpacity={0.85}
+                      disabled={isDisabled}
+                    >
+                      <Ionicons
+                        name={isCurrent ? 'checkmark' : 'lock-closed-outline'}
+                        size={16}
+                        color={isCurrent ? '#CBD5E1' : '#0F172A'}
+                      />
+                      <Text
+                        style={[
+                          styles.chooseBtnText,
+                          tier.isPopular && !isLower && styles.chooseBtnTextPopular,
+                          isCurrent && styles.chooseBtnTextCurrent,
+                        ]}
+                      >
+                        {btnText}
+                      </Text>
+                    </TouchableOpacity>
                   </View>
+                );
+              })}
+            </View>
+          )}
 
-                  <View style={styles.quotaBox}>
-                    <Text style={styles.quotaText}>
-                      📦 {tier.quotaMB >= 1024 ? `${tier.quotaMB / 1024} GB` : `${tier.quotaMB} MB`} Bulut Depolama
-                    </Text>
-                    <Text style={styles.retentionText}>⏳ {tier.retentionDays} Gün Arşiv Süresi</Text>
+          {/* SEKME 2: MODÜL & EKOSİSTEM PAKETLERİ */}
+          {activeTab === 'modules' && (
+            <View style={styles.plansContainer}>
+              {ECOSYSTEM_PACKAGES.filter((p) => p.category === 'module_package').map((pkg) => (
+                <View key={pkg.id} style={styles.planCard}>
+                  {pkg.badge && (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>{pkg.badge.toUpperCase()}</Text>
+                    </View>
+                  )}
+
+                  <Text style={styles.tierName}>{pkg.title}</Text>
+                  <Text style={styles.pkgDesc}>{pkg.description}</Text>
+
+                  <View style={styles.priceRow}>
+                    <Text style={styles.priceText}>{pkg.price} ₺</Text>
+                    {pkg.originalPrice ? (
+                      <Text style={styles.originalPriceText}>{pkg.originalPrice} ₺</Text>
+                    ) : null}
+                    <Text style={styles.periodText}>/ {pkg.period}</Text>
                   </View>
 
                   <View style={styles.features}>
-                    {tier.features.map((feat, i) => (
+                    {pkg.features.map((feat, i) => (
                       <View key={i} style={styles.featureRow}>
-                        <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                        <Ionicons name="checkmark-circle" size={15} color="#10B981" />
                         <Text style={styles.featureText}>{feat}</Text>
                       </View>
                     ))}
                   </View>
 
                   <TouchableOpacity
-                    style={[
-                      styles.chooseBtn,
-                      tier.isPopular && !isLower && styles.chooseBtnPopular,
-                      isCurrent && styles.chooseBtnCurrent,
-                      isLower && styles.chooseBtnLower,
-                    ]}
-                    onPress={() => handleSelectPlan(tier)}
-                    activeOpacity={0.8}
-                    disabled={isDisabled}
+                    style={[styles.chooseBtn, styles.chooseBtnPopular]}
+                    onPress={() => handleSelectEcosystemPackage(pkg)}
+                    activeOpacity={0.85}
                   >
-                    <Text
-                      style={[
-                        styles.chooseBtnText,
-                        tier.isPopular && !isLower && styles.chooseBtnTextPopular,
-                        isCurrent && styles.chooseBtnTextCurrent,
-                        isLower && styles.chooseBtnTextLower,
-                      ]}
-                    >
-                      {btnText}
+                    <Ionicons name="sparkles" size={16} color="#0F172A" />
+                    <Text style={[styles.chooseBtnText, styles.chooseBtnTextPopular]}>
+                      Hemen Etkinleştir ({pkg.price} ₺)
                     </Text>
                   </TouchableOpacity>
                 </View>
-              );
-            })}
-          </View>
+              ))}
+            </View>
+          )}
+
+          {/* SEKME 3: KURUMSAL SUITE */}
+          {activeTab === 'suite' && (
+            <View style={styles.suiteContainer}>
+              {ECOSYSTEM_PACKAGES.filter((p) => p.category === 'suite_license').map((suite) => (
+                <View key={suite.id} style={[styles.planCard, styles.planCardPopular, styles.suiteCard]}>
+                  <View style={styles.suiteHeaderBadge}>
+                    <Ionicons name="diamond" size={16} color="#D4AF37" />
+                    <Text style={styles.suiteHeaderBadgeText}>HER ŞEY DAHİL VIP LİSANS</Text>
+                  </View>
+
+                  <Text style={[styles.tierName, { fontSize: 22 }]}>{suite.title}</Text>
+                  <Text style={styles.pkgDesc}>{suite.description}</Text>
+
+                  <View style={styles.priceRow}>
+                    <Text style={[styles.priceText, { fontSize: 32 }]}>{suite.price} ₺</Text>
+                    {suite.originalPrice ? (
+                      <Text style={styles.originalPriceText}>{suite.originalPrice} ₺</Text>
+                    ) : null}
+                    <Text style={styles.periodText}>/ yıllık</Text>
+                  </View>
+
+                  <View style={styles.features}>
+                    {suite.features.map((feat, i) => (
+                      <View key={i} style={styles.featureRow}>
+                        <Ionicons name="checkmark-circle" size={16} color="#D4AF37" />
+                        <Text style={[styles.featureText, { color: '#F1F5F9' }]}>{feat}</Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  <TouchableOpacity
+                    style={[styles.chooseBtn, styles.chooseBtnPopular, { paddingVertical: 16 }]}
+                    onPress={() => handleSelectEcosystemPackage(suite)}
+                    activeOpacity={0.88}
+                  >
+                    <Ionicons name="card" size={18} color="#0F172A" />
+                    <Text style={[styles.chooseBtnText, styles.chooseBtnTextPopular, { fontSize: 16 }]}>
+                      Kurumsal Suite Lisansını Satın Al ({suite.price} ₺)
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* SEKME 4: FATURALARIM & ÖDEME GEÇMİŞİ */}
+          {activeTab === 'history' && (
+            <View style={styles.historyContainer}>
+              <View style={styles.historyHeader}>
+                <Ionicons name="receipt" size={20} color="#D4AF37" />
+                <Text style={styles.historyTitle}>e-Arşiv Fatura & Ödeme Geçmişi</Text>
+              </View>
+
+              {transactions.length === 0 ? (
+                <View style={styles.emptyHistoryBox}>
+                  <Ionicons name="document-text-outline" size={40} color="#64748B" />
+                  <Text style={styles.emptyHistoryText}>Henüz bir fatura kaydı bulunmamaktadır.</Text>
+                </View>
+              ) : (
+                transactions.map((trx) => (
+                  <View key={trx.id} style={styles.transactionCard}>
+                    <View style={styles.trxTopRow}>
+                      <View>
+                        <Text style={styles.trxInvoiceNo}>{trx.invoiceNo}</Text>
+                        <Text style={styles.trxTitle}>{trx.itemTitle}</Text>
+                      </View>
+                      <View style={styles.trxStatusBadge}>
+                        <Text style={styles.trxStatusText}>ÖDENDİ</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.trxDetailsRow}>
+                      <Text style={styles.trxMeta}>
+                        📅 {new Date(trx.createdAt).toLocaleDateString('tr-TR')}
+                      </Text>
+                      <Text style={styles.trxMeta}>
+                        💳 {trx.paymentMethod === 'credit_card' ? `Kart (${trx.cardBrand || 'Banka'})` : 'Havale / FAST'}
+                      </Text>
+                      <Text style={styles.trxAmount}>{trx.amount} ₺</Text>
+                    </View>
+
+                    <View style={styles.trxActionRow}>
+                      <TouchableOpacity
+                        style={styles.trxPrintBtn}
+                        onPress={() => paymentService.printReceipt(trx)}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="print-outline" size={15} color="#D4AF37" />
+                        <Text style={styles.trxPrintBtnText}>e-Arşiv Fatura Yazdır</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))
+              )}
+            </View>
+          )}
         </View>
       </ScrollView>
+
+      {/* Online Ödeme Modalı */}
+      <PaymentModal
+        visible={paymentModalVisible}
+        item={selectedPaymentItem}
+        onClose={() => setPaymentModalVisible(false)}
+        onSuccess={handlePaymentSuccess}
+      />
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#FAF7F2',
-  },
-  scroll: {
-    paddingBottom: 50,
-  },
-  navbar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    backgroundColor: '#FFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3EFE6',
-    marginBottom: 16,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FAF7F2',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#EFE7DA',
-  },
-  navTitleBox: {
-    alignItems: 'center',
-  },
-  navTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#1A1817',
-  },
-  navSub: {
-    fontSize: 11,
-    color: '#8A6D3B',
-    fontWeight: '600',
-  },
-  logoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FEE2E2',
-    paddingHorizontal: 11,
-    paddingVertical: 7,
-    borderRadius: 10,
-  },
-  logoutText: {
-    color: '#EF4444',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  iconOnlyHeaderBtn: {
-    width: 38,
-    height: 38,
-    paddingHorizontal: 0,
-    paddingVertical: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  content: {
-    paddingHorizontal: 16,
-    alignItems: 'center',
-  },
-  currentPlanBanner: {
-    width: '100%',
-    maxWidth: 480,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#EFE7DA',
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  currentPlanHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  currentPlanTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  currentPlanLabel: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#6B7280',
-    letterSpacing: 0.5,
-  },
-  currentTierBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  currentTierBadgeText: {
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  currentPlanName: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#1A1817',
-    marginBottom: 8,
-  },
-  currentPlanDetailsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  currentPlanDetail: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  couponCard: {
-    width: '100%',
-    maxWidth: 480,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 18,
-    marginBottom: 24,
-    borderWidth: 1.5,
-    borderColor: '#EAD7BB',
-    shadowColor: '#C5A059',
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  couponHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    marginBottom: 14,
-  },
-  couponIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#FAF5EA',
-    borderWidth: 1,
-    borderColor: '#EFE7DA',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  couponTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#1A1817',
-    marginBottom: 2,
-  },
-  couponSubtitle: {
-    fontSize: 12,
-    color: '#6B7280',
-    lineHeight: 16,
-  },
-  couponInputRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
-  },
-  couponInput: {
-    flex: 1,
-    backgroundColor: '#FAF7F2',
-    borderWidth: 1.5,
-    borderColor: '#EFE7DA',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1A1817',
-    letterSpacing: 1,
-  },
-  applyCouponBtn: {
-    backgroundColor: '#C5A059',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  applyCouponBtnText: {
-    color: '#FFF',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  whatsappBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F0FDF4',
-    borderWidth: 1,
-    borderColor: '#BBF7D0',
-    borderRadius: 12,
-    padding: 12,
-    gap: 10,
-  },
-  whatsappIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#DCFCE7',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  whatsappBannerTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#166534',
-    marginBottom: 2,
-  },
-  whatsappBannerSubtitle: {
-    fontSize: 11,
-    color: '#15803D',
-    lineHeight: 15,
-  },
-  successAlert: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#ECFDF5',
-    borderWidth: 1,
-    borderColor: '#A7F3D0',
-    borderRadius: 10,
-    padding: 10,
-    marginTop: 12,
-  },
-  successAlertText: {
-    fontSize: 12,
-    color: '#065F46',
-    fontWeight: '600',
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#1A1817',
-    textAlign: 'center',
-    marginBottom: 6,
-  },
-  headerSubtitle: {
-    fontSize: 13,
-    color: '#6B7280',
-    textAlign: 'center',
-    maxWidth: 420,
-    marginBottom: 20,
-    lineHeight: 18,
-  },
-  plansContainer: {
-    width: '100%',
-    maxWidth: 480,
-    gap: 16,
-  },
-  planCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#EFE7DA',
-    position: 'relative',
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  planCardPopular: {
-    borderColor: '#C5A059',
-    borderWidth: 2,
-    shadowColor: '#C5A059',
-    shadowOpacity: 0.2,
-    shadowRadius: 15,
-  },
-  planCardCurrent: {
-    borderColor: '#10B981',
-    borderWidth: 2,
-    backgroundColor: '#FAFDFB',
-  },
-  badge: {
-    position: 'absolute',
-    top: -10,
-    right: 20,
-    backgroundColor: '#C5A059',
-    paddingVertical: 3,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-  },
-  badgeText: {
-    color: '#FFF',
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  currentBadge: {
-    position: 'absolute',
-    top: -10,
-    right: 20,
-    backgroundColor: '#10B981',
-    paddingVertical: 3,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-  },
-  currentBadgeText: {
-    color: '#FFF',
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  tierName: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#1A1817',
-    marginBottom: 6,
-  },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 4,
-    marginBottom: 12,
-  },
-  priceText: {
-    fontSize: 26,
-    fontWeight: '900',
-    color: '#C5A059',
-  },
-  periodText: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  quotaBox: {
-    backgroundColor: '#FAF7F2',
-    padding: 10,
-    borderRadius: 10,
-    marginBottom: 16,
-    gap: 2,
-  },
-  quotaText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#1A1817',
-  },
-  retentionText: {
-    fontSize: 11,
-    color: '#6B7280',
-  },
-  features: {
-    gap: 8,
-    marginBottom: 20,
-  },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-  },
-  featureText: {
-    fontSize: 12,
-    color: '#4B5563',
-    flex: 1,
-  },
-  chooseBtn: {
-    backgroundColor: '#FAF7F2',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  chooseBtnPopular: {
-    backgroundColor: '#C5A059',
-    borderColor: '#C5A059',
-  },
-  chooseBtnCurrent: {
-    backgroundColor: '#ECFDF5',
-    borderColor: '#A7F3D0',
-  },
-  chooseBtnLower: {
-    backgroundColor: '#F3F4F6',
-    borderColor: '#E5E7EB',
-    opacity: 0.7,
-  },
-  chooseBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1A1817',
-  },
-  chooseBtnTextPopular: {
-    color: '#FFF',
-  },
-  chooseBtnTextCurrent: {
-    color: '#059669',
-  },
-  chooseBtnTextLower: {
-    color: '#9CA3AF',
-    fontWeight: '600',
-  },
-  planCardLower: {
-    opacity: 0.85,
-    backgroundColor: '#FAFAFA',
-  },
-  centerLoading: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#8A6D3B',
-    fontWeight: '600',
-  },
-});
-
+function getStyles(isDark: boolean, colors: ThemeColors) {
+  return StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.bg,
+    },
+    scroll: {
+      paddingBottom: 60,
+    },
+    navbar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 20,
+      paddingVertical: 14,
+      backgroundColor: isDark ? '#0F172A' : '#FFFFFF',
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    backBtn: {
+      width: 38,
+      height: 38,
+      borderRadius: 12,
+      backgroundColor: isDark ? '#1E293B' : '#FAF7F2',
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    navTitleBox: {
+      alignItems: 'center',
+    },
+    navTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    navSub: {
+      fontSize: 11,
+      color: colors.gold,
+      fontWeight: '600',
+    },
+    panelLinkBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: isDark ? '#1E293B' : '#FAF7F2',
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 10,
+    },
+    panelLinkText: {
+      color: colors.gold,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    content: {
+      padding: 20,
+      gap: 20,
+      maxWidth: 1080,
+      width: '100%',
+      alignSelf: 'center',
+    },
+    currentPlanBanner: {
+      backgroundColor: isDark ? '#0F172A' : '#FFFFFF',
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 20,
+      padding: 20,
+      gap: 10,
+    },
+    currentPlanHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    currentPlanTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    currentPlanLabel: {
+      color: colors.textSecondary,
+      fontSize: 11,
+      fontWeight: '700',
+      letterSpacing: 1,
+    },
+    currentTierBadge: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 8,
+    },
+    currentTierBadgeText: {
+      fontSize: 11,
+      fontWeight: '800',
+    },
+    currentPlanName: {
+      color: colors.text,
+      fontSize: 20,
+      fontWeight: '800',
+    },
+    currentPlanDetailsRow: {
+      flexDirection: 'row',
+      gap: 20,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingTop: 10,
+      flexWrap: 'wrap',
+    },
+    currentPlanDetail: {
+      color: colors.textSecondary,
+      fontSize: 13,
+    },
+    couponCard: {
+      backgroundColor: isDark ? '#0F172A' : '#FFFFFF',
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 20,
+      padding: 20,
+      gap: 14,
+    },
+    couponHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    couponIconBox: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      backgroundColor: isDark ? 'rgba(212, 175, 55, 0.15)' : 'rgba(197, 160, 89, 0.15)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    couponTitle: {
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: '700',
+    },
+    couponSubtitle: {
+      color: colors.textSecondary,
+      fontSize: 12,
+      lineHeight: 17,
+    },
+    couponInputRow: {
+      flexDirection: 'row',
+      gap: 10,
+    },
+    couponInput: {
+      flex: 1,
+      backgroundColor: isDark ? '#131D31' : '#FAF7F2',
+      borderWidth: 1,
+      borderColor: colors.border,
+      color: colors.text,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      borderRadius: 12,
+      fontSize: 13,
+    },
+    applyCouponBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.gold,
+      paddingHorizontal: 18,
+      borderRadius: 12,
+      gap: 6,
+    },
+    applyCouponBtnText: {
+      color: '#FFFFFF',
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    successAlert: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: 'rgba(16, 185, 129, 0.15)',
+      borderWidth: 1,
+      borderColor: '#10B981',
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderRadius: 10,
+      gap: 8,
+    },
+    successAlertText: {
+      color: isDark ? '#A7F3D0' : '#065F46',
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    categoryTabBar: {
+      flexDirection: 'row',
+      backgroundColor: isDark ? '#0F172A' : '#FFFFFF',
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 16,
+      padding: 6,
+      gap: 6,
+      flexWrap: 'wrap',
+    },
+    categoryTabBtn: {
+      flex: 1,
+      minWidth: 130,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderRadius: 10,
+      gap: 6,
+    },
+    categoryTabBtnActive: {
+      backgroundColor: isDark ? '#1E293B' : '#FAF7F2',
+      borderWidth: 1,
+      borderColor: colors.gold,
+    },
+    categoryTabText: {
+      color: colors.textSecondary,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    categoryTabTextActive: {
+      color: colors.gold,
+      fontWeight: '700',
+    },
+    plansContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 16,
+    },
+    planCard: {
+      flex: 1,
+      minWidth: 280,
+      backgroundColor: isDark ? '#0F172A' : '#FFFFFF',
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 22,
+      padding: 24,
+      gap: 16,
+      justifyContent: 'space-between',
+    },
+    planCardPopular: {
+      borderColor: colors.gold,
+      backgroundColor: isDark ? '#131D31' : '#FAF7F2',
+      shadowColor: colors.gold,
+      shadowOpacity: 0.15,
+      shadowRadius: 18,
+    },
+    planCardCurrent: {
+      borderColor: '#10B981',
+    },
+    badge: {
+      position: 'absolute',
+      top: 14,
+      right: 14,
+      backgroundColor: colors.gold,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 8,
+    },
+    badgeText: {
+      color: '#FFFFFF',
+      fontSize: 10,
+      fontWeight: '800',
+    },
+    currentBadge: {
+      position: 'absolute',
+      top: 14,
+      right: 14,
+      backgroundColor: '#064E3B',
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 8,
+    },
+    currentBadgeText: {
+      color: '#A7F3D0',
+      fontSize: 10,
+      fontWeight: '800',
+    },
+    tierName: {
+      color: colors.text,
+      fontSize: 18,
+      fontWeight: '800',
+    },
+    pkgDesc: {
+      color: colors.textSecondary,
+      fontSize: 13,
+      lineHeight: 18,
+      marginTop: -8,
+    },
+    priceRow: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      gap: 8,
+    },
+    priceText: {
+      color: colors.text,
+      fontSize: 26,
+      fontWeight: '800',
+    },
+    originalPriceText: {
+      color: colors.textSecondary,
+      fontSize: 16,
+      textDecorationLine: 'line-through',
+    },
+    periodText: {
+      color: colors.textSecondary,
+      fontSize: 13,
+    },
+    quotaBox: {
+      backgroundColor: isDark ? '#131D31' : '#FAF7F2',
+      padding: 12,
+      borderRadius: 12,
+      gap: 4,
+    },
+    quotaText: {
+      color: colors.text,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    retentionText: {
+      color: colors.textSecondary,
+      fontSize: 12,
+    },
+    features: {
+      gap: 10,
+    },
+    featureRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 8,
+    },
+    featureText: {
+      color: isDark ? '#CBD5E1' : '#4B5563',
+      fontSize: 13,
+      lineHeight: 18,
+      flex: 1,
+    },
+    chooseBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.gold,
+      paddingVertical: 14,
+      borderRadius: 14,
+      gap: 8,
+      marginTop: 6,
+    },
+    chooseBtnPopular: {
+      backgroundColor: colors.gold,
+    },
+    chooseBtnCurrent: {
+      backgroundColor: isDark ? '#1E293B' : '#E5E7EB',
+    },
+    chooseBtnLower: {
+      backgroundColor: isDark ? '#1E293B' : '#E5E7EB',
+      opacity: 0.5,
+    },
+    chooseBtnText: {
+      color: '#FFFFFF',
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    chooseBtnTextPopular: {
+      color: '#FFFFFF',
+      fontWeight: '800',
+    },
+    chooseBtnTextCurrent: {
+      color: colors.textSecondary,
+    },
+    suiteContainer: {
+      width: '100%',
+    },
+    suiteCard: {
+      maxWidth: 720,
+      alignSelf: 'center',
+    },
+    suiteHeaderBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      alignSelf: 'flex-start',
+      backgroundColor: isDark ? 'rgba(212, 175, 55, 0.15)' : 'rgba(197, 160, 89, 0.15)',
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 10,
+    },
+    suiteHeaderBadgeText: {
+      color: colors.gold,
+      fontSize: 11,
+      fontWeight: '700',
+    },
+    historyContainer: {
+      backgroundColor: isDark ? '#0F172A' : '#FFFFFF',
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 20,
+      padding: 20,
+      gap: 16,
+    },
+    historyHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    historyTitle: {
+      color: colors.text,
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    emptyHistoryBox: {
+      alignItems: 'center',
+      paddingVertical: 40,
+      gap: 10,
+    },
+    emptyHistoryText: {
+      color: colors.textSecondary,
+      fontSize: 14,
+    },
+    transactionCard: {
+      backgroundColor: isDark ? '#131D31' : '#FAF7F2',
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 14,
+      padding: 16,
+      gap: 10,
+    },
+    trxTopRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+    },
+    trxInvoiceNo: {
+      color: colors.gold,
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    trxTitle: {
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: '700',
+      marginTop: 2,
+    },
+    trxStatusBadge: {
+      backgroundColor: '#064E3B',
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 6,
+    },
+    trxStatusText: {
+      color: '#A7F3D0',
+      fontSize: 10,
+      fontWeight: '700',
+    },
+    trxDetailsRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingTop: 8,
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    trxMeta: {
+      color: colors.textSecondary,
+      fontSize: 12,
+    },
+    trxAmount: {
+      color: colors.text,
+      fontSize: 16,
+      fontWeight: '800',
+    },
+    trxActionRow: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingTop: 8,
+    },
+    trxPrintBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 8,
+    },
+    trxPrintBtnText: {
+      color: colors.gold,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+  });
+}

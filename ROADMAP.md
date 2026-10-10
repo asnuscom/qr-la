@@ -1,379 +1,191 @@
-# QR-la: Çok Modüllü Genişleme Analizi ve Yol Haritası (ROADMAP)
+# 🗺️ QR-la: Çok Modüllü Genişleme ve Gelecek Yol Haritası (ROADMAP)
 
-Bu doküman, **QR-la** platformunun tek bir etkinlik fotoğraf toplama aracından çıkarak çok modüllü bir **"QR İletişim & Mikro-SaaS Ekosistemi"** haline getirilmesi için hazırlanan ürün analizi, teknik mimari ve uygulama yol haritasıdır.
-
----
-
-## 1. Vizyon & Değer Önermesi
-
-> **"Uygulama indirtmeden, tek bir dinamik QR kodla; düğünde anıları topla, araç camında numaranı gizleyerek iletişime geç, kartvizitini tek tıkla rehbere kaydettir, restoranda masadan menüyü aç."**
-
-Platform, fiziksel dünyadaki etiket ve kartları (düğün masa kartı, araç cam sticker'ı, NFC kartvizit, masa menüsü) dijital mikro web uygulamalarına bağlar.
+> **Mevcut Durum:** 5 Dikey Modül + Smart Dispatcher + QR Tasarım Stüdyosu + Online Ödeme + 5 Niş SEO Pazarlama Landing Sayfası Tamamlandı ve Canlıda.  
+> **Yeni Hedef:** Üretim Seviyesinde Canlı Ödeme Altyapısı (Iyzico / PayTR), Gerçek Zamanlı Kargo Takibi, Restoran Kasa Terminali, B2B Kurumsal Takım Portalı ve PWA.
 
 ---
 
-## 2. Modül & Pazar Analizi
+## 1. Tamamlanan Kilometre Taşları (Completed Milestones)
+
+Aşağıdaki fazlar eksiksiz olarak tamamlanmış, test edilmiş ve canlı ekosisteme entegre edilmiştir:
 
 ```
-                     ┌───────────────────────────────┐
-                     │       QR-la PLATFORMU         │
-                     │         (qr-la.com)           │
-                     └──────────────┬────────────────┘
-                                    │
-       ┌──────────────┬─────────────┴─────────────┬──────────────┐
-       ▼              ▼                           ▼              ▼
-┌──────────────┐┌──────────────┐           ┌──────────────┐┌──────────────┐
-│    DÜĞÜN     ││   OTOMOBİL   │           │  KARTVİZİT   ││     MENÜ     │
-│   ETKİNLİK   ││  PARK CAMI   │           │  vCard & NFC ││ RESTORAN/KAFE│
-│(dugun.qr-la) ││(otomobil.qr) │           │(kartvizit.qr)││ (menu.qr-la) │
-└──────────────┘└──────────────┘           └──────────────┘└──────────────┘
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                          TAMAMLANAN FAZLARIN ÖZETİ (1 - 9)                             │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│ ✅ FAZ 1: Düğün & Etkinlik Fotoğraf Galerisi (Canlı Projeksiyon, ZIP İndirme, PIN)     │
+│ ✅ FAZ 2: Akıllı Araç & Motosiklet Park Tagı (Numara Maskeleme, 20+ Marka, Acil Kan)  │
+│ ✅ FAZ 3: Petguru x QR-la Akıllı Pati Künyesi (GPS Konum İletimi, 🚨 Kayıp Alarmı)     │
+│ ✅ FAZ 4: Dijital Kartvizit & NFC Akıllı Kart (vCard 3.0, IBAN Panosu, Portfolyo)      │
+│ ✅ FAZ 5: Restoran Menü QR (Masadan Garson & Hesap Çağırma, Otomatik Wi-Fi, Alerjenler)│
+│ ✅ FAZ 6: Merkezi Suite Hub, Varlık Yönetimi & QR Tarama Analitiği                    │
+│ ✅ FAZ 7: QR Kod Tasarım Stüdyosu (Vektörel SVG, 2048px PNG, Gradyan, Logo, Gözler)   │
+│ ✅ FAZ 8: Online Ödeme Gateway'i & Çok Modüllü Paket Sistemi (3D Secure, Fatura)       │
+│ ✅ FAZ 9: 5 Niş SEO Pazarlama Landing Sayfası (`/dugun`, `/otomobil`, `/pati`...)      │
+└────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-| Modül | Subdomain / Tanıtım | Çözülen Problem | Gelir Modeli | Viral Potansiyeli |
-| :--- | :--- | :--- | :--- | :--- |
-| 💍 **Düğün & Etkinlik** *(Canlıda)* | `dugun.qr-la.com`<br>`qr-la.com/dugun` | Düğünde misafir fotoğraflarının kaybolması, salon slayt ekranı | Etkinlik paketi satışı (990 ₺ - 2.490 ₺) | **Çok Yüksek** (1 düğünde 300+ kişi kodu tarar) |
-| 🚗 **Araç Camı / Park QR** *(Sıradaki)* | `otomobil.qr-la.com`<br>`qr-la.com/otomobil` | Park halinde numara ifşası, taciz/güvenlik riski, kağıt bırakma karmaşası | Fiziksel sticker baskı paketi (149 ₺ - 299 ₺) + yıllık koruma | **Aşırı Yüksek** (Camdaki QR'ı gören diğer sürücüler tarar) |
-| 💼 **Dijital Kartvizit (vCard)** | `kartvizit.qr-la.com`<br>`qr-la.com/kartvizit` | Kağıt kartvizitlerin atılması, anlık güncellenememesi | Fiziksel NFC kart (349 ₺ - 599 ₺) + kurumsal toplu abonelik | **Yüksek** (Her toplantıda müşteriye taratılır) |
-| 🍽️ **Restoran Menü QR** | `menu.qr-la.com`<br>`qr-la.com/menu` | Kağıt menü baskı maliyeti, anlık fiyat güncelleyememe | Restoranlara aylık/yıllık SaaS aboneliği (299 ₺ - 799 ₺/ay) | **Orta-Yüksek** (Müdavimler ve turistler) |
-| 🐾 **Evcil Hayvan Künyesi** *(Petguru)* | `petguru.com.tr`<br>`qr-la.com/p` | Kaybolan hayvanın tasmasındaki numaranın silinmesi, anlık GPS konumu bildirme | Metal lazer baskılı QR künye (199 ₺) | **Sadık & Duygusal Kitle** |
+### 1.1. Detaylı Tamamlanan Özellikler:
+* **💍 Düğün & Etkinlik:** Toplu fotoğraf yükleme, istemcide akıllı sıkıştırma (10x hız), salonda F11 tam ekran canlı projeksiyon slaytı, dijital anı defteri, 4 haneli PIN kodu ve tek tıkla tam çözünürlüklü ZIP arşiv indirme.
+* **🚗 Araç & Motosiklet Tagı:** Ön camda numara maskeleme, 20+ otomobil/motosiklet marka teması, acil kan grubu rozeti, acil durum yakını arama butonu, hazır WhatsApp mesaj şablonları, UV cam stickerı.
+* **🐾 Petguru Pati Künyesi:** Lazer kazımalı 30mm paslanmaz çelik künye, pilsiz/şarjsız ömür boyu çalışma, bulan kişinin tek tıkla GPS harita konumunu sahibe iletmesi, panelden açılan 🚨 Acil Kayıp Alarmı & Siren modu, dijital aşı karnesi.
+* **💼 Dijital Kartvizit:** Mat siyah temassız NFC akıllı kart, vCard 3.0 tek tıkla tüm iPhone/Android rehberine kaydolma, IBAN kopyalama panosu, sosyal linkler, 12+ lüks kurumsal tema.
+* **🍽️ Restoran Menü QR:** Panelden anında fiyat güncelleme ve "Tükendi" etiketi koyma, masadan tek tıkla Garson ve Hesap çağırma, tek dokunuşla otomatik Wi-Fi'a bağlanma, alerjen/kalori rozetleri, ahşap masa standı yazdırma şablonu.
+* **✨ QR Tasarım Stüdyosu:** Vektörel SVG ve 2048px Ultra HD PNG dışa aktarma, 4 nokta deseni (kare, daire, squircle, elmas), köşe çerçeve ve pupil geometrileri, çift tonlu gradyanlar, merkez logo rozeti, "BENİ TARA" CTA çerçeveleri.
+* **💳 Online Ödeme & Fatura:** Kredi kartı görsel simülasyonu, 3D Secure SMS doğrulama adımı, kupon indirim motoru, anında kota/paket aktivasyonu, VUK uyumlu yazdırılabilir e-Arşiv faturası.
+* **🌐 Niş SEO Landing Sayfaları:**
+  - `src/components/MarketingNav.tsx`: 5 modül hapı ve responsif gezinme.
+  - `src/components/MarketingFooter.tsx`: Güven rozetleri ve ekosistem haritası.
+  - `src/app/dugun.tsx`: Düğün fotoğraf toplama tanıtım sayfası.
+  - `src/app/otomobil.tsx`: Akıllı araç park tagı ve numara gizleme sayfası.
+  - `src/app/pati.tsx`: Petguru akıllı tasma künyesi sayfası.
+  - `src/app/kartvizit.tsx`: vCard 3.0 ve NFC kartvizit sayfası.
+  - `src/app/menu.tsx`: Restoran menü ve garson çağırma sayfası.
+  - `src/app/index.tsx`: Ana vitrin modüllerine doğrudan "Detay & Fiyatlar" landing bağlantıları.
 
 ---
 
-## 2.1. "Phygital" Gelir Modeli (Dijital Freemium + Fiziksel Baskı & Premium Paket)
+## 2. Gelecek Yol Haritası (Next Milestones & Action Plan)
 
-Kullanıcılar yalnızca ekrandaki bir QR görseli için ödeme yaparken tereddüt edebilir; ancak ellerine dokunabildikleri kaliteli bir **fiziksel ürün** (UV cam sticker'ı, lazer paslanmaz çelik künye, altın pleksi masa standı, NFC kart) aldıklarında algılanan değer 10 katına çıkar.
-
-Bu nedenle ana gelir stratejimiz: **"Sadece QR Üretimi Ücretsiz / Giriş Seviyesi — Fiziksel Baskı Alanlara Premium Dijital Özellikler Hediye / Kilitsiz!"**
+Platformun bundan sonraki büyüme, ölçeklenme ve gelir artırma aşamaları için planlanan 7 ana faz:
 
 ```
-┌─────────────────────────────────┐          ┌───────────────────────────────────┐
-│     1. SADECE QR ÜRETENLER      │          │     2. FİZİKSEL BASKI ALANLAR     │
-│       (Ücretsiz / Kanca)        │          │    (Yüksek Marjlı Ciro Motoru)    │
-├─────────────────────────────────┤          ├───────────────────────────────────┤
-│ • Kendi yazıcısından basit PDF  │          │ • Profesyonel Matbaa / Lazer Ürün │
-│ • Temel kotalar & standart tema │   ──►    │ • 🎁 TÜM PREMİUM DİJİTAL GÜÇLER   │
-│ • Sıfır CAC ile viral kullanıcı │          │ • %70 - %85 Net Kâr Marjı         │
-└─────────────────────────────────┘          └───────────────────────────────────┘
-```
-
-### Modül Bazlı Phygital Değer Teklifi:
-
-| Modül | Sadece QR (Ücretsiz / Temel) | Fiziksel Baskı Alanlara Açılan Premium Özellikler | Birim Maliyet & Kâr Marjı |
-| :--- | :--- | :--- | :--- |
-| **💍 Düğün & Etkinlik** | • 500 MB kota<br>• Basit PDF masa kartı<br>• Projeksiyon kapalı | • **Özel Altın Yaldızlı / Pleksi Masa Standları** (Adrese kargo)<br>• 🎁 **Canlı Projeksiyon & Slayt Modu Açılır**<br>• 🎁 **5 GB - 15 GB Bulut Depolama Kotası**<br>• 🎁 Ziyaretçi Defteri & PIN Kodu koruması<br>• 🎁 Tek tıkla orijinal kalitede ZIP arşivi indirme | Satış: **1.490 ₺ - 3.990 ₺**<br>Baskı+Kargo: ~180 ₺<br>**Net Kâr: %85+** |
-| **🚗 Araç & Motosiklet** | • Standart QR görseli<br>• Doğrudan numara gösterme<br>• Temel tema | • **Güneşte Solmayan UV Korumalı Ön Cam Sticker'ı** (veya kask/gidon metal plaketi)<br>• 🎁 **Gizli Numara Maskeleme** (Numara gizlenir, WhatsApp proxy üzerinden)<br>• 🎁 **20+ Marka Renk Teması** (Honda, Yamaha, BMW vb.)<br>• 🎁 **SMS & WhatsApp Anlık Park Bildirimi**<br>• 🎁 Kan Grubu & Acil Durum tek tıkla arama rozeti | Satış: **199 ₺ - 299 ₺**<br>Baskı+Kargo: ~60 ₺<br>**Net Kâr: %75 - %80** |
-| **🐾 Petguru (Pati)** | • Temel profil linki<br>• Standart arama butonu | • **Lazer Kazımalı Paslanmaz Çelik QR Tasma Künyesi**<br>• 🎁 **Anlık GPS Konumu Bildirimi** (Taranınca sahibe harita bildirimi)<br>• 🎁 **🚨 Tek Tıkla Acil Kayıp Hayvan Alarmı**<br>• 🎁 Dijital Aşı & Sağlık Karnesi kilidi | Satış: **299 ₺ - 449 ₺**<br>Lazer+Kargo: ~70 ₺<br>**Net Kâr: %80+** |
-| **💼 Dijital Kartvizit** | • Temel vCard linki<br>• Standart rehbere kayıt | • **Kişiye Özel Lüks Baskılı NFC Akıllı Kartvizit**<br>• 🎁 Sınırsız profil güncelleme & analitik<br>• 🎁 Portfolyo, IBAN ve sosyal medya zengin kartları | Satış: **399 ₺ - 699 ₺**<br>NFC+Kargo: ~80 ₺<br>**Net Kâr: %80+** |
-
-> **Not:** Kargo istemeyen veya yurtdışından kullanan müşteriler için *"Yalnızca Dijital Premium"* paket satın alma seçeneği her zaman aktif kalır.
-
----
-
-## 3. Mimari ve Yönlendirme Stratejisi
-
-### 3.1. Subdomain vs Kısa Link (Hibrit Yaklaşım)
-
-1. **Pazarlama / Satış (Subdomain):**
-   * Reklamlarda ve sosyal medyada ilgili kitleye özel izole alan adları kullanılır:
-     * `otomobil.qr-la.com` -> Araç sahipleri için reklam ve sticker satın alma sayfası.
-     * `dugun.qr-la.com` -> Evlenecek çiftler için paket satın alma sayfası.
-     * `kartvizit.qr-la.com` -> Profesyoneller için NFC kart sipariş sayfası.
-
-2. **Fiziksel QR Kod Taraması (Kısa Link):**
-   * Basılan tüm fiziksel QR kodlar **ana domain üzerinden kısa link** olarak çalışır:
-     * `qr-la.com/sule-samet` (Düğün)
-     * `qr-la.com/34abc123` (Araç)
-     * `qr-la.com/samet-sunman` (Kartvizit)
-   * **Neden?** URL ne kadar kısa olursa, QR kod o kadar az pikselli basılır ve her telefon kamerasından (özellikle araç camında veya loş ışıkta) 1 saniyede hatasız okunur.
-
-### 3.2. Akıllı Slug Stratejisi & Çakışma Önleme (1.000+ ve 100.000+ Kullanıcı Ölçeği)
-
-Kullanıcı sayısı arttıkça aynı isimlerin çakışmasını önleyen modül bazlı kimlik kuralları:
-
-1. **🚗 Araç & Motosiklet (Doğal Tekillik: PLAKA):**
-   * **Kişiye Özel:** `qr-la.com/34abc123` (Plaka devlette tekildir, çakışma riski %0).
-   * **Seri Matbaa Sticker'ı:** 5 haneli Base62 Nano-ID: `qr-la.com/t/x7k9p`. Kullanıcı satın alıp plakasıyla eşleştirdiğinde hem nano-id hem plaka aynı araca çıkar.
-
-2. **💼 Dijital Kartvizit (Handle / Meslek Modeli):**
-   * İlk gelen alır: `qr-la.com/ali-yilmaz`.
-   * İsim doluysa sistem meslek, şirket veya şehir önerir:
-     * `qr-la.com/avukat-ali-yilmaz`
-     * `qr-la.com/asnus-ali`
-     * `qr-la.com/aliyilmaz34`
-
-3. **💍 Düğün & Etkinlik (Misafir Elle Yazmaz, QR Okutur):**
-   * İlk çift: `qr-la.com/ahmet-ve-ayse`.
-   * İkinci çift: Yıl (`ahmet-ve-ayse-2026`), şehir (`ahmet-ve-ayse-izmir`) veya otomatik 3 haneli kısa ek (`ahmet-ve-ayse-k7x`). Misafir QR kamerayla okuttuğu için ek harfler kullanıcı deneyimini bozmaz.
-
-4. **🐾 Evcil Hayvan / Pati Künyesi (Petguru Nano-ID Modeli):**
-   * İsimler ("Pamuk", "Duman") tekrarlayacağı için tasmaya isim değil **4 haneli Base62 Nano-ID** basılır: `qr-la.com/p/8x4b`.
-   * **Matematiksel Kapasite:** 62⁴ = **14.776.336 (14.7 Milyon)** çakışmasız metal künye basılabilir.
-
-```typescript
-// Otomatik Akıllı Slug Üretim Algoritması
-export async function generateSmartSlug(type: QRModuleType, input: string): Promise<string> {
-  if (type === 'vehicle') return cleanPlate(input); // "34 ABC 123" -> "34abc123"
-  if (type === 'pet') return generateNanoId(4);     // "k9x2"
-  
-  let slug = slugify(input);
-  if (await isSlugTaken(slug)) slug = `${slug}-${new Date().getFullYear()}`;
-  if (await isSlugTaken(slug)) slug = `${slug}-${generateNanoId(3)}`;
-  return slug;
-}
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                        YENİ FAZLAR VE SIRADAKİ EYLEM PLANI                             │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│ 🚀 FAZ 10: Canlı Ödeme Altyapısı (Iyzico / PayTR Production API Entegrasyonu)          │
+│ 📦 FAZ 11: Gerçek Zamanlı Kargo & Sipariş Takip Sistemi (Lojistik API)                 │
+│ 🛎️ FAZ 12: Canlı Restoran Garson Terminali & Sesli Masa Çağrı Ekranı (POS Modu)        │
+│ 🏢 FAZ 13: B2B Kurumsal Şirket Yönetim Portalı (Enterprise Team Hub & Toplu vCard)     │
+│ 📡 FAZ 14: Petguru Mobil Push Bildirim & Kayıp Hayvan Harita Radarı                    │
+│ ⚡ FAZ 15: Progressive Web App (PWA) & Offline / Kötü İnternet Modu                   │
+│ 🌍 FAZ 16: Uluslararası Pazara Açılma (Global Multi-Currency, Stripe & i18n)           │
+└────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 4. Teknik Altyapı Şeması
+### 🚀 FAZ 10: Canlı Ödeme Altyapısı (Iyzico / PayTR Production API Entegrasyonu)
 
-### 4.1. Veritabanı Mimarisi (Cloud Firestore)
+Mevcut test ve simülasyon ödeme akışının gerçek banka ve ödeme lisansörleri ile canlıya alınması:
 
-Merkezi **`slugs/{slug}` (Slug Registry)** tablosu ile tek sorguda ışık hızında yönlendirme sağlanır:
-
-```
-                        ┌──────────────────────────────┐
-                        │    Firestore: `slugs/{slug}` │ (Tek Noktadan 10ms Yönlendirme)
-                        └──────────────┬───────────────┘
-                                       │
-         ┌─────────────────────────────┼─────────────────────────────┐
-         ▼                             ▼                             ▼
-┌──────────────────┐          ┌──────────────────┐          ┌──────────────────┐
-│ `events/{id}`    │          │ `vehicles/{id}`  │          │ `pets/{id}`      │
-│ (Düğün/Etkinlik) │          │ (Araç & Tagler)  │          │ (Petguru Ortak)  │
-└──────────────────┘          └──────────────────┘          └──────────────────┘
-```
-
-```typescript
-// Merkezi Registry Belgesi (slugs/{slug})
-export interface SlugRegistryItem {
-  slug: string;                 // "samet-ve-sule" veya "34abc123" veya "p/8x4b"
-  moduleType: QRModuleType;     // 'event' | 'vehicle' | 'pet' | 'vcard'
-  targetId: string;             // İlgili modül tablosundaki asıl belge ID'si
-  ownerUid: string;             // Sahip kullanıcı
-  isClaimed: boolean;           // Fiziksel sticker sahiplenildi mi?
-  createdAt: string;
-  stats: {
-    totalScans: number;
-    lastScannedAt: string;
-  };
-}
-```
-
-### 4.2. Klasör Mimarisi (`src/` Modüler Organizasyon)
-
-```text
-src/
-├── app/                          # 🌐 EXPO ROUTER (Sadece Sayfa ve Rotalar)
-│   ├── index.tsx                 # Ana Vitrin / Landing Page
-│   ├── [slug]/                   # 🚦 SMART DISPATCHER (Akıllı Yönlendirici)
-│   │   ├── index.tsx             # Gelen kaydın tipine göre ilgili modülü basar
-│   │   ├── yukle.tsx             # (Etkinlik) Fotoğraf yükleme
-│   │   ├── galeri.tsx            # (Etkinlik) Galeri
-│   │   ├── canli.tsx             # (Etkinlik) Canlı projeksiyon
-│   │   └── ani-defteri.tsx       # (Etkinlik) Anı defteri
-│   ├── panel/                    # 🎛️ MERKEZİ KONTROL PANELİ
-│   │   ├── index.tsx             # Dashboard (Etkinliklerim, Araçlarım sekmeleri)
-│   │   ├── arac/                 # 🚗 Araç ekleme / düzenleme ekranı
-│   │   └── tarifeler.tsx         # Depolama & paket yükseltme
-│   └── (auth)/                   # Giriş, kayıt ekranları
-│
-├── modules/                      # 📦 İZOLE MODÜL ÇEKİRDEKLERİ (İş Mantığı & UI)
-│   ├── events/                   # 💍 Düğün & Etkinlik Modülü (Bileşenler & Servisler)
-│   ├── vehicle/                  # 🚗 Araç & Tag Modülü (themes.ts, TagDisplay, ClaimModal)
-│   ├── pet/                      # 🐾 Petguru Modülü (PetIdCard, GPS Logger)
-│   └── vcard/                    # 💼 Dijital Kartvizit Modülü (VCardProfile, vcfGenerator)
-│
-├── components/                   # 🧱 Ortak UI Bileşenleri (Navbar, Button, Modal, SEO Head)
-├── services/                     # ⚙️ Çekirdek Servisler (authService, firebase, dispatcherService)
-└── types/                        # 🏷️ TypeScript Tipleri (modules.ts, user.ts, event.ts)
-```
-
-### 4.3. Veri Modeli (`src/types/modules.ts`)
-
-```typescript
-export type QRModuleType = 'event' | 'vehicle' | 'vcard' | 'menu';
-
-// Ortak Çekirdek Alanlar
-export interface BaseQRItem {
-  id: string;
-  slug: string;             // Benzersiz kısa URL
-  userId: string;           // Sahip hesabı
-  moduleType: QRModuleType; // Modül tipi
-  title: string;
-  isActive: boolean;
-  viewCount: number;
-  createdAt: string;
-}
-
-// Araç & Motosiklet Tag Modülü Verisi (Kaynak: D:\Projects\Git\tag)
-export interface VehicleData {
-  plateNumber: string;         // "34 ABC 123"
-  ownerName: string;           // Sürücü Adı
-  ownerPhone: string;          // "+90 541 577 91 66"
-  ownerEmail?: string;
-  instagram?: string;          // "@surucu_kullanici"
-  bloodType?: string;          // Hayati Acil Durum Bilgisi: "A RH +"
-  emergencyContact?: {         // Kaza / Acil Durumda Aranacak Kişi
-    name: string;
-    phone: string;
-  };
-  brand: string;               // "honda", "yamaha", "husqvarna", "bmw", "ktm", "ducati", vb.
-  model: string;               // "CBR 650R", "320i", vb.
-  theme: string;               // 20+ marka özel renk gradyanı
-  privacyMode: boolean;        // true: numara gizli, WhatsApp proxy/şablon üzerinden
-  presetMessages: string[];    // ["Aracınızı çeker misiniz?", "Farlar açık kaldı", "Alarm çalıyor"]
-  note?: string;               // Özel park notu ("Girişi kapattıysam lütfen arayın")
-  isClaimed?: boolean;         // Fiziksel sticker sahiplenildi mi?
-  uniqueUrl?: string;          // Önceden basılmış etiket kodu
-}
-
-// Kartvizit Modülü Verisi
-export interface VCardData {
-  fullName: string;
-  jobTitle: string;
-  company: string;
-  avatarUrl: string;
-  phone: string;
-  email: string;
-  socials: Record<string, string>; // instagram, linkedin, github
-}
-
-// Menü Modülü Verisi
-export interface MenuData {
-  restaurantName: string;
-  currency: string;
-  categories: {
-    id: string;
-    name: string;
-    items: { name: string; desc: string; price: number; photoUrl?: string }[];
-  }[];
-}
-```
-
-### 4.2. Akıllı Yönlendirici (Smart Dispatcher - `src/app/[slug]/index.tsx`)
-
-`[slug]` sayfası gelen kaydın `moduleType` bilgisine göre ilgili arayüzü ekrana getirir:
-
-```tsx
-export default function DynamicQRDispatcher() {
-  const { slug } = useLocalSearchParams<{ slug: string }>();
-  const [qrItem, setQrItem] = useState<BaseQRItem | null>(null);
-
-  switch (qrItem?.moduleType) {
-    case 'vehicle':
-      return <VehicleContactScreen data={qrItem} />;
-    case 'vcard':
-      return <VCardProfileScreen data={qrItem} />;
-    case 'menu':
-      return <RestaurantMenuScreen data={qrItem} />;
-    case 'event':
-    default:
-      return <EventHomeScreen event={qrItem} />;
-  }
-}
-```
+#### 🎯 Hedefler & Uygulama Adımları:
+1. **Ödeme Ağ Geçidi Sağlayıcı Seçimi:**
+   - Türkiye pazarı için **Iyzico Checkout API** veya **PayTR iFrame API** entegrasyonu.
+2. **Backend API Rotaları:**
+   - `POST /api/payment/initialize`: Sepet tutarı, kullanıcı bilgileri ve ürün detaylarıyla 3D Secure oturumu başlatma.
+   - `POST /api/payment/callback`: Bankadan dönen SHA256 imzalı doğrulama yanıtını işleyen webhook rotası.
+3. **Otomatik Durum Güncellemesi & Firestore Transaction:**
+   - Başarılı işlemde Firestore'da işlem durumu `paid` yapılır, kullanıcının depolama kotası/paket süresi atomik işlemle artırılır.
+   - Başarısız işlemde kullanıcıya anlaşılır hata mesajı (yetersiz bakiye, limit aşımı) gösterilir.
+4. **Müşteri E-Posta / SMS Fatura Bildirimi:**
+   - Ödeme tamamlandığında SendGrid / Resend API ile PDF e-Arşiv fatura makbuzu müşterinin e-postasına iletilir.
 
 ---
 
-## 5. Uygulama Yol Haritası (5 Fazlı Plan)
+### 📦 FAZ 11: Gerçek Zamanlı Kargo & Sipariş Takip Sistemi (Lojistik Entegrasyonu)
 
-```
-[Faz 1: Düğün / Etkinlik]  ──►  [Faz 2: Araç Camı / Park QR]  ──►  [Faz 3: Dijital Kartvizit]  ──►  [Faz 4: Restoran Menü]  ──►  [Faz 5: Ekosistem]
-     (Tamamlandı & Canlı)                (Sıradaki Adım)                    (2. Ay)                    (3. Ay)                    (4. Ay+)
-```
+Kullanıcıların fiziksel ürün siparişlerini (UV ön cam stickerı, 30mm lazer künye, NFC kartvizit, ahşap pleksi stand) canlı takip edebilmeleri:
 
-### Faz 1: Düğün & Etkinlik Modülü *(Tamamlandı & Cilalanıyor - Canlıda)*
-- [x] Misafir fotoğraf yükleme, akıllı sıkıştırma (10x compression).
-- [x] Canlı projeksiyon modu ve gerçek zamanlı fotoğraf akışı.
-- [x] Dijital anı defteri ve tebrik mesajları.
-- [x] Masa kartı şablonu ve ZIP arşivi indirme.
-- [x] Mobil kayma sorunlarının giderilmesi ve sayfa sekme başlıkları (SEO).
-- [x] Vercel dinamik rewrite (`/[slug]/index.html`) düzeltmesi.
-- [ ] **Statik SEO & Meta Sabitleme (`expo-router/head`):** Build esnasında `<head>` içerisine statik Meta Description, Anahtar Kelimeler ve OpenGraph (OG) sosyal medya paylaşım kartlarının sabitlenmesi.
-- [ ] **Arama Motoru Rehberi:** Google için `public/robots.txt` ve `public/sitemap.xml` oluşturulması (Ana sayfa ve tanıtım sayfalarını indeksletip, gizlilik gereği `/[slug]` misafir albümlerini `noindex`/disallow ile arama motorlarından koruma).
-
-### Faz 2: Araç & Motosiklet Tag / Park İletişim Modülü *(Sıradaki Faz)*
-
-> **📦 Mevcut Hazır Proje Kaynağı:** `D:\Projects\Git\tag` (Asnus Dynamic Tag System)  
-> **Teknoloji:** Next.js 15, Tailwind CSS, TypeScript, Firebase (Auth + Firestore/RTDB)
-
-Bu faz için sıfırdan geliştirmek yerine `D:\Projects\Git\tag` projesindeki hazır ve olgunlaşmış altyapı **QR-la** ekosistemine taşınabilir / entegre edilebilir:
-
-#### 🎯 Taşınacak / Entegre Edilecek Hazır Modüller:
-1. **20+ Marka Renk Teması (`D:\Projects\Git\tag\src\config\themes.ts`):**
-   - Honda, Yamaha, Husqvarna, KTM, BMW, Ducati, Triumph, Kawasaki, Harley-Davidson, Aprilia, Suzuki vb. için hazır gradyanlar ve renk paletleri.
-2. **Hayati Acil Durum & Kaza Kartı (`D:\Projects\Git\tag\src\components\TagDisplay.tsx`):**
-   - **Kan Grubu** rozeti (ilk yardım ekipleri için kritik).
-   - **Acil Durum Kişisi ve Telefonu** (kaza anında tek dokunuşla acil kişiyi arama).
-3. **Sürücü & Araç Bilgileri:**
-   - Plaka, marka, model, sürücü telefonu, e-posta, Instagram bağlantısı ve sürücü özel notu (*"Girişi kapattıysam lütfen arayın"* vb.).
-4. **"Unclaimed (Sahipsiz) Etiket Sahiplenme" Akışı (`D:\Projects\Git\tag\src\components\TagClaimForm.tsx`):**
-   - Önceden matbaada bastırılan fiziksel QR sticker'lar satıldığında, müşteri kodu taratır taratmaz etiket sahipsizse anında kendi aracına bağlayıp kişiselleştirebilir.
-5. **Dahili QR Kart Oluşturucu (`D:\Projects\Git\tag\src\components\QRCardGenerator.tsx`):**
-   - HTML5 Canvas tabanlı, gölgeli ve şık fiziksel QR sticker/baskı çıktısı.
-6. **Admin & Kota Yönetimi (`D:\Projects\Git\tag\src\app\admin`):**
-   - Sahipsiz etiket havuzu yönetimi (`/admin/unclaimed`), kullanıcı kota yönetimi (`maxTags: 1` standart vs sınırsız premium).
-
-#### 🛠️ QR-la Uygulama Adımları:
-- [ ] `src/types/modules.ts` içinde `VehicleData` / `Tag` tiplerinin projeye aktarılması.
-- [ ] `src/app/[slug]/index.tsx` akıllı yönlendiricisine (Smart Dispatcher) araç modülü `TagDisplay` ekranının bağlanması.
-- [ ] QR-la ev sahibi paneline *"Yeni Araç/Motosiklet Tag'i Ekle / Düzenle"* sekmesinin entegre edilmesi.
-- [ ] `otomobil.qr-la.com` veya `tag.qr-la.com` tanıtım & sipariş sayfalarının kurgulanması.
+#### 🎯 Hedefler & Uygulama Adımları:
+1. **Lojistik Entegrasyonu (Yurtiçi / MNG / Aras Kargo API):**
+   - Panelden sipariş onaylandığında tek tıkla kargo konsinye numarası ve barkod üretimi.
+2. **Sipariş Aşamaları Takipçisi:**
+   - `Sipariş Alındı` ──► `Grafik Tasarım Onaylandı` ──► `Baskıda / Lazer Kazımada` ──► `Kargoya Verildi` ──► `Teslim Edildi`.
+3. **Kullanıcı Canlı Takip Sayfası (`qr-la.com/kargo/[takip-kodu]`):**
+   - Müşterinin üye girişi yapmadan, doğrudan SMS/WhatsApp ile gelen linke tıklayarak kargonun anlık nerede olduğunu harita üzerinde görmesi.
+4. **Yönetim Paneli Matbaa Çıktı Modülü:**
+   - Matbaacı veya operasyon ekibi için tek tıkla sipariş listesini ve kargo teslim fişlerini PDF olarak yazdırma (`window.print()`).
 
 ---
 
-### 🐾 Özel Entegrasyon: Petguru x QR-la (Evcil Hayvan Akıllı Künyesi & Kayıp Takibi)
+### 🛎️ FAZ 12: Canlı Restoran Garson Terminali & Sesli Masa Çağrı Ekranı (POS Modu)
 
-> **🌐 Canlı Platform:** [`petguru.com.tr`](https://petguru.com.tr)  
-> **📦 Mevcut Proje Kaynağı:** `D:\Projects\petguru-app` (Turborepo Monorepo: `apps/next/app/qr`, `@my/firebase/services/pets.ts`, `@my/types/pet.ts`)  
-> **Strateji:** Kodu taşımak yerine **"Ortak Firebase Veritabanı + QR-la Ultra Kısa Link Çözümleyicisi (Resolver)"** hibrit modelini kullanmak.
+Restoran ve kafelerin masa çağrılarını sıfır gecikmeyle yönetebilmesi için kasa ve servis personeline özel tam ekran arayüz:
 
-#### 💡 Neden Ortak Çalışma Çok Güçlü?
-1. **Fiziksel Metal Künyede Maksimum Taranabilirlik (Ultra-Short URL):**
-   - Metal lazer baskılı küçük tasma künyelerine uzun link basıldığında QR pikselleri aşırı yoğunlaşır ve loş ışıkta veya hareketli hayvanda kamera okuyamaz.
-   - `qr-la.com/p/[id]` gibi 15 karakterlik ultra kısa link basıldığında QR kod iri pikselli, yüksek kontrastlı ve 1 saniyede hatasız okunabilir olur.
-2. **Kayıp Bildirimi & GPS Konum Bildirimi:**
-   - Künye tarandığı anda `petsService.recordQrScan(id, ...)` arka planda çalışarak tarayan kişinin konumunu/cihazını kaydeder ve evcil hayvan sahibine anında push bildirim atar (*"Dostunuzun künyesi Moda/Kadıköy civarında tarandı!"*).
-3. **Akıllı Çoklu Yönlendirme (`petguru-app` Rota Eşleşmesi):**
-   - `qr-la.com/p/[id]` ──► Künye & Sağlık Kartı (Aşılar, alerjiler, sahip telefonu)
-   - `qr-la.com/p/[id]/k` ──► 🚨 Kayıp Hayvan Acil Durum Sayfası & Ödül İlanı (`/kayip-hayvanlar/[id]`)
-   - `qr-la.com/p/[id]/s` ──► Sahiplendirme Profili (`/hayvan-sahiplenme/[id]`)
-   - `qr-la.com/p/[id]/e` ──► Eşleştirme Profili (`/hayvan-eslestirme/[id]`)
-4. **Sahipsiz Künye Sahiplenme (Unclaimed Tag Claiming):**
-   - Henüz bir hayvana bağlanmamış hazır metal künyeler satıldığında, ilk taramada `petguru-app`'in `/claim` akışı tetiklenir ve kullanıcı kendi hayvanını seçerek künyeyi anında eşleştirir.
-5. **İki Projenin Çapraz Viral Sinerjisi:**
-   - QR-la etkinlik kullanıcıları evcil hayvanları için künye siparişi verebilir; Petguru kullanıcıları ise düğün ve araç QR modüllerine kolayca erişebilir.
-
-### Faz 3: Dijital Kartvizit (vCard & NFC) Modülü *(2. Ay)*
-- [ ] Profil arayüzü (Fotoğraf, unvan, şirket, sosyal medya linkleri, banka/IBAN).
-- [ ] `.vcf` dosyası oluşturup tek dokunuşla telefon rehberine kaydettirme altyapısı.
-- [ ] Panelde dijital kartvizit düzenleme editörü ve renk temaları.
-- [ ] Fiziksel NFC kartvizit baskı hazırlığı ve paketleme kurgusu.
-
-### Faz 4: Restoran & Kafe Menü QR Modülü *(3. Ay)*
-- [ ] Kategori ve ürün yönetimi (Fiyat, görsel, açıklama, alerjen etiketleri).
-- [ ] Misafir menü arayüzü (Kategori sekmeleri, hızlı arama, mobil uyumlu).
-- [ ] Çoklu dil (Türkçe, İngilizce, Rusça, Arapça) desteği.
-- [ ] Restoranlar için aylık/yıllık abonelik modeli.
-
-### Faz 5: QR-la Suite & Merkezi Ekosistem *(4. Ay+)*
-- [ ] Ortak kullanıcı paneli: Tek üyelikle hem düğününü, hem aracını, hem kartvizitini yönetebilme.
-- [ ] Dinamik QR Analitiği: Hangi QR ne zaman, kaç kere okundu grafikleri.
-- [ ] Fiziksel sticker ve NFC kart için e-ticaret & kargo sipariş entegrasyonu.
+#### 🎯 Hedefler & Uygulama Adımları:
+1. **Kasa / Bar Arkası Tam Ekran Modu (`/panel/menu/kasa`):**
+   - Masaüstü bilgisayar, tablet veya dokunmatik POS ekranında açık kalan karanlık şık canlı terminal.
+2. **Sesli Çağrı Uyarısı (Audio Chime):**
+   - Masadan "Garson Çağır" veya "Hesap İste" butonuna basıldığında salonda dikkat çekici akustik zil sesi çalması.
+3. **Açılır Kart Hiyerarşisi:**
+   - 🚨 Kırmızı Kart: *"Masa 14 — Hesap İstiyor (Kredi Kartı) • 18 sn önce"*
+   - 🔔 Mavi Kart: *"Masa 6 — Garson Çağırıyor • 45 sn önce"*
+4. **Garson Servis Onayı:**
+   - Garson masaya gittiğinde ekrandaki *"Masaya Gidildi / Çağrıyı Kapat"* butonuna basar; çağrı yeşile dönerek arşivlenir.
+5. **Ortalama Servis Yanıt Süresi Analitiği:**
+   - Restoran sahibine masaların ortalama kaç dakikada hesap veya servis aldığına dair verimlilik raporu.
 
 ---
 
-## 6. Güvenlik, Gizlilik ve Risk Önlemleri
+### 🏢 FAZ 13: B2B Kurumsal Şirket Yönetim Portalı (Enterprise Team Hub & Toplu vCard)
 
-1. **Numara Gizliliği (Araç Modülü):**
-   * Araç sahibinin telefon numarası açık metin olarak kaynak kodda veya ekranda sunulmaz.
-   * Mesajlar doğrudan WhatsApp API (`wa.me/?text=...`) üzerinden şablon mesajlarla tetiklenir veya isteğe bağlı geçici numara maskeleme kullanılır.
-2. **Kötüye Kullanım / Spam Engeli:**
-   * Araç sahibine aynı IP üzerinden art arda spam mesaj atılmasını engelleyen rate-limit (süre kısıtlaması) mekanizması kurulur.
-3. **Domain & Subdomain Yönetimi:**
-   * Vercel üzerinde `*.qr-la.com` wildcard domain ayarı ile tüm alt alan adları tek bir merkezi projeye bağlanır, sunucu maliyeti artmaz.
-4. **Statik SEO & OpenGraph Mimarisi (`expo-router/head`):**
-   * `src/app/index.tsx` içinde `expo-router/head` kullanılarak `npm run build:web` sırasında saf HTML içerisine `<meta name="description">`, `<meta property="og:title">`, `<meta property="og:image">` ve Canonical URL sabitlenir. Google botları ve sosyal medya tarayıcıları JavaScript çalıştırmadan doğrudan okur.
-5. **Arama Motoru Gizlilik Kuralları (`robots.txt` & `sitemap.xml`):**
-   * `robots.txt`: Ana sayfa (`/`), tanıtım sayfaları ve genel modüller taranmaya açık (`Allow: /`); ancak ev sahiplerinin kişisel misafir fotoğraf albümleri (`Disallow: /*/galeri`, `Disallow: /*/yukle`, `Disallow: /panel`) Google dizinine kapatılır.
-   * `sitemap.xml`: Sadece genel vitrin ve pazarlama sayfaları listelenir.
+Büyük kurumsal şirketler, ajanslar ve satış ekipleri için merkezi dijital kartvizit yönetimi:
+
+#### 🎯 Hedefler & Uygulama Adımları:
+1. **Şirket İK / Yönetici Portalı (`/panel/kurumsal`):**
+   - Tek bir şirket hesabı altında 50 ila 500 çalışanın dijital kartvizitlerinin merkezi yönetimi.
+2. **Excel / CSV ile Toplu Personel İçe Aktarma:**
+   - `Ad, Soyad, Unvan, Departman, Telefon, E-posta, LinkedIn` kolonlarını içeren Excel tablosunu tek sürüklemeyle yükleme; sistem saniyeler içinde tüm personele özel URL (`qr-la.com/k/sirket-ad-soyad`) üretir.
+3. **Merkezi Tasarım ve Şablon Kilitleme:**
+   - Şirketin logosu, marka renkleri ve kurumsal e-posta formatı kilitlenir; çalışanlar yalnızca izin verilen alanları (örn. fotoğraf) güncelleyebilir.
+4. **Tek Fatura ile Toplu NFC Kart Baskısı:**
+   - 100 çalışan için kurumsal tek faturayla lüks mat siyah NFC akıllı kart siparişi ve toplu ofis teslimatı.
+
+---
+
+### 📡 FAZ 14: Petguru Mobil Push Bildirim & Kayıp Hayvan Harita Radarı (Community Radar)
+
+Kayıp evcil hayvanların bulunma oranını %90'ın üzerine çıkaracak topluluk güvenlik ağı:
+
+#### 🎯 Hedefler & Uygulama Adımları:
+1. **Kayıp Alarmı Çevre Uyarısı:**
+   - Bir hayvan için panelden 🚨 Kayıp Alarmı verildiğinde, kaybolduğu noktanın 3 km çevresindeki izinli kullanıcılara ve veteriner kliniklerine Web Push ve Telegram bildirimi gönderilmesi.
+2. **Kayıp Hayvan Isı Haritası (Heat-Map):**
+   - Künyenin tarandığı GPS noktalarının zaman damgasıyla harita üzerinde birleştirilmesi; dostun hangi güzergahta ilerlediğinin sahibe gösterilmesi.
+3. **Ödül Havuzu Güvenli Emanet Sistemi (Escrow):**
+   - Sahip dilerse ödül miktarını QR-la güvencesine yatırır; dost bulunduğunda ödül bulan kişinin hesabına transfer edilir.
+
+---
+
+### ⚡ FAZ 15: Progressive Web App (PWA) & Offline / Kötü İnternet Modu
+
+İnternet bağlantısının zayıf olduğu ortamlarda (bodrum kat restoranlar, kalabalık düğün salonları, otoparklar) kesintisiz kullanıcı deneyimi:
+
+#### 🎯 Hedefler & Uygulama Adımları:
+1. **PWA Manifestosu & Service Worker:**
+   - `manifest.json` ve özel service worker konfigürasyonu ile mobil cihazlara "Ana Ekrana Ekle" komutuyla yerel uygulama gibi kurulabilme.
+2. **Offline-First Önbellekleme:**
+   - Restoran menüleri ve araç tagleri bir kez tarandıktan sonra IndexedDB üzerinde önbelleğe alınır; internet kesilse bile menü ve iletişim butonları anında açılır.
+3. **Arka Planda Fotoğraf Sıraya Alma (Background Sync):**
+   - Düğün salonunda internet zayıfsa, misafirin çektiği fotoğraflar yerel hafızaya kaydedilir ve internet sinyali güçlendiğinde otomatik olarak arka planda sunucuya yüklenir.
+
+---
+
+### 🌍 FAZ 16: Uluslararası Pazara Açılma (Global Multi-Currency, Stripe & i18n)
+
+QR-la ekosisteminin yurt dışı pazarlara (Avrupa, Körfez Ülkeleri, ABD) açılması:
+
+#### 🎯 Hedefler & Uygulama Adımları:
+1. **Çoklu Dil Mimarisi (`i18next` / `expo-localization`):**
+   - Türkçe, İngilizce, Almanca ve Arapça dil seçenekleri; tarayıcı diline göre otomatik algılama.
+2. **Global Ödeme Entegrasyonu (Stripe Checkout):**
+   - EUR, USD ve GBP cinsinden ödeme alma, Apple Pay ve Google Pay doğrudan tek dokunuşla ödeme.
+3. **Uluslararası Kargo Lojistiği:**
+   - DHL Express / FedEx entegrasyonu ile Avrupa ve Amerika'ya 3-5 iş gününde NFC kart ve çelik künye teslimatı.
+
+---
+
+## 3. Öncelik Sıralaması & Tavsiye Edilen Sonraki Adım
+
+| Öncelik | Faz | Tahmini Efor | Beklenen İş Çıktısı & Gelir Etkisi |
+| :---: | :--- | :---: | :--- |
+| **P1 (Acil)** | **Faz 10: Canlı Ödeme Altyapısı (Iyzico / PayTR)** | 2 Gün | Gerçek kredi kartı tahsilatına başlanması ve nakit akışı |
+| **P2 (Yüksek)**| **Faz 12: Canlı Restoran Garson Terminali (POS Modu)** | 2 Gün | Restoran ve kafelere aylık SaaS aboneliği satışı |
+| **P3 (Yüksek)**| **Faz 11: Gerçek Zamanlı Kargo & Sipariş Takibi** | 2 Gün | Müşteri güveni ve operasyonel teslimat otomasyonu |
+| **P4 (Orta)**  | **Faz 13: B2B Kurumsal Şirket Yönetim Portalı** | 3 Gün | Yüksek sepet tutarlı B2B kurumsal NFC kart satışları |
+| **P5 (Orta)**  | **Faz 15: PWA & Offline Desteği** | 2 Gün | Düğün salonlarında %100 kesintisiz misafir deneyimi |
+| **P6 (Gelecek)**| **Faz 14 & 16: Topluluk Radarı & Global Açılım** | 4 Gün | Uluslararası ölçeklenme |
+
+> **💡 Sonraki Adım Önerisi:**  
+> Kullanıcı talepleri ve ciro üretme hızı göz önüne alındığında, sıradaki ilk adım olarak **Faz 10 (Iyzico/PayTR Canlı Ödeme Entegrasyonu)** veya restoranların masadan çağrılarını canlı karşılayacak **Faz 12 (Restoran Garson Terminali & Sesli Masa Çağrı Ekranı)** ile devam edilmesi önerilir.

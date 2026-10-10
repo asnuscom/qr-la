@@ -143,3 +143,5 @@ export interface AuthState {
   isAuthenticated: boolean;
 }
 
+export * from './modules';
+
