@@ -102,6 +102,7 @@ export default function SmartQRDispatcherScreen() {
       const ev = await eventService.getEvent(slug);
       if (ev) {
         setEvent(ev);
+        eventService.recordView(slug);
         setVehicle(null);
         setPet(null);
         setVcard(null);

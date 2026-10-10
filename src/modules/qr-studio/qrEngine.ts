@@ -74,7 +74,8 @@ export function generateCustomQRSvg(config: QRStudioConfig, targetSize = 600): s
   const gradId = `qrGrad_${Math.random().toString(36).substring(2, 9)}`;
   let gradDefs = '';
   let fillPaint = config.primaryColor;
-  let eyePaint = config.eyeColor || config.primaryColor;
+  let eyeFramePaint = config.eyeFrameColor || config.eyeColor || config.primaryColor;
+  let eyePupilPaint = config.eyePupilColor || config.eyeColor || config.primaryColor;
 
   if (config.colorMode === 'gradient') {
     let x1 = '0%', y1 = '0%', x2 = '100%', y2 = '100%';
@@ -92,8 +93,11 @@ export function generateCustomQRSvg(config: QRStudioConfig, targetSize = 600): s
       </defs>
     `;
     fillPaint = `url(#${gradId})`;
-    if (!config.eyeColor) {
-      eyePaint = `url(#${gradId})`;
+    if (!config.eyeColor && !config.eyeFrameColor) {
+      eyeFramePaint = `url(#${gradId})`;
+    }
+    if (!config.eyeColor && !config.eyePupilColor) {
+      eyePupilPaint = `url(#${gradId})`;
     }
   }
 
@@ -155,7 +159,7 @@ export function generateCustomQRSvg(config: QRStudioConfig, targetSize = 600): s
     if (config.eyeFrameStyle === 'circle') {
       const radius = 3 * cellSize;
       eyeElements.push(`
-        <circle cx="${centerPupilX.toFixed(2)}" cy="${centerPupilY.toFixed(2)}" r="${radius.toFixed(2)}" fill="none" stroke="${eyePaint}" stroke-width="${cellSize.toFixed(2)}" />
+        <circle cx="${centerPupilX.toFixed(2)}" cy="${centerPupilY.toFixed(2)}" r="${radius.toFixed(2)}" fill="none" stroke="${eyeFramePaint}" stroke-width="${cellSize.toFixed(2)}" />
       `);
     } else if (config.eyeFrameStyle === 'rounded') {
       const frameX = ox + cellSize / 2;
@@ -163,7 +167,7 @@ export function generateCustomQRSvg(config: QRStudioConfig, targetSize = 600): s
       const frameDim = 6 * cellSize;
       const cornerR = (1.8 * cellSize).toFixed(2);
       eyeElements.push(`
-        <rect x="${frameX.toFixed(2)}" y="${frameY.toFixed(2)}" width="${frameDim.toFixed(2)}" height="${frameDim.toFixed(2)}" rx="${cornerR}" fill="none" stroke="${eyePaint}" stroke-width="${cellSize.toFixed(2)}" />
+        <rect x="${frameX.toFixed(2)}" y="${frameY.toFixed(2)}" width="${frameDim.toFixed(2)}" height="${frameDim.toFixed(2)}" rx="${cornerR}" fill="none" stroke="${eyeFramePaint}" stroke-width="${cellSize.toFixed(2)}" />
       `);
     } else {
       // Square frame
@@ -171,7 +175,7 @@ export function generateCustomQRSvg(config: QRStudioConfig, targetSize = 600): s
       const frameY = oy + cellSize / 2;
       const frameDim = 6 * cellSize;
       eyeElements.push(`
-        <rect x="${frameX.toFixed(2)}" y="${frameY.toFixed(2)}" width="${frameDim.toFixed(2)}" height="${frameDim.toFixed(2)}" fill="none" stroke="${eyePaint}" stroke-width="${cellSize.toFixed(2)}" />
+        <rect x="${frameX.toFixed(2)}" y="${frameY.toFixed(2)}" width="${frameDim.toFixed(2)}" height="${frameDim.toFixed(2)}" fill="none" stroke="${eyeFramePaint}" stroke-width="${cellSize.toFixed(2)}" />
       `);
     }
 
@@ -179,7 +183,7 @@ export function generateCustomQRSvg(config: QRStudioConfig, targetSize = 600): s
     if (config.eyePupilStyle === 'circle') {
       const pupilR = (1.5 * cellSize).toFixed(2);
       eyeElements.push(`
-        <circle cx="${centerPupilX.toFixed(2)}" cy="${centerPupilY.toFixed(2)}" r="${pupilR}" fill="${eyePaint}" />
+        <circle cx="${centerPupilX.toFixed(2)}" cy="${centerPupilY.toFixed(2)}" r="${pupilR}" fill="${eyePupilPaint}" />
       `);
     } else if (config.eyePupilStyle === 'diamond') {
       const pTop = `${centerPupilX.toFixed(2)},${(oy + 2 * cellSize).toFixed(2)}`;
@@ -187,7 +191,7 @@ export function generateCustomQRSvg(config: QRStudioConfig, targetSize = 600): s
       const pBottom = `${centerPupilX.toFixed(2)},${(oy + 5 * cellSize).toFixed(2)}`;
       const pLeft = `${(ox + 2 * cellSize).toFixed(2)},${centerPupilY.toFixed(2)}`;
       eyeElements.push(`
-        <polygon points="${pTop} ${pRight} ${pBottom} ${pLeft}" fill="${eyePaint}" />
+        <polygon points="${pTop} ${pRight} ${pBottom} ${pLeft}" fill="${eyePupilPaint}" />
       `);
     } else if (config.eyePupilStyle === 'rounded') {
       const px = ox + 2 * cellSize;
@@ -195,7 +199,7 @@ export function generateCustomQRSvg(config: QRStudioConfig, targetSize = 600): s
       const pDim = 3 * cellSize;
       const pr = (0.8 * cellSize).toFixed(2);
       eyeElements.push(`
-        <rect x="${px.toFixed(2)}" y="${py.toFixed(2)}" width="${pDim.toFixed(2)}" height="${pDim.toFixed(2)}" rx="${pr}" fill="${eyePaint}" />
+        <rect x="${px.toFixed(2)}" y="${py.toFixed(2)}" width="${pDim.toFixed(2)}" height="${pDim.toFixed(2)}" rx="${pr}" fill="${eyePupilPaint}" />
       `);
     } else {
       // Square pupil
@@ -203,7 +207,7 @@ export function generateCustomQRSvg(config: QRStudioConfig, targetSize = 600): s
       const py = oy + 2 * cellSize;
       const pDim = 3 * cellSize;
       eyeElements.push(`
-        <rect x="${px.toFixed(2)}" y="${py.toFixed(2)}" width="${pDim.toFixed(2)}" height="${pDim.toFixed(2)}" fill="${eyePaint}" />
+        <rect x="${px.toFixed(2)}" y="${py.toFixed(2)}" width="${pDim.toFixed(2)}" height="${pDim.toFixed(2)}" fill="${eyePupilPaint}" />
       `);
     }
   });

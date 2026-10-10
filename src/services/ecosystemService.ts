@@ -4,6 +4,7 @@ import { petService } from './petService';
 import { vcardService } from './vcardService';
 import { menuService } from './menuService';
 import { eventService } from './eventService';
+import { authService } from './authService';
 
 export interface EcosystemAsset {
   id: string;
@@ -181,125 +182,163 @@ export const ecosystemService = {
   /**
    * Kullanıcının tüm modüllerdeki aktif varlıklarını tek bir listede toplar
    */
-  async getAllUserAssets(userId: string = 'demo-user'): Promise<EcosystemAsset[]> {
+  async getAllUserAssets(userId?: string): Promise<EcosystemAsset[]> {
     const assets: EcosystemAsset[] = [];
+    const currentUser = authService.getState().user;
+    const activeUserId = userId || currentUser?.uid || '';
 
     // 1. Events
     try {
-      // Load active or demo event
-      const eventSlug = appStorage.getItem('qr_la_active_event_slug') || 'samet-ve-sule';
-      const ev = await eventService.getEvent(eventSlug);
-      if (ev) {
-        assets.push({
-          id: ev.id,
-          moduleType: 'event',
-          title: ev.title,
-          subtitle: `${ev.eventType === 'dugun' ? 'Düğün' : 'Etkinlik'} • ${ev.eventDate || '2026'}`,
-          slug: ev.slug,
-          liveUrl: `/${ev.slug}`,
-          editRoute: `/panel/etkinlik?slug=${ev.slug}`,
-          icon: 'heart',
-          color: '#C5A059',
-          viewCount: (ev.storage?.photoCount || 0) * 12 + 180,
-          status: 'active',
-          statusLabel: 'Yayında',
-          badge: `${ev.storage?.photoCount || 0} Fotoğraf`,
-          createdAt: ev.createdAt,
-        });
+      const slugsToLoad: string[] = [];
+
+      if (currentUser && currentUser.events && currentUser.events.length > 0) {
+        for (const s of currentUser.events) {
+          if (s && s !== 'demo-panel' && !slugsToLoad.includes(s)) slugsToLoad.push(s);
+        }
+      } else {
+        const activeSlug = appStorage.getItem('qr_la_active_event_slug');
+        if (activeSlug && activeSlug !== 'demo-panel' && !slugsToLoad.includes(activeSlug)) {
+          slugsToLoad.push(activeSlug);
+        }
+        if (slugsToLoad.length === 0) {
+          slugsToLoad.push('samet-ve-sule');
+        }
       }
-    } catch {}
+
+      for (const s of slugsToLoad) {
+        try {
+          const ev = await eventService.getEvent(s);
+          if (ev) {
+            const typeLabel =
+              ev.eventType === 'dugun' ? 'Düğün' : ev.eventType === 'nisan' ? 'Nişan' : 'Etkinlik';
+            assets.push({
+              id: ev.id,
+              moduleType: 'event',
+              title: ev.title,
+              subtitle: `${typeLabel} • ${
+                ev.eventDate ? new Date(ev.eventDate).toLocaleDateString('tr-TR') : '2026'
+              }`,
+              slug: ev.slug,
+              liveUrl: `/${ev.slug}`,
+              editRoute: `/panel/etkinlik?slug=${ev.slug}`,
+              icon: 'heart',
+              color: '#C5A059',
+              viewCount: ev.viewCount || 0,
+              status: 'active',
+              statusLabel: 'Yayında',
+              badge: `${ev.storage?.tier ? ev.storage.tier.toUpperCase() : 'VIP'} • ${
+                ev.storage?.photoCount || 0
+              } Fotoğraf`,
+              createdAt: ev.createdAt,
+            });
+          }
+        } catch (e) {
+          console.warn('Failed loading event for asset list:', s, e);
+        }
+      }
+    } catch (err) {
+      console.warn('Error loading ecosystem events:', err);
+    }
 
     // 2. Vehicles
-    try {
-      const vehicles = await vehicleService.getUserVehicles(userId);
-      for (const v of vehicles) {
-        assets.push({
-          id: v.plateNumber,
-          moduleType: 'vehicle',
-          title: v.plateNumber,
-          subtitle: `${v.brand ? v.brand.toUpperCase() : 'Araç'} ${v.model || ''}`,
-          slug: v.plateNumber.toLowerCase().replace(/\s+/g, ''),
-          liveUrl: `/${v.plateNumber.toLowerCase().replace(/\s+/g, '')}`,
-          editRoute: '/panel/arac',
-          icon: 'car-sport',
-          color: '#0284C7',
-          viewCount: 260,
-          status: 'active',
-          statusLabel: 'Ön Camda Aktif',
-          badge: v.bloodType ? `Kan: ${v.bloodType}` : 'Park Tagı',
-          createdAt: new Date().toISOString(),
-        });
-      }
-    } catch {}
+    if (activeUserId) {
+      try {
+        const vehicles = await vehicleService.getUserVehicles(activeUserId);
+        for (const v of vehicles) {
+          assets.push({
+            id: v.plateNumber,
+            moduleType: 'vehicle',
+            title: v.plateNumber,
+            subtitle: `${v.brand ? v.brand.toUpperCase() : 'Araç'} ${v.model || ''}`,
+            slug: v.plateNumber.toLowerCase().replace(/\s+/g, ''),
+            liveUrl: `/${v.plateNumber.toLowerCase().replace(/\s+/g, '')}`,
+            editRoute: '/panel/arac',
+            icon: 'car-sport',
+            color: '#0284C7',
+            viewCount: v.viewCount || 0,
+            status: 'active',
+            statusLabel: 'Ön Camda Aktif',
+            badge: v.bloodType ? `Kan: ${v.bloodType}` : 'Park Tagı',
+            createdAt: new Date().toISOString(),
+          });
+        }
+      } catch {}
+    }
 
     // 3. Pets
-    try {
-      const pets = await petService.getUserPets(userId);
-      for (const p of pets) {
-        assets.push({
-          id: p.id,
-          moduleType: 'pet',
-          title: p.name,
-          subtitle: `${p.breed || 'Dostumuz'} • ${p.species === 'cat' ? 'Kedi' : 'Köpek'}`,
-          slug: `p/${p.slug}`,
-          liveUrl: `/p/${p.slug}`,
-          editRoute: '/panel/pati',
-          icon: 'paw',
-          color: '#10B981',
-          viewCount: p.scanLogs?.length ? p.scanLogs.length * 15 + 40 : 120,
-          status: p.lostInfo?.isLost ? 'warning' : 'active',
-          statusLabel: p.lostInfo?.isLost ? '🚨 KAYIP ALARMI' : 'Tasmada Güvende',
-          badge: p.microchipNumber ? 'Mikroçipli' : 'Künye Aktif',
-          createdAt: p.createdAt,
-        });
-      }
-    } catch {}
+    if (activeUserId) {
+      try {
+        const pets = await petService.getUserPets(activeUserId);
+        for (const p of pets) {
+          assets.push({
+            id: p.id,
+            moduleType: 'pet',
+            title: p.name,
+            subtitle: `${p.breed || 'Dostumuz'} • ${p.species === 'cat' ? 'Kedi' : 'Köpek'}`,
+            slug: `p/${p.slug}`,
+            liveUrl: `/p/${p.slug}`,
+            editRoute: '/panel/pati',
+            icon: 'paw',
+            color: '#10B981',
+            viewCount: p.viewCount || (p.scanLogs ? p.scanLogs.length : 0),
+            status: p.lostInfo?.isLost ? 'warning' : 'active',
+            statusLabel: p.lostInfo?.isLost ? '🚨 KAYIP ALARMI' : 'Tasmada Güvende',
+            badge: p.microchipNumber ? 'Mikroçipli' : 'Künye Aktif',
+            createdAt: p.createdAt,
+          });
+        }
+      } catch {}
+    }
 
     // 4. vCards
-    try {
-      const vcards = await vcardService.getUserCards(userId);
-      for (const vc of vcards) {
-        assets.push({
-          id: vc.id,
-          moduleType: 'vcard',
-          title: vc.fullName,
-          subtitle: `${vc.jobTitle || 'Profesyonel'} • ${vc.company || 'QR-la'}`,
-          slug: vc.slug,
-          liveUrl: `/${vc.slug}`,
-          editRoute: '/panel/kartvizit',
-          icon: 'card',
-          color: '#F59E0B',
-          viewCount: vc.viewCount || 420,
-          status: 'active',
-          statusLabel: 'NFC & vCard Aktif',
-          badge: `${vc.vcfDownloads || 24} Rehber Kaydı`,
-          createdAt: vc.createdAt,
-        });
-      }
-    } catch {}
+    if (activeUserId) {
+      try {
+        const vcards = await vcardService.getUserCards(activeUserId);
+        for (const vc of vcards) {
+          assets.push({
+            id: vc.id,
+            moduleType: 'vcard',
+            title: vc.fullName,
+            subtitle: `${vc.jobTitle || 'Profesyonel'} • ${vc.company || 'QR-la'}`,
+            slug: vc.slug,
+            liveUrl: `/${vc.slug}`,
+            editRoute: '/panel/kartvizit',
+            icon: 'card',
+            color: '#F59E0B',
+            viewCount: vc.viewCount || 0,
+            status: 'active',
+            statusLabel: 'NFC & vCard Aktif',
+            badge: `${vc.vcfDownloads || 0} Rehber Kaydı`,
+            createdAt: vc.createdAt,
+          });
+        }
+      } catch {}
+    }
 
     // 5. Restaurants
-    try {
-      const rests = await menuService.getUserRestaurants(userId);
-      for (const r of rests) {
-        assets.push({
-          id: r.id,
-          moduleType: 'menu',
-          title: r.name,
-          subtitle: `${r.cuisine} • ${r.tableCount} Masa`,
-          slug: `m/${r.slug}`,
-          liveUrl: `/m/${r.slug}`,
-          editRoute: '/panel/menu',
-          icon: 'restaurant',
-          color: '#D97706',
-          viewCount: r.viewCount || 780,
-          status: 'active',
-          statusLabel: 'Masalarda Aktif',
-          badge: `${r.items?.length || 0} Çeşit Ürün`,
-          createdAt: r.createdAt,
-        });
-      }
-    } catch {}
+    if (activeUserId) {
+      try {
+        const rests = await menuService.getUserRestaurants(activeUserId);
+        for (const r of rests) {
+          assets.push({
+            id: r.id,
+            moduleType: 'menu',
+            title: r.name,
+            subtitle: `${r.cuisine} • ${r.tableCount} Masa`,
+            slug: `m/${r.slug}`,
+            liveUrl: `/m/${r.slug}`,
+            editRoute: '/panel/menu',
+            icon: 'restaurant',
+            color: '#D97706',
+            viewCount: r.viewCount || 0,
+            status: 'active',
+            statusLabel: 'Masalarda Aktif',
+            badge: `${r.items?.length || 0} Çeşit Ürün`,
+            createdAt: r.createdAt,
+          });
+        }
+      } catch {}
+    }
 
     return assets;
   },
@@ -309,7 +348,7 @@ export const ecosystemService = {
    */
   async getScanAnalytics(userId: string): Promise<ScanAnalyticsData> {
     const assets = await this.getAllUserAssets(userId);
-    const totalScans = assets.reduce((acc, a) => acc + (a.viewCount || 0), 0) || 3420;
+    const totalScans = assets.reduce((acc, a) => acc + (a.viewCount || 0), 0);
     const uniqueScans = Math.round(totalScans * 0.65);
     const todayScans = Math.round(totalScans * 0.08);
 

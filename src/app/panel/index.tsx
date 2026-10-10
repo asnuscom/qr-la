@@ -308,11 +308,11 @@ export default function MasterDashboardScreen() {
 
             <View style={styles.statItem}>
               <View style={[styles.statIconWrap, { backgroundColor: 'rgba(245, 158, 11, 0.12)' }]}>
-                <Ionicons name="shield-checkmark-outline" size={18} color="#F59E0B" />
+                <Ionicons name="layers-outline" size={18} color="#F59E0B" />
               </View>
               <View>
-                <Text style={[styles.statNum, { color: colors.text }]}>Premium</Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Aktif Hesap Planı</Text>
+                <Text style={[styles.statNum, { color: colors.text }]}>Modüler</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Varlık Başına Tarife</Text>
               </View>
             </View>
           </View>

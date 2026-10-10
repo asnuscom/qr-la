@@ -2,6 +2,26 @@ import { QRPreset } from './types';
 
 export const QR_PRESETS: QRPreset[] = [
   {
+    id: 'classic_black',
+    name: 'Klasik Siyah & Beyaz',
+    description: 'En yüksek kontrast, evrensel okunabilirlik ve tüm kameralar için kusursuz tarama.',
+    badge: '⚡ Klasik & Net',
+    config: {
+      dotStyle: 'square',
+      eyeFrameStyle: 'square',
+      eyePupilStyle: 'square',
+      colorMode: 'solid',
+      primaryColor: '#000000',
+      gradientSecondaryColor: '#000000',
+      gradientType: 'linear_vert',
+      eyeColor: '#000000',
+      backgroundColor: '#FFFFFF',
+      frameStyle: 'none',
+      frameText: '',
+      logoType: 'none',
+    },
+  },
+  {
     id: 'midnight_gold',
     name: 'Gece & Kraliyet Altını',
     description: 'Lüks restoranlar, düğünler ve VIP kartvizitler için altın parıltısı.',

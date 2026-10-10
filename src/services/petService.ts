@@ -252,8 +252,7 @@ export const petService = {
 
     const localMap = getLocalPets();
     const all = Object.values(localMap);
-    const userOwned = all.filter(p => p.userId === userId);
-    return userOwned.length > 0 ? userOwned : all; // Demo fallback
+    return all.filter(p => p.userId === userId);
   },
 
   /**

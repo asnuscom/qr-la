@@ -10,6 +10,7 @@ import {
   query,
   setDoc,
   updateDoc,
+  increment,
 } from 'firebase/firestore';
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 
@@ -23,6 +24,7 @@ import {
   DEMO_PHOTOS,
   generateDefaultEvent,
   slugify,
+  COUPON_CODES,
 } from './mockData';
 import { appStorage } from './storage';
 import { convertHeicToJpegIfNeeded } from './compression';
@@ -215,6 +217,21 @@ class EventService {
     return generated;
   }
 
+  // Increment view/scan count for event
+  async recordView(slug: string): Promise<void> {
+    if (!slug) return;
+    const ev = this.events.get(slug);
+    if (ev) {
+      ev.viewCount = (ev.viewCount || 0) + 1;
+    }
+    if (isRealFirebaseConfigured && db) {
+      try {
+        const docRef = doc(db, 'events', slug);
+        await updateDoc(docRef, { viewCount: increment(1) });
+      } catch (_e) {}
+    }
+  }
+
   // Check if a desired slug is available
   async checkSlugAvailability(
     rawSlug: string,
@@ -328,6 +345,24 @@ class EventService {
     }
 
     return merged;
+  }
+
+  // Apply a VIP / Promotional Coupon to an event slug
+  async applyVipCoupon(slug: string, code: string): Promise<EventModel | null> {
+    const cleanCode = code.trim().toUpperCase();
+    const coupon = COUPON_CODES[cleanCode];
+    if (!coupon) return null;
+
+    const current = await this.getEvent(slug);
+    const updatedStorage: StorageInfo = {
+      ...(current.storage || { usedBytes: 0, photoCount: 0 }),
+      tier: coupon.tier,
+      quotaBytes: coupon.quotaMB * 1024 * 1024,
+      expiresAt: new Date(Date.now() + coupon.retentionDays * 86400000).toISOString(),
+    };
+
+    const updated = await this.saveEvent(slug, { storage: updatedStorage });
+    return updated;
   }
 
   // Rename an event slug (migrates event details, albums, photos, guestbook, and Firestore documents)

@@ -19,7 +19,7 @@ export const DEMO_VCARDS: Record<string, VCardData> = {
   'samet-sunman': {
     id: 'vcard-demo-samet',
     slug: 'samet-sunman',
-    userId: 'demo-host-yavuz',
+    userId: 'demo-sample-vcard',
     fullName: 'Samet Sunman',
     jobTitle: 'Kurucu & Kıdemli Yazılım Mimarı',
     company: 'Asnus Bilişim & QR-la',
@@ -194,8 +194,7 @@ export const vcardService = {
 
     const localMap = getLocalCards();
     const all = Object.values(localMap);
-    const userOwned = all.filter(c => c.userId === userId);
-    return userOwned.length > 0 ? userOwned : all; // Demo fallback
+    return all.filter(c => c.userId === userId);
   },
 
   /**

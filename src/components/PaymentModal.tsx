@@ -9,9 +9,12 @@ import {
   TextInput,
   ActivityIndicator,
   Platform,
+  Linking,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { PaymentItem, CreditCardData, TransactionRecord, paymentService } from '../services/paymentService';
+import { PaymentItem, TransactionRecord, paymentService } from '../services/paymentService';
+import { authService } from '../services/authService';
 
 interface PaymentModalProps {
   visible: boolean;
@@ -20,77 +23,68 @@ interface PaymentModalProps {
   onSuccess: (transaction: TransactionRecord) => void;
 }
 
-type PaymentStep = 'form' | 'three_d_secure' | 'success';
+type PaymentStep = 'form' | 'success';
+
+const BANK_ACCOUNTS = [
+  {
+    id: 'garanti',
+    bankName: 'Garanti BBVA',
+    holder: 'Asnus Bilişim & QR-la',
+    ibanFormatted: 'TR84 0006 2000 0001 2938 4719 02',
+    ibanRaw: 'TR840006200000012938471902',
+    badge: '7/24 FAST',
+  },
+  {
+    id: 'isbank',
+    bankName: 'İş Bankası',
+    holder: 'Asnus Bilişim Ltd. Şti.',
+    ibanFormatted: 'TR88 0006 4000 0002 9876 5432 10',
+    ibanRaw: 'TR880006400000029876543210',
+    badge: 'Anında Havale',
+  },
+];
+
+const WHATSAPP_PHONE = '905415779166';
 
 export default function PaymentModal({ visible, item, onClose, onSuccess }: PaymentModalProps) {
   const [step, setStep] = useState<PaymentStep>('form');
-  const [paymentMethod, setPaymentMethod] = useState<'credit_card' | 'bank_transfer'>('credit_card');
+  const [selectedBankId, setSelectedBankId] = useState<string>('garanti');
 
-  // Kart Bilgileri
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardHolder, setCardHolder] = useState('');
-  const [expireMonth, setExpireMonth] = useState('12');
-  const [expireYear, setExpireYear] = useState('28');
-  const [cvv, setCvv] = useState('');
-  const [installments, setInstallments] = useState(1);
+  // Müşteri İletişim Bilgileri
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
+  const [orderNote, setOrderNote] = useState('');
 
   // Kupon Kodu
   const [couponCode, setCouponCode] = useState('');
   const [couponDiscount, setCouponDiscount] = useState<{ discountTL: number; message: string } | null>(null);
 
-  // 3D Secure SMS Kodu
-  const [smsCode, setSmsCode] = useState('');
-  const [expectedSmsCode] = useState('192345');
-  const [countdown, setCountdown] = useState(180);
-
   // İşlem Durumu
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [completedTransaction, setCompletedTransaction] = useState<TransactionRecord | null>(null);
-  const [copiedIban, setCopiedIban] = useState(false);
+  const [copiedIbanId, setCopiedIbanId] = useState<string | null>(null);
 
-  // Modal açıldığında state sıfırlama
+  // Modal açıldığında state sıfırlama & profil bilgisi çekme
   useEffect(() => {
     if (visible) {
+      const currentUser = authService.getState().user;
       setStep('form');
-      setPaymentMethod('credit_card');
-      setCardNumber('5428 9123 4819 9166');
-      setCardHolder('SAMET SUNMAN');
-      setExpireMonth('12');
-      setExpireYear('28');
-      setCvv('428');
-      setInstallments(1);
-      setCustomerEmail('samet@qr-la.com');
+      setSelectedBankId('garanti');
+      setCustomerName(currentUser?.displayName || 'Samet Sunman');
+      setCustomerPhone('0541 577 91 66');
+      setCustomerEmail(currentUser?.email || 'samet@qr-la.com');
+      setOrderNote('');
       setCouponCode('');
       setCouponDiscount(null);
       setErrorMessage(null);
       setCompletedTransaction(null);
-      setSmsCode('');
-      setCountdown(180);
+      setCopiedIbanId(null);
     }
   }, [visible]);
 
-  // 3D Secure Sayacı
-  useEffect(() => {
-    let timer: any;
-    if (step === 'three_d_secure' && countdown > 0) {
-      timer = setInterval(() => setCountdown((c) => c - 1), 1000);
-    }
-    return () => clearInterval(timer);
-  }, [step, countdown]);
-
   if (!item) return null;
-
-  // Kart Numarası Formatlama (4'erli gruplar)
-  const handleCardNumberChange = (text: string) => {
-    const raw = text.replace(/\D/g, '').slice(0, 16);
-    const formatted = raw.match(/.{1,4}/g)?.join(' ') || raw;
-    setCardNumber(formatted);
-  };
-
-  // Kart Markası Tespiti
-  const cardBrand = paymentService.detectCardBrand(cardNumber);
 
   // Kupon Uygula
   const handleApplyCoupon = () => {
@@ -108,93 +102,93 @@ export default function PaymentModal({ visible, item, onClose, onSuccess }: Paym
   const discountTL = couponDiscount?.discountTL || 0;
   const finalPrice = Math.max(0, item.price - discountTL);
 
-  // Formdan Ödemeye Geçiş
-  const handleProceedPayment = () => {
+  // IBAN Kopyalama
+  const handleCopyIban = (bank: typeof BANK_ACCOUNTS[0]) => {
+    if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(bank.ibanRaw);
+    }
+    setCopiedIbanId(bank.id);
+    setTimeout(() => setCopiedIbanId(null), 2500);
+  };
+
+  // WhatsApp Mesajı Oluştur & İletişim Aç
+  const buildWhatsAppMessage = (invoiceNo?: string) => {
+    const selectedBank = BANK_ACCOUNTS.find((b) => b.id === selectedBankId) || BANK_ACCOUNTS[0];
+    const targetInfo = item.targetSlug ? `qr-la.com/${item.targetSlug}` : 'Genel QR-la Hesabı';
+
+    return (
+      `Merhaba QR-la Ekibi! 👋\n\n` +
+      `Aşağıdaki siparişim için Havale / EFT ile ödeme gerçekleştirdim, dekontumu iletiyorum ve onay talep ediyorum:\n\n` +
+      `📦 Paket / Hizmet: ${item.title}\n` +
+      `💰 Tutar: ${finalPrice} ₺ ${discountTL > 0 ? `(${discountTL} ₺ kupon indirimi uygulandı)` : ''}\n` +
+      `🏦 Yatırılan Banka: ${selectedBank.bankName} (${selectedBank.holder})\n` +
+      `🔗 İlgili QR: ${targetInfo}\n` +
+      (item.description ? `📋 Sipariş Detayı: ${item.description}\n` : '') +
+      `👤 Ad Soyad: ${customerName.trim() || 'Müşteri'}\n` +
+      `📞 İletişim Telefon: ${customerPhone.trim() || 'Belirtilmedi'}\n` +
+      `📧 E-posta: ${customerEmail.trim() || 'musteri@qr-la.com'}\n` +
+      (invoiceNo ? `🧾 Sipariş Kodu: ${invoiceNo}\n` : '') +
+      (orderNote.trim() ? `📝 Notum: ${orderNote.trim()}\n` : '') +
+      `\nLütfen dekontu inceleyerek siparişimi / paketimi onaylayınız. Teşekkürler!`
+    );
+  };
+
+  const openWhatsAppUrl = (msg: string) => {
+    const waUrl = `https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(msg)}`;
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.open(waUrl, '_blank');
+    } else {
+      Linking.openURL(waUrl).catch(() => {
+        Alert.alert('Bilgi', 'WhatsApp uygulaması açılamadı. Lütfen WhatsApp web veya telefonunuzu kontrol edin.');
+      });
+    }
+  };
+
+  // Havale Siparişini Onayla ve WhatsApp'a Yönlendir
+  const handleProceedWhatsAppOrder = async () => {
     setErrorMessage(null);
 
-    if (paymentMethod === 'bank_transfer') {
-      finalizeTransaction();
+    if (!customerName.trim()) {
+      setErrorMessage('Lütfen adınızı ve soyadınızı giriniz.');
+      return;
+    }
+    if (!customerPhone.trim()) {
+      setErrorMessage('Lütfen iletişim için telefon / WhatsApp numaranızı giriniz.');
       return;
     }
 
-    const cleanCard = cardNumber.replace(/\s+/g, '');
-    if (cleanCard.length < 15) {
-      setErrorMessage('Lütfen geçerli bir kredi kartı numarası giriniz.');
-      return;
-    }
-    if (!cardHolder.trim()) {
-      setErrorMessage('Kart üzerindeki ismi giriniz.');
-      return;
-    }
-    if (!cvv || cvv.length < 3) {
-      setErrorMessage('Lütfen geçerli 3 haneli CVV kodunu giriniz.');
-      return;
-    }
-
-    // 3D Secure adımına geç
-    setStep('three_d_secure');
-    setCountdown(180);
-  };
-
-  // 3D Secure Onayı
-  const handleVerify3DSecure = () => {
-    if (smsCode.trim() !== expectedSmsCode && smsCode.trim() !== '123456') {
-      setErrorMessage('Girdiğiniz SMS doğrulama kodu hatalı. Lütfen tekrar deneyin.');
-      return;
-    }
-    finalizeTransaction();
-  };
-
-  // İşlemi Kesinleştir
-  const finalizeTransaction = async () => {
     setIsProcessing(true);
-    setErrorMessage(null);
-
-    const cardData: CreditCardData | undefined =
-      paymentMethod === 'credit_card'
-        ? {
-            cardNumber,
-            cardHolder,
-            expireMonth,
-            expireYear,
-            cvv,
-            installments,
-          }
-        : undefined;
-
     try {
+      // 1. Ödeme kaydını oluştur ve etkinliği anında yükselt
       const result = await paymentService.processPayment({
         item,
-        paymentMethod,
-        cardData,
+        paymentMethod: 'bank_transfer',
         couponCode: couponDiscount ? couponCode : undefined,
-        customerName: cardHolder || 'Değerli Müşteri',
-        customerEmail: customerEmail || 'musteri@qr-la.com',
+        customerName: customerName.trim(),
+        customerEmail: customerEmail.trim() || 'musteri@qr-la.com',
       });
 
       if (result.success) {
         setCompletedTransaction(result.transaction);
         setStep('success');
         onSuccess(result.transaction);
+
+        // 2. WhatsApp penceresini aç
+        const waMsg = buildWhatsAppMessage(result.transaction.invoiceNo);
+        setTimeout(() => {
+          openWhatsAppUrl(waMsg);
+        }, 300);
       } else {
-        setErrorMessage(result.error || 'Ödeme tamamlanamadı.');
+        setErrorMessage(result.error || 'Sipariş oluşturulamadı.');
       }
     } catch (err: any) {
-      setErrorMessage(err.message || 'Ödeme sırasında teknik bir hata oluştu.');
+      setErrorMessage(err.message || 'İşlem sırasında teknik bir hata oluştu.');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // IBAN Kopyalama
-  const handleCopyIban = () => {
-    const iban = 'TR840006200000012938471902';
-    if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(iban);
-    }
-    setCopiedIban(true);
-    setTimeout(() => setCopiedIban(false), 2500);
-  };
+  const activeBank = BANK_ACCOUNTS.find((b) => b.id === selectedBankId) || BANK_ACCOUNTS[0];
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -203,18 +197,18 @@ export default function PaymentModal({ visible, item, onClose, onSuccess }: Paym
           {/* Üst Bar */}
           <View style={styles.modalHeader}>
             <View style={styles.headerLeft}>
-              <View style={styles.securityIconWrap}>
-                <Ionicons name="shield-checkmark" size={18} color="#10B981" />
+              <View style={styles.whatsappIconWrap}>
+                <Ionicons name="logo-whatsapp" size={20} color="#FFFFFF" />
               </View>
               <View>
                 <Text style={styles.modalHeaderTitle}>
-                  {step === 'three_d_secure'
-                    ? '3D Secure Güvenlik Onayı'
-                    : step === 'success'
-                    ? 'Ödeme Başarılı & Aktif'
-                    : 'Güvenli Ödeme & Aktivasyon'}
+                  {step === 'success'
+                    ? 'Sipariş Bildirimi Alındı'
+                    : 'Havale / EFT ile Ödeme & WhatsApp İletişimi'}
                 </Text>
-                <Text style={styles.modalHeaderSub}>256-Bit SSL • BKM Express Uyumlu</Text>
+                <Text style={styles.modalHeaderSub}>
+                  7/24 FAST • WhatsApp Destek Hattı: +90 541 577 91 66
+                </Text>
               </View>
             </View>
 
@@ -231,7 +225,7 @@ export default function PaymentModal({ visible, item, onClose, onSuccess }: Paym
             </View>
           )}
 
-          {/* ADIM 1: FORM VE SİPARİŞ ÖZETİ */}
+          {/* ADIM 1: HAVALE / EFT BİLGİLERİ VE WHATSAPP SİPARİŞ FORMU */}
           {step === 'form' && (
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
               {/* Paket Özet Kartı */}
@@ -242,7 +236,7 @@ export default function PaymentModal({ visible, item, onClose, onSuccess }: Paym
                     <Text style={styles.itemDesc}>{item.description}</Text>
                   </View>
                   <View style={styles.priceBadge}>
-                    <Text style={styles.priceBadgeText}>{item.price} ₺</Text>
+                    <Text style={styles.priceBadgeText}>{finalPrice} ₺</Text>
                     {item.period ? (
                       <Text style={styles.pricePeriodText}>/{item.period}</Text>
                     ) : null}
@@ -253,10 +247,142 @@ export default function PaymentModal({ visible, item, onClose, onSuccess }: Paym
                 <View style={styles.summaryFeatures}>
                   {item.features.slice(0, 3).map((f, i) => (
                     <View key={i} style={styles.featureLine}>
-                      <Ionicons name="checkmark-circle" size={14} color="#D4AF37" />
+                      <Ionicons name="checkmark-circle" size={14} color="#C5A059" />
                       <Text style={styles.featureLineText}>{f}</Text>
                     </View>
                   ))}
+                </View>
+              </View>
+
+              {/* Havale / FAST Banka Hesapları Kartı */}
+              <View style={styles.bankSection}>
+                <View style={styles.sectionTitleRow}>
+                  <Ionicons name="business" size={16} color="#C5A059" />
+                  <Text style={styles.sectionTitle}>Resmi Banka Hesap Bilgilerimiz:</Text>
+                </View>
+                <Text style={styles.sectionSubtitle}>
+                  Aşağıdaki IBAN numaralarından birine FAST veya Havale ile ödemenizi gönderin.
+                </Text>
+
+                {/* Banka Seçim Sekmeleri */}
+                <View style={styles.bankTabsRow}>
+                  {BANK_ACCOUNTS.map((b) => {
+                    const isSelected = selectedBankId === b.id;
+                    return (
+                      <TouchableOpacity
+                        key={b.id}
+                        style={[styles.bankTabBtn, isSelected && styles.bankTabBtnActive]}
+                        onPress={() => setSelectedBankId(b.id)}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[styles.bankTabText, isSelected && styles.bankTabTextActive]}>
+                          {b.bankName}
+                        </Text>
+                        <View style={[styles.bankTabBadge, isSelected && styles.bankTabBadgeActive]}>
+                          <Text style={[styles.bankTabBadgeText, isSelected && styles.bankTabBadgeTextActive]}>
+                            {b.badge}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {/* Seçili Banka Detayı */}
+                <View style={styles.activeBankCard}>
+                  <View style={styles.bankDetailRow}>
+                    <Text style={styles.bankDetailLabel}>Hesap Sahibi:</Text>
+                    <Text style={styles.bankDetailVal}>{activeBank.holder}</Text>
+                  </View>
+
+                  <View style={styles.ibanDisplayBlock}>
+                    <Text style={styles.ibanCode}>{activeBank.ibanFormatted}</Text>
+                    <TouchableOpacity
+                      style={styles.copyIbanBtn}
+                      onPress={() => handleCopyIban(activeBank)}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons
+                        name={copiedIbanId === activeBank.id ? 'checkmark-circle' : 'copy-outline'}
+                        size={16}
+                        color={copiedIbanId === activeBank.id ? '#10B981' : '#F8FAFC'}
+                      />
+                      <Text
+                        style={[
+                          styles.copyIbanBtnText,
+                          copiedIbanId === activeBank.id && { color: '#10B981' },
+                        ]}
+                      >
+                        {copiedIbanId === activeBank.id ? 'Kopyalandı' : 'IBAN Kopyala'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.transferTipBox}>
+                    <Ionicons name="information-circle" size={16} color="#F59E0B" />
+                    <Text style={styles.transferTipText}>
+                      Havale açıklama kısmına{' '}
+                      <Text style={{ fontWeight: '700', color: '#F8FAFC' }}>
+                        "{item.targetSlug || 'QR-la'} - {customerName || 'Adınız'}"
+                      </Text>{' '}
+                      yazmanız işleminizi hızlandıracaktır.
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Müşteri İletişim Bilgileri (WhatsApp için) */}
+              <View style={styles.customerFormBlock}>
+                <View style={styles.sectionTitleRow}>
+                  <Ionicons name="person-circle-outline" size={17} color="#25D366" />
+                  <Text style={styles.sectionTitle}>İletişim & Fatura Bilgileriniz:</Text>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.fieldLabel}>Ad Soyad *</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={customerName}
+                    onChangeText={setCustomerName}
+                    placeholder="Adınız Soyadınız"
+                    placeholderTextColor="#64748B"
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.fieldLabel}>WhatsApp / Telefon Numarası *</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={customerPhone}
+                    onChangeText={setCustomerPhone}
+                    placeholder="0541 577 91 66"
+                    placeholderTextColor="#64748B"
+                    keyboardType="phone-pad"
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.fieldLabel}>E-posta Adresi (Fatura için)</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={customerEmail}
+                    onChangeText={setCustomerEmail}
+                    placeholder="ornek@qr-la.com"
+                    placeholderTextColor="#64748B"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.fieldLabel}>Sipariş Notu (İsteğe Bağlı)</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={orderNote}
+                    onChangeText={setOrderNote}
+                    placeholder="Örn: Ödemeyi Garanti'den Samet adına gönderdim..."
+                    placeholderTextColor="#64748B"
+                  />
                 </View>
               </View>
 
@@ -268,7 +394,7 @@ export default function PaymentModal({ visible, item, onClose, onSuccess }: Paym
                     style={styles.couponInput}
                     value={couponCode}
                     onChangeText={setCouponCode}
-                    placeholder="Örn: ASNUSVIP, YUZDE20, HOSGELDIN"
+                    placeholder="Örn: ASNUSVIP, YUZDE20, VIP100"
                     placeholderTextColor="#64748B"
                     autoCapitalize="characters"
                   />
@@ -291,219 +417,6 @@ export default function PaymentModal({ visible, item, onClose, onSuccess }: Paym
                 )}
               </View>
 
-              {/* Ödeme Yöntemi Seçici */}
-              <View style={styles.paymentMethodToggle}>
-                <TouchableOpacity
-                  style={[
-                    styles.methodBtn,
-                    paymentMethod === 'credit_card' && styles.methodBtnActive,
-                  ]}
-                  onPress={() => setPaymentMethod('credit_card')}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons
-                    name="card"
-                    size={18}
-                    color={paymentMethod === 'credit_card' ? '#D4AF37' : '#94A3B8'}
-                  />
-                  <Text
-                    style={[
-                      styles.methodBtnText,
-                      paymentMethod === 'credit_card' && styles.methodBtnTextActive,
-                    ]}
-                  >
-                    Kredi / Banka Kartı
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.methodBtn,
-                    paymentMethod === 'bank_transfer' && styles.methodBtnActive,
-                  ]}
-                  onPress={() => setPaymentMethod('bank_transfer')}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons
-                    name="cash-outline"
-                    size={18}
-                    color={paymentMethod === 'bank_transfer' ? '#D4AF37' : '#94A3B8'}
-                  />
-                  <Text
-                    style={[
-                      styles.methodBtnText,
-                      paymentMethod === 'bank_transfer' && styles.methodBtnTextActive,
-                    ]}
-                  >
-                    Havale / EFT / FAST
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Kredi Kartı Formu */}
-              {paymentMethod === 'credit_card' ? (
-                <View style={styles.cardFormBlock}>
-                  {/* Canlı Lüks Kart Görseli */}
-                  <View style={styles.virtualCard}>
-                    <View style={styles.virtualCardTop}>
-                      <View style={styles.cardChip} />
-                      <View style={styles.cardBrandBadge}>
-                        <Text style={styles.cardBrandText}>{cardBrand}</Text>
-                      </View>
-                    </View>
-
-                    <Text style={styles.virtualCardNumber}>
-                      {cardNumber || '•••• •••• •••• ••••'}
-                    </Text>
-
-                    <View style={styles.virtualCardBottom}>
-                      <View>
-                        <Text style={styles.virtualCardLabel}>KART SAHİBİ</Text>
-                        <Text style={styles.virtualCardVal}>
-                          {cardHolder || 'AD SOYAD'}
-                        </Text>
-                      </View>
-                      <View style={{ alignItems: 'flex-end' }}>
-                        <Text style={styles.virtualCardLabel}>SON KULLANMA</Text>
-                        <Text style={styles.virtualCardVal}>
-                          {expireMonth}/{expireYear}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-
-                  {/* Form Girdileri */}
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.fieldLabel}>Kart Üzerindeki İsim Soyisim *</Text>
-                    <TextInput
-                      style={styles.textInput}
-                      value={cardHolder}
-                      onChangeText={setCardHolder}
-                      placeholder="SAMET SUNMAN"
-                      placeholderTextColor="#64748B"
-                      autoCapitalize="characters"
-                    />
-                  </View>
-
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.fieldLabel}>Kart Numarası *</Text>
-                    <TextInput
-                      style={styles.textInput}
-                      value={cardNumber}
-                      onChangeText={handleCardNumberChange}
-                      placeholder="5428 •••• •••• 9166"
-                      placeholderTextColor="#64748B"
-                      keyboardType="number-pad"
-                    />
-                  </View>
-
-                  <View style={styles.grid2Col}>
-                    <View style={styles.inputGroup}>
-                      <Text style={styles.fieldLabel}>Son Kul. (AA / YY) *</Text>
-                      <View style={styles.expiryRow}>
-                        <TextInput
-                          style={[styles.textInput, { flex: 1, textAlign: 'center' }]}
-                          value={expireMonth}
-                          onChangeText={setExpireMonth}
-                          placeholder="12"
-                          placeholderTextColor="#64748B"
-                          keyboardType="number-pad"
-                          maxLength={2}
-                        />
-                        <Text style={{ color: '#64748B', fontSize: 16 }}>/</Text>
-                        <TextInput
-                          style={[styles.textInput, { flex: 1, textAlign: 'center' }]}
-                          value={expireYear}
-                          onChangeText={setExpireYear}
-                          placeholder="28"
-                          placeholderTextColor="#64748B"
-                          keyboardType="number-pad"
-                          maxLength={2}
-                        />
-                      </View>
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                      <Text style={styles.fieldLabel}>Güvenlik Kodu (CVV) *</Text>
-                      <TextInput
-                        style={styles.textInput}
-                        value={cvv}
-                        onChangeText={setCvv}
-                        placeholder="428"
-                        placeholderTextColor="#64748B"
-                        keyboardType="number-pad"
-                        maxLength={4}
-                      />
-                    </View>
-                  </View>
-
-                  {/* Taksit Seçenekleri */}
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.fieldLabel}>Taksit Seçeneği:</Text>
-                    <View style={styles.installmentsRow}>
-                      {[
-                        { inst: 1, label: 'Tek Çekim' },
-                        { inst: 3, label: '3 Taksit' },
-                        { inst: 6, label: '6 Taksit' },
-                      ].map((t) => (
-                        <TouchableOpacity
-                          key={t.inst}
-                          style={[
-                            styles.instBtn,
-                            installments === t.inst && styles.instBtnActive,
-                          ]}
-                          onPress={() => setInstallments(t.inst)}
-                          activeOpacity={0.8}
-                        >
-                          <Text
-                            style={[
-                              styles.instBtnText,
-                              installments === t.inst && styles.instBtnTextActive,
-                            ]}
-                          >
-                            {t.label}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-                </View>
-              ) : (
-                /* Havale / EFT Bilgileri */
-                <View style={styles.bankTransferBlock}>
-                  <View style={styles.bankCard}>
-                    <Text style={styles.bankName}>Garanti BBVA • Asnus Teknoloji A.Ş.</Text>
-                    <Text style={styles.bankSub}>Hızlı FAST & Havale 7/24 Anında Otomatik Onay</Text>
-
-                    <View style={styles.ibanRow}>
-                      <Text style={styles.ibanText}>TR84 0006 2000 0001 2938 4719 02</Text>
-                      <TouchableOpacity
-                        style={styles.copyIbanBtn}
-                        onPress={handleCopyIban}
-                        activeOpacity={0.8}
-                      >
-                        <Ionicons
-                          name={copiedIban ? 'checkmark' : 'copy-outline'}
-                          size={15}
-                          color={copiedIban ? '#10B981' : '#CBD5E1'}
-                        />
-                        <Text style={[styles.copyIbanBtnText, copiedIban && { color: '#10B981' }]}>
-                          {copiedIban ? 'Kopyalandı' : 'Kopyala'}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-
-                    <View style={styles.transferNote}>
-                      <Ionicons name="information-circle" size={16} color="#F59E0B" />
-                      <Text style={styles.transferNoteText}>
-                        Açıklama alanına etkinliğinizin adını veya e-postanızı yazınız. Ödemeniz
-                        5 dakika içinde otomatik onaylanır.
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              )}
-
               {/* Fatura Toplamı */}
               <View style={styles.checkoutTotals}>
                 <View style={styles.totalRow}>
@@ -523,107 +436,43 @@ export default function PaymentModal({ visible, item, onClose, onSuccess }: Paym
                 </View>
               </View>
 
-              {/* Onayla & Öde Butonu */}
+              {/* WhatsApp Butonu (Ana Eylem) */}
               <TouchableOpacity
-                style={styles.paySubmitBtn}
-                onPress={handleProceedPayment}
+                style={styles.whatsAppSubmitBtn}
+                onPress={handleProceedWhatsAppOrder}
                 disabled={isProcessing}
                 activeOpacity={0.88}
               >
                 {isProcessing ? (
-                  <ActivityIndicator size="small" color="#0F172A" />
+                  <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
                   <>
-                    <Ionicons name="lock-closed" size={18} color="#0F172A" />
-                    <Text style={styles.paySubmitBtnText}>
-                      {paymentMethod === 'credit_card'
-                        ? `Güvenli Öde (${finalPrice} ₺)`
-                        : `Havale Bildirimi Yap (${finalPrice} ₺)`}
-                    </Text>
+                    <Ionicons name="logo-whatsapp" size={22} color="#FFFFFF" />
+                    <View style={{ alignItems: 'center' }}>
+                      <Text style={styles.whatsAppSubmitBtnText}>
+                        WhatsApp ile Siparişi Tamamla ({finalPrice} ₺)
+                      </Text>
+                      <Text style={styles.whatsAppSubmitSubText}>
+                        Dekont iletmek üzere anında WhatsApp sohbeti başlatılır
+                      </Text>
+                    </View>
                   </>
                 )}
               </TouchableOpacity>
             </ScrollView>
           )}
 
-          {/* ADIM 2: 3D SECURE SMS DOĞRULAMA MODALI */}
-          {step === 'three_d_secure' && (
-            <View style={styles.threeDBlock}>
-              <View style={styles.bankSecurityHeader}>
-                <View style={styles.bankLogoBadge}>
-                  <Ionicons name="business" size={24} color="#D4AF37" />
-                </View>
-                <Text style={styles.threeDTitle}>Bankanız 3D Secure Doğrulaması</Text>
-                <Text style={styles.threeDSub}>
-                  Lütfen 0541 ••• •• 66 nolu telefonunuza SMS ile gönderilen 6 haneli güvenlik
-                  şifresini giriniz.
-                </Text>
-              </View>
-
-              <View style={styles.countdownBadge}>
-                <Ionicons name="time-outline" size={16} color="#D97706" />
-                <Text style={styles.countdownText}>
-                  Kalan Süre: {Math.floor(countdown / 60)}:
-                  {String(countdown % 60).padStart(2, '0')}
-                </Text>
-              </View>
-
-              <View style={styles.smsInputContainer}>
-                <TextInput
-                  style={styles.smsInput}
-                  value={smsCode}
-                  onChangeText={setSmsCode}
-                  placeholder="192345"
-                  placeholderTextColor="#64748B"
-                  keyboardType="number-pad"
-                  maxLength={6}
-                />
-              </View>
-
-              <TouchableOpacity
-                style={styles.demoCodeFillBtn}
-                onPress={() => setSmsCode(expectedSmsCode)}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="flash-outline" size={14} color="#D4AF37" />
-                <Text style={styles.demoCodeFillText}>Demo Kodu Otomatik Doldur ({expectedSmsCode})</Text>
-              </TouchableOpacity>
-
-              <View style={styles.threeDActionRow}>
-                <TouchableOpacity
-                  style={styles.threeDCancelBtn}
-                  onPress={() => setStep('form')}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.threeDCancelText}>Vazgeç</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.threeDConfirmBtn}
-                  onPress={handleVerify3DSecure}
-                  disabled={isProcessing}
-                  activeOpacity={0.88}
-                >
-                  {isProcessing ? (
-                    <ActivityIndicator size="small" color="#0F172A" />
-                  ) : (
-                    <Text style={styles.threeDConfirmText}>Onayla ve Ödemeyi Tamamla</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-
-          {/* ADIM 3: ÖDEME BAŞARILI VE MAKBUZ EKRANI */}
+          {/* ADIM 2: SİPARİŞ BAŞARILI & WHATSAPP BEKLEME EKRANI */}
           {step === 'success' && completedTransaction && (
             <View style={styles.successBlock}>
               <View style={styles.successCelebrationBadge}>
-                <Ionicons name="checkmark-done-circle" size={64} color="#10B981" />
+                <Ionicons name="checkmark-done-circle" size={64} color="#25D366" />
               </View>
 
-              <Text style={styles.successTitle}>🎉 Ödemeniz Başarıyla Alındı!</Text>
+              <Text style={styles.successTitle}>🎉 Sipariş Bildiriminiz Alındı!</Text>
               <Text style={styles.successSub}>
-                Paketiniz anında hesabınıza tanımlandı ve etkinleştirildi.
+                Havale / EFT bildiriminiz sistemimize kaydedildi. WhatsApp üzerinden dekontunuz
+                doğrulanarak paketiniz anında tam yetkili hale getirilecektir.
               </Text>
 
               {/* Fatura Bilgileri Kartı */}
@@ -634,12 +483,16 @@ export default function PaymentModal({ visible, item, onClose, onSuccess }: Paym
                 </View>
                 <View style={styles.receiptRow}>
                   <Text style={styles.receiptLabel}>İşlem Tutarı:</Text>
-                  <Text style={[styles.receiptVal, { color: '#D4AF37', fontWeight: '800' }]}>
+                  <Text style={[styles.receiptVal, { color: '#C5A059', fontWeight: '800' }]}>
                     {completedTransaction.amount} ₺
                   </Text>
                 </View>
                 <View style={styles.receiptRow}>
-                  <Text style={styles.receiptLabel}>Fatura No:</Text>
+                  <Text style={styles.receiptLabel}>Ödeme Yöntemi:</Text>
+                  <Text style={styles.receiptVal}>Havale / FAST (WhatsApp Dekont)</Text>
+                </View>
+                <View style={styles.receiptRow}>
+                  <Text style={styles.receiptLabel}>Fatura / Sipariş No:</Text>
                   <Text style={styles.receiptVal}>{completedTransaction.invoiceNo}</Text>
                 </View>
                 <View style={styles.receiptRow}>
@@ -651,12 +504,21 @@ export default function PaymentModal({ visible, item, onClose, onSuccess }: Paym
               {/* Butonlar */}
               <View style={styles.successButtonsRow}>
                 <TouchableOpacity
+                  style={styles.reopenWhatsAppBtn}
+                  onPress={() => openWhatsAppUrl(buildWhatsAppMessage(completedTransaction.invoiceNo))}
+                  activeOpacity={0.88}
+                >
+                  <Ionicons name="logo-whatsapp" size={19} color="#FFFFFF" />
+                  <Text style={styles.reopenWhatsAppBtnText}>WhatsApp Görüşmesini Aç</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
                   style={styles.printReceiptBtn}
                   onPress={() => paymentService.printReceipt(completedTransaction)}
                   activeOpacity={0.8}
                 >
                   <Ionicons name="print-outline" size={17} color="#CBD5E1" />
-                  <Text style={styles.printReceiptBtnText}>e-Arşiv Fatura Yazdır</Text>
+                  <Text style={styles.printReceiptBtnText}>e-Arşiv Sipariş Fişi Yazdır</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -664,7 +526,7 @@ export default function PaymentModal({ visible, item, onClose, onSuccess }: Paym
                   onPress={onClose}
                   activeOpacity={0.88}
                 >
-                  <Text style={styles.finishSuccessBtnText}>Harika, Kullanmaya Başla</Text>
+                  <Text style={styles.finishSuccessBtnText}>Kapat & Panele Dön</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -684,17 +546,17 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   modalCard: {
-    backgroundColor: '#0F172A',
+    backgroundColor: '#090D16',
     borderRadius: 24,
     borderWidth: 1,
     borderColor: '#1E293B',
     width: '100%',
-    maxWidth: 540,
+    maxWidth: 560,
     maxHeight: '92%',
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOpacity: 0.4,
-    shadowRadius: 24,
+    shadowOpacity: 0.5,
+    shadowRadius: 28,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -704,29 +566,34 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#1E293B',
-    backgroundColor: '#131D31',
+    backgroundColor: '#0F172A',
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flex: 1,
   },
-  securityIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#064E3B',
+  whatsappIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#25D366',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#25D366',
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
   },
   modalHeaderTitle: {
     color: '#F8FAFC',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
   },
   modalHeaderSub: {
     color: '#94A3B8',
     fontSize: 11,
+    marginTop: 2,
   },
   closeBtn: {
     width: 32,
@@ -757,6 +624,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
+    paddingBottom: 40,
     gap: 16,
   },
   summaryCard: {
@@ -785,22 +653,23 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
   priceBadge: {
-    backgroundColor: 'rgba(212, 175, 55, 0.15)',
+    backgroundColor: 'rgba(197, 160, 89, 0.15)',
     borderWidth: 1,
-    borderColor: '#D4AF37',
+    borderColor: '#C5A059',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
     alignItems: 'center',
   },
   priceBadgeText: {
-    color: '#D4AF37',
+    color: '#C5A059',
     fontSize: 18,
     fontWeight: '800',
   },
   pricePeriodText: {
-    color: '#D4AF37',
-    fontSize: 10,
+    color: '#94A3B8',
+    fontSize: 11,
+    fontWeight: '500',
   },
   summaryFeatures: {
     gap: 6,
@@ -817,13 +686,182 @@ const styles = StyleSheet.create({
     color: '#CBD5E1',
     fontSize: 12,
   },
-  couponSection: {
+  bankSection: {
+    backgroundColor: '#0F172A',
+    borderWidth: 1,
+    borderColor: '#1E293B',
+    borderRadius: 18,
+    padding: 16,
+    gap: 10,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
+  },
+  sectionTitle: {
+    color: '#F8FAFC',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  sectionSubtitle: {
+    color: '#94A3B8',
+    fontSize: 11,
+    lineHeight: 15,
+  },
+  bankTabsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+  },
+  bankTabBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#1E293B',
+    borderWidth: 1,
+    borderColor: '#334155',
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 12,
+  },
+  bankTabBtnActive: {
+    backgroundColor: 'rgba(197, 160, 89, 0.15)',
+    borderColor: '#C5A059',
+  },
+  bankTabText: {
+    color: '#94A3B8',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  bankTabTextActive: {
+    color: '#C5A059',
+    fontWeight: '700',
+  },
+  bankTabBadge: {
+    backgroundColor: '#334155',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  bankTabBadgeActive: {
+    backgroundColor: '#C5A059',
+  },
+  bankTabBadgeText: {
+    color: '#94A3B8',
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  bankTabBadgeTextActive: {
+    color: '#090D16',
+  },
+  activeBankCard: {
+    backgroundColor: '#131D31',
+    borderWidth: 1,
+    borderColor: '#1E293B',
+    borderRadius: 14,
+    padding: 14,
+    gap: 10,
+  },
+  bankDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  bankDetailLabel: {
+    color: '#94A3B8',
+    fontSize: 12,
+  },
+  bankDetailVal: {
+    color: '#F8FAFC',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  ibanDisplayBlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#090D16',
+    borderWidth: 1,
+    borderColor: '#334155',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    gap: 8,
+  },
+  ibanCode: {
+    color: '#C5A059',
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    flex: 1,
+  },
+  copyIbanBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#1E293B',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#475569',
+  },
+  copyIbanBtnText: {
+    color: '#F8FAFC',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  transferTipBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+    padding: 10,
+    borderRadius: 10,
+  },
+  transferTipText: {
+    color: '#FDE68A',
+    fontSize: 11,
+    lineHeight: 16,
+    flex: 1,
+  },
+  customerFormBlock: {
+    backgroundColor: '#0F172A',
+    borderWidth: 1,
+    borderColor: '#1E293B',
+    borderRadius: 18,
+    padding: 16,
+    gap: 12,
+  },
+  inputGroup: {
+    gap: 6,
   },
   fieldLabel: {
     color: '#CBD5E1',
     fontSize: 12,
     fontWeight: '600',
+  },
+  textInput: {
+    backgroundColor: '#131D31',
+    borderWidth: 1,
+    borderColor: '#334155',
+    color: '#F8FAFC',
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderRadius: 12,
+    fontSize: 13,
+  },
+  couponSection: {
+    backgroundColor: '#0F172A',
+    borderWidth: 1,
+    borderColor: '#1E293B',
+    borderRadius: 18,
+    padding: 16,
+    gap: 10,
   },
   couponRow: {
     flexDirection: 'row',
@@ -834,250 +872,54 @@ const styles = StyleSheet.create({
     backgroundColor: '#131D31',
     borderWidth: 1,
     borderColor: '#334155',
-    color: '#FFFFFF',
+    color: '#F8FAFC',
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 12,
     fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 1,
   },
   applyCouponBtn: {
-    backgroundColor: '#1E293B',
-    borderWidth: 1,
-    borderColor: '#334155',
-    paddingHorizontal: 16,
-    justifyContent: 'center',
+    backgroundColor: '#C5A059',
+    paddingHorizontal: 18,
     borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   applyCouponBtnText: {
-    color: '#F8FAFC',
+    color: '#090D16',
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   couponSuccessAlert: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    borderWidth: 1,
+    gap: 8,
+    backgroundColor: '#064E3B',
     borderColor: '#10B981',
+    borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,
-    gap: 8,
   },
   couponSuccessText: {
     color: '#A7F3D0',
     fontSize: 12,
     fontWeight: '600',
   },
-  paymentMethodToggle: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  methodBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#131D31',
-    borderWidth: 1,
-    borderColor: '#1E293B',
-    paddingVertical: 12,
-    borderRadius: 12,
-    gap: 8,
-  },
-  methodBtnActive: {
-    borderColor: '#D4AF37',
-    backgroundColor: '#1E293B',
-  },
-  methodBtnText: {
-    color: '#94A3B8',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  methodBtnTextActive: {
-    color: '#D4AF37',
-    fontWeight: '700',
-  },
-  cardFormBlock: {
-    gap: 14,
-  },
-  virtualCard: {
-    backgroundColor: '#1E293B',
-    borderRadius: 18,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#334155',
-    gap: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-  },
-  virtualCardTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  cardChip: {
-    width: 36,
-    height: 26,
-    borderRadius: 6,
-    backgroundColor: '#D4AF37',
-    opacity: 0.85,
-  },
-  cardBrandBadge: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  cardBrandText: {
-    color: '#F8FAFC',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  virtualCardNumber: {
-    color: '#F8FAFC',
-    fontSize: 18,
-    letterSpacing: 2,
-    fontWeight: '600',
-    fontFamily: 'monospace',
-  },
-  virtualCardBottom: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  virtualCardLabel: {
-    color: '#64748B',
-    fontSize: 9,
-    fontWeight: '700',
-  },
-  virtualCardVal: {
-    color: '#E2E8F0',
-    fontSize: 13,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  inputGroup: {
-    gap: 6,
-  },
-  textInput: {
-    backgroundColor: '#131D31',
-    borderWidth: 1,
-    borderColor: '#334155',
-    color: '#FFFFFF',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 12,
-    fontSize: 13,
-  },
-  grid2Col: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  expiryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  installmentsRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  instBtn: {
-    flex: 1,
-    backgroundColor: '#131D31',
-    borderWidth: 1,
-    borderColor: '#1E293B',
-    paddingVertical: 10,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  instBtnActive: {
-    borderColor: '#D4AF37',
-    backgroundColor: '#1E293B',
-  },
-  instBtnText: {
-    color: '#94A3B8',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  instBtnTextActive: {
-    color: '#D4AF37',
-    fontWeight: '700',
-  },
-  bankTransferBlock: {
-    gap: 12,
-  },
-  bankCard: {
-    backgroundColor: '#131D31',
-    borderWidth: 1,
-    borderColor: '#1E293B',
-    borderRadius: 16,
-    padding: 16,
-    gap: 10,
-  },
-  bankName: {
-    color: '#F8FAFC',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  bankSub: {
-    color: '#94A3B8',
-    fontSize: 12,
-  },
-  ibanRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#0F172A',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
-    gap: 8,
-  },
-  ibanText: {
-    color: '#D4AF37',
-    fontSize: 13,
-    fontWeight: '700',
-    fontFamily: 'monospace',
-  },
-  copyIbanBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#1E293B',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  copyIbanBtnText: {
-    color: '#CBD5E1',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  transferNote: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    marginTop: 4,
-  },
-  transferNoteText: {
-    color: '#94A3B8',
-    fontSize: 11,
-    lineHeight: 16,
-    flex: 1,
-  },
   checkoutTotals: {
     backgroundColor: '#131D31',
     borderWidth: 1,
     borderColor: '#1E293B',
-    borderRadius: 16,
+    borderRadius: 18,
     padding: 16,
     gap: 8,
   },
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
   },
   totalLabel: {
     color: '#94A3B8',
@@ -1085,7 +927,7 @@ const styles = StyleSheet.create({
   },
   totalVal: {
     color: '#F8FAFC',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
   totalDivider: {
@@ -1099,129 +941,34 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   grandTotalVal: {
-    color: '#D4AF37',
+    color: '#C5A059',
     fontSize: 20,
     fontWeight: '800',
   },
-  paySubmitBtn: {
-    backgroundColor: '#D4AF37',
+  whatsAppSubmitBtn: {
+    backgroundColor: '#25D366',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 15,
-    borderRadius: 14,
-    gap: 8,
-    marginTop: 4,
-  },
-  paySubmitBtnText: {
-    color: '#0F172A',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  threeDBlock: {
-    padding: 24,
-    alignItems: 'center',
-    gap: 16,
-  },
-  bankSecurityHeader: {
-    alignItems: 'center',
-    gap: 8,
-  },
-  bankLogoBadge: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: 'rgba(212, 175, 55, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  threeDTitle: {
-    color: '#F8FAFC',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  threeDSub: {
-    color: '#94A3B8',
-    fontSize: 13,
-    textAlign: 'center',
-    lineHeight: 19,
-    maxWidth: 380,
-  },
-  countdownBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#451A03',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6,
-  },
-  countdownText: {
-    color: '#FDE68A',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  smsInputContainer: {
-    width: '100%',
-    maxWidth: 240,
-    alignItems: 'center',
-  },
-  smsInput: {
-    width: '100%',
-    backgroundColor: '#131D31',
-    borderWidth: 2,
-    borderColor: '#D4AF37',
-    color: '#FFFFFF',
-    fontSize: 26,
-    fontWeight: '800',
-    letterSpacing: 6,
-    textAlign: 'center',
-    paddingVertical: 12,
-    borderRadius: 14,
-  },
-  demoCodeFillBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#1E293B',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
-  },
-  demoCodeFillText: {
-    color: '#D4AF37',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  threeDActionRow: {
-    flexDirection: 'row',
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 16,
     gap: 12,
-    width: '100%',
-    marginTop: 8,
+    shadowColor: '#25D366',
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
   },
-  threeDCancelBtn: {
-    flex: 1,
-    backgroundColor: '#1E293B',
-    paddingVertical: 13,
-    borderRadius: 12,
-    alignItems: 'center',
+  whatsAppSubmitBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
   },
-  threeDCancelText: {
-    color: '#CBD5E1',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  threeDConfirmBtn: {
-    flex: 2,
-    backgroundColor: '#D4AF37',
-    paddingVertical: 13,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  threeDConfirmText: {
-    color: '#0F172A',
-    fontSize: 13,
-    fontWeight: '700',
+  whatsAppSubmitSubText: {
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 2,
   },
   successBlock: {
     padding: 24,
@@ -1229,7 +976,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   successCelebrationBadge: {
-    marginTop: 10,
+    marginTop: 8,
   },
   successTitle: {
     color: '#F8FAFC',
@@ -1241,25 +988,27 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     fontSize: 13,
     textAlign: 'center',
-    maxWidth: 360,
+    lineHeight: 19,
+    paddingHorizontal: 12,
   },
   receiptCard: {
     width: '100%',
     backgroundColor: '#131D31',
     borderWidth: 1,
     borderColor: '#1E293B',
-    borderRadius: 16,
+    borderRadius: 18,
     padding: 16,
     gap: 10,
-    marginVertical: 6,
+    marginVertical: 4,
   },
   receiptRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
   },
   receiptLabel: {
     color: '#94A3B8',
-    fontSize: 13,
+    fontSize: 12,
   },
   receiptVal: {
     color: '#F8FAFC',
@@ -1269,7 +1018,21 @@ const styles = StyleSheet.create({
   successButtonsRow: {
     width: '100%',
     gap: 10,
-    marginTop: 10,
+    marginTop: 8,
+  },
+  reopenWhatsAppBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#25D366',
+    paddingVertical: 13,
+    borderRadius: 14,
+    gap: 8,
+  },
+  reopenWhatsAppBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
   printReceiptBtn: {
     flexDirection: 'row',
@@ -1279,7 +1042,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#334155',
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: 14,
     gap: 8,
   },
   printReceiptBtnText: {
@@ -1288,13 +1051,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   finishSuccessBtn: {
-    backgroundColor: '#10B981',
-    paddingVertical: 14,
-    borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#C5A059',
+    paddingVertical: 13,
+    borderRadius: 14,
   },
   finishSuccessBtnText: {
-    color: '#FFFFFF',
+    color: '#090D16',
     fontSize: 14,
     fontWeight: '700',
   },

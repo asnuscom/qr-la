@@ -19,7 +19,7 @@ export const DEMO_RESTAURANTS: Record<string, RestaurantData> = {
   'lucca-bistrot': {
     id: 'rest-demo-lucca',
     slug: 'lucca-bistrot',
-    userId: 'demo-host-yavuz',
+    userId: 'demo-rest-lucca',
     name: 'Lucca Bistrot & Cocktail Bar',
     cuisine: 'Modern Akdeniz & Dünya Mutfağı',
     logoUrl:
@@ -196,7 +196,7 @@ export const DEMO_RESTAURANTS: Record<string, RestaurantData> = {
   'bogazici-balik': {
     id: 'rest-demo-balik',
     slug: 'bogazici-balik',
-    userId: 'demo-host-yavuz',
+    userId: 'demo-rest-balik',
     name: 'Boğaziçi Balık & Ege Mezeleri',
     cuisine: 'Taze Deniz Mahsülleri & Ege Mutfağı',
     logoUrl:
@@ -332,8 +332,7 @@ export const menuService = {
 
     const localMap = getLocalRestaurants();
     const all = Object.values(localMap);
-    const userOwned = all.filter(r => r.userId === userId);
-    return userOwned.length > 0 ? userOwned : all; // Demo fallback
+    return all.filter(r => r.userId === userId);
   },
 
   /**

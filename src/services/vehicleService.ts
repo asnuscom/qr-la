@@ -39,7 +39,7 @@ export const DEMO_VEHICLES: Record<string, VehicleData> = {
   '34abc123': {
     id: 'veh-demo-cbr650r',
     slug: '34abc123',
-    userId: 'demo-host-yavuz',
+    userId: 'demo-sample-vehicle',
     plateNumber: '34 ABC 123',
     ownerName: 'Samet Sunman',
     ownerPhone: '05415779166',
@@ -66,7 +66,7 @@ export const DEMO_VEHICLES: Record<string, VehicleData> = {
   '06ank06': {
     id: 'veh-demo-bmw320i',
     slug: '06ank06',
-    userId: 'demo-host-yavuz',
+    userId: 'demo-sample-vehicle-2',
     plateNumber: '06 ANK 06',
     ownerName: 'Yavuz Selim',
     ownerPhone: '05321234567',

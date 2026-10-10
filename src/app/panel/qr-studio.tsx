@@ -17,6 +17,7 @@ import { QRStudioConfig, QRDotStyle, QREyeFrameStyle, QREyePupilStyle, QRGradien
 import { QR_PRESETS } from '../../modules/qr-studio/presets';
 import { generateCustomQRSvg, downloadSvgFile, downloadHighResPng } from '../../modules/qr-studio/qrEngine';
 import { ecosystemService, EcosystemAsset } from '../../services/ecosystemService';
+import { authService } from '../../services/authService';
 import { useTheme, ThemeColors } from '@/context/ThemeContext';
 import ThemeToggleBtn from '@/components/ThemeToggleBtn';
 
@@ -42,49 +43,29 @@ export default function QRStudioScreen() {
 
   // QR Yapılandırma State'i
   const [config, setConfig] = useState<QRStudioConfig>({
-    text: params.url || 'https://qr-la.com/samet-sunman',
-    dotStyle: 'rounded',
-    eyeFrameStyle: 'rounded',
-    eyePupilStyle: 'circle',
-    colorMode: 'gradient',
-    primaryColor: '#D4AF37',
-    gradientSecondaryColor: '#996515',
-    gradientType: 'linear_diag',
-    eyeColor: '#F59E0B',
-    backgroundColor: '#0F172A',
-    logoType: 'emoji',
-    logoEmoji: '👑',
+    text: params.url || 'https://qr-la.com/samet-sule',
+    dotStyle: 'square',
+    eyeFrameStyle: 'square',
+    eyePupilStyle: 'square',
+    colorMode: 'solid',
+    primaryColor: '#000000',
+    gradientSecondaryColor: '#000000',
+    gradientType: 'linear_vert',
+    eyeColor: '#000000',
+    eyeFrameColor: '#000000',
+    eyePupilColor: '#000000',
+    backgroundColor: '#FFFFFF',
+    logoType: 'none',
+    logoEmoji: '',
     logoUrl: '',
     logoSizePercent: 22,
-    logoBgColor: '#0F172A',
-    frameStyle: 'bottom_badge',
-    frameText: 'AYRICALIKLI ERİŞİM',
-    frameColor: '#D4AF37',
-    frameTextColor: '#0F172A',
+    logoBgColor: '#FFFFFF',
+    frameStyle: 'none',
+    frameText: '',
+    frameColor: '#000000',
+    frameTextColor: '#FFFFFF',
     margin: 2,
   });
-
-  // Varlıkları yükle
-  useEffect(() => {
-    const loadAssets = async () => {
-      try {
-        const userAssets = await ecosystemService.getAllUserAssets();
-        setAssets(userAssets);
-
-        if (params.url) {
-          const matched = userAssets.find(
-            (a) => a.liveUrl === params.url || `https://qr-la.com${a.liveUrl}` === params.url
-          );
-          if (matched) {
-            setSelectedAssetId(matched.id);
-          }
-        }
-      } catch (err) {
-        console.warn('Varlıklar yüklenemedi:', err);
-      }
-    };
-    loadAssets();
-  }, [params.url]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -125,6 +106,31 @@ export default function QRStudioScreen() {
     }));
     showToast(`"${asset.title}" varlığı yüklendi`);
   };
+
+  // Varlıkları yükle
+  useEffect(() => {
+    const loadAssets = async () => {
+      try {
+        const currentUser = authService.getState().user;
+        const userAssets = await ecosystemService.getAllUserAssets(currentUser?.uid);
+        setAssets(userAssets);
+
+        if (params.url) {
+          const matched = userAssets.find(
+            (a) => a.liveUrl === params.url || `https://qr-la.com${a.liveUrl}` === params.url
+          );
+          if (matched) {
+            setSelectedAssetId(matched.id);
+          }
+        } else if (userAssets.length > 0 && !selectedAssetId) {
+          handleSelectAsset(userAssets[0]);
+        }
+      } catch (err) {
+        console.warn('Varlıklar yüklenemedi:', err);
+      }
+    };
+    loadAssets();
+  }, [params.url]);
 
   // Hazır Şablon (Preset) Uygula
   const applyPreset = (presetId: string) => {
@@ -597,10 +603,10 @@ export default function QRStudioScreen() {
                 </View>
 
                 {/* Birincil Renk Paleti */}
-                <Text style={styles.fieldLabel}>Birincil Renk (Ana Ton):</Text>
+                <Text style={styles.fieldLabel}>Birincil Renk (Ana Ton / Gövde):</Text>
                 <View style={styles.paletteGrid}>
                   {[
-                    '#D4AF37', '#10B981', '#3B82F6', '#8B5CF6',
+                    '#000000', '#1E293B', '#D4AF37', '#10B981', '#3B82F6', '#8B5CF6',
                     '#EC4899', '#EA580C', '#0F172A', '#E11D48',
                   ].map((color) => (
                     <TouchableOpacity
@@ -608,28 +614,40 @@ export default function QRStudioScreen() {
                       style={[
                         styles.paletteCircle,
                         { backgroundColor: color },
-                        config.primaryColor === color && styles.paletteCircleActive,
+                        config.primaryColor.toLowerCase() === color.toLowerCase() && styles.paletteCircleActive,
                       ]}
                       onPress={() => setConfig((prev) => ({ ...prev, primaryColor: color }))}
                     />
                   ))}
                 </View>
+                <View style={[styles.hexInputRow, { marginTop: 8 }]}>
+                  <View style={[styles.hexPreviewSwatch, { backgroundColor: config.primaryColor }]} />
+                  <TextInput
+                    style={styles.hexTextInput}
+                    value={config.primaryColor}
+                    placeholder="#000000"
+                    placeholderTextColor="#64748B"
+                    onChangeText={(val) => setConfig((prev) => ({ ...prev, primaryColor: val }))}
+                    autoCapitalize="none"
+                    maxLength={9}
+                  />
+                </View>
 
                 {/* Gradyan İkincil Renk (Eğer gradyan açıksa) */}
                 {config.colorMode === 'gradient' && (
-                  <View style={styles.inputGroup}>
+                  <View style={[styles.inputGroup, { marginTop: 14 }]}>
                     <Text style={styles.fieldLabel}>İkincil Renk (Geçiş Tonu):</Text>
                     <View style={styles.paletteGrid}>
                       {[
-                        '#996515', '#047857', '#1D4ED8', '#6D28D9',
-                        '#BE185D', '#9A3412', '#334155', '#9F1239',
+                        '#000000', '#334155', '#996515', '#047857', '#1D4ED8', '#6D28D9',
+                        '#BE185D', '#9A3412', '#9F1239',
                       ].map((color) => (
                         <TouchableOpacity
                           key={color}
                           style={[
                             styles.paletteCircle,
                             { backgroundColor: color },
-                            config.gradientSecondaryColor === color && styles.paletteCircleActive,
+                            config.gradientSecondaryColor.toLowerCase() === color.toLowerCase() && styles.paletteCircleActive,
                           ]}
                           onPress={() => setConfig((prev) => ({ ...prev, gradientSecondaryColor: color }))}
                         />
@@ -665,13 +683,113 @@ export default function QRStudioScreen() {
                   </View>
                 )}
 
+                {/* 👁️ Köşe Göz Rengi (Bulucu Desenler) */}
+                <View style={{ marginTop: 20 }}>
+                  <View style={styles.sectionHeaderRow}>
+                    <Text style={styles.fieldLabel}>👁️ Köşe Göz Rengi (Bulucu Desenler):</Text>
+                    <View style={{ flexDirection: 'row', gap: 6 }}>
+                      <TouchableOpacity
+                        onPress={() =>
+                          setConfig((prev) => ({
+                            ...prev,
+                            eyeColor: '#000000',
+                            eyeFrameColor: '#000000',
+                            eyePupilColor: '#000000',
+                          }))
+                        }
+                        style={styles.quickActionPill}
+                      >
+                        <Ionicons name="ellipse" size={12} color="#000000" />
+                        <Text style={styles.quickActionText}>Siyah Yap</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() =>
+                          setConfig((prev) => ({
+                            ...prev,
+                            eyeColor: undefined,
+                            eyeFrameColor: undefined,
+                            eyePupilColor: undefined,
+                          }))
+                        }
+                        style={styles.quickActionPill}
+                      >
+                        <Ionicons name="sync-outline" size={12} color="#94A3B8" />
+                        <Text style={[styles.quickActionText, { color: '#94A3B8' }]}>Gövdeyle Eşitle</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                  <Text style={[styles.inputHelper, { marginBottom: 10 }]}>
+                    Köşelerdeki 3 adet kare/daire gözün çerçeve ve göz bebeği rengini ayarlayın.
+                  </Text>
+
+                  {/* Göz Renk Paleti */}
+                  <View style={styles.paletteGrid}>
+                    {[
+                      '#000000', '#1E293B', '#D4AF37', '#10B981',
+                      '#3B82F6', '#8B5CF6', '#EC4899', '#EA580C', '#E11D48',
+                    ].map((color) => {
+                      const activeEyeColor = config.eyeColor || (config.colorMode === 'solid' ? config.primaryColor : '#000000');
+                      const isSelected = activeEyeColor.toLowerCase() === color.toLowerCase();
+                      return (
+                        <TouchableOpacity
+                          key={color}
+                          style={[
+                            styles.paletteCircle,
+                            { backgroundColor: color },
+                            isSelected && styles.paletteCircleActive,
+                          ]}
+                          onPress={() =>
+                            setConfig((prev) => ({
+                              ...prev,
+                              eyeColor: color,
+                              eyeFrameColor: color,
+                              eyePupilColor: color,
+                            }))
+                          }
+                        />
+                      );
+                    })}
+                  </View>
+
+                  {/* Özel Hex Girişi */}
+                  <View style={[styles.hexInputRow, { marginTop: 10 }]}>
+                    <View
+                      style={[
+                        styles.hexPreviewSwatch,
+                        {
+                          backgroundColor:
+                            config.eyeColor || (config.colorMode === 'solid' ? config.primaryColor : '#000000'),
+                        },
+                      ]}
+                    />
+                    <TextInput
+                      style={styles.hexTextInput}
+                      value={config.eyeColor || ''}
+                      placeholder="#000000 (Boş bırakılırsa gövdeyle aynı olur)"
+                      placeholderTextColor="#64748B"
+                      onChangeText={(val) => {
+                        const clean = val.trim();
+                        setConfig((prev) => ({
+                          ...prev,
+                          eyeColor: clean || undefined,
+                          eyeFrameColor: clean || undefined,
+                          eyePupilColor: clean || undefined,
+                        }));
+                      }}
+                      autoCapitalize="none"
+                      maxLength={9}
+                    />
+                  </View>
+                </View>
+
                 {/* Arka Plan Rengi */}
-                <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Arka Plan Rengi:</Text>
+                <Text style={[styles.fieldLabel, { marginTop: 20 }]}>Arka Plan Rengi:</Text>
                 <View style={styles.bgOptionsRow}>
                   {[
-                    { id: '#0F172A', label: 'Karbon (#0F172A)', isDark: true },
-                    { id: '#FFFFFF', label: 'Saf Beyaz', isDark: false },
+                    { id: '#FFFFFF', label: 'Saf Beyaz (Varsayılan)', isDark: false },
                     { id: '#FAF7F2', label: 'Fildişi Lüks', isDark: false },
+                    { id: '#0F172A', label: 'Karbon (#0F172A)', isDark: true },
+                    { id: '#000000', label: 'Saf Siyah', isDark: true },
                     { id: 'transparent', label: 'Şeffaf (PNG)', isDark: false },
                   ].map((bg) => (
                     <TouchableOpacity
@@ -777,6 +895,71 @@ export default function QRStudioScreen() {
                       <Text style={styles.shapeCardTitle}>{p.label}</Text>
                     </TouchableOpacity>
                   ))}
+                </View>
+
+                {/* Köşe Göz Rengi Hızlı Seçimi */}
+                <View style={{ marginTop: 20 }}>
+                  <View style={styles.sectionHeaderRow}>
+                    <Text style={styles.fieldLabel}>👁️ Köşe Göz Rengi (Eye Color):</Text>
+                    <View style={{ flexDirection: 'row', gap: 6 }}>
+                      <TouchableOpacity
+                        onPress={() =>
+                          setConfig((prev) => ({
+                            ...prev,
+                            eyeColor: '#000000',
+                            eyeFrameColor: '#000000',
+                            eyePupilColor: '#000000',
+                          }))
+                        }
+                        style={styles.quickActionPill}
+                      >
+                        <Ionicons name="ellipse" size={12} color="#000000" />
+                        <Text style={styles.quickActionText}>Siyah</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() =>
+                          setConfig((prev) => ({
+                            ...prev,
+                            eyeColor: undefined,
+                            eyeFrameColor: undefined,
+                            eyePupilColor: undefined,
+                          }))
+                        }
+                        style={styles.quickActionPill}
+                      >
+                        <Ionicons name="sync-outline" size={12} color="#94A3B8" />
+                        <Text style={[styles.quickActionText, { color: '#94A3B8' }]}>Gövdeyle Eşitle</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  <View style={[styles.paletteGrid, { marginTop: 6 }]}>
+                    {[
+                      '#000000', '#1E293B', '#D4AF37', '#10B981',
+                      '#3B82F6', '#8B5CF6', '#EC4899', '#EA580C', '#E11D48',
+                    ].map((color) => {
+                      const activeEyeColor = config.eyeColor || (config.colorMode === 'solid' ? config.primaryColor : '#000000');
+                      const isSelected = activeEyeColor.toLowerCase() === color.toLowerCase();
+                      return (
+                        <TouchableOpacity
+                          key={color}
+                          style={[
+                            styles.paletteCircle,
+                            { backgroundColor: color },
+                            isSelected && styles.paletteCircleActive,
+                          ]}
+                          onPress={() =>
+                            setConfig((prev) => ({
+                              ...prev,
+                              eyeColor: color,
+                              eyeFrameColor: color,
+                              eyePupilColor: color,
+                            }))
+                          }
+                        />
+                      );
+                    })}
+                  </View>
                 </View>
 
                 {/* Kenar Boşluğu (Margin) */}
@@ -1529,6 +1712,52 @@ function getStyles(isDark: boolean, colors: ThemeColors) {
       color: colors.text,
       fontSize: 12,
       fontWeight: '500',
+    },
+    sectionHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 6,
+    },
+    quickActionPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 8,
+      backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
+      borderWidth: 1,
+      borderColor: isDark ? '#334155' : '#E2E8F0',
+    },
+    quickActionText: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.gold,
+    },
+    hexInputRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    hexPreviewSwatch: {
+      width: 38,
+      height: 38,
+      borderRadius: 10,
+      borderWidth: 2,
+      borderColor: colors.border,
+    },
+    hexTextInput: {
+      flex: 1,
+      backgroundColor: isDark ? '#0F172A' : '#FFFFFF',
+      borderWidth: 1,
+      borderColor: colors.border,
+      color: colors.text,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderRadius: 10,
+      fontSize: 13,
+      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     },
   });
 }

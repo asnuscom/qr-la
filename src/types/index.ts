@@ -64,6 +64,7 @@ export interface EventModel {
   schedule: ScheduleItem[];
   settings: EventSettings;
   storage: StorageInfo;
+  viewCount?: number;
   createdAt: string;
 }
 

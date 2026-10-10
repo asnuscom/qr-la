@@ -17,6 +17,8 @@ export interface QRStudioConfig {
   gradientSecondaryColor: string;
   gradientType: QRGradientType;
   eyeColor?: string; // Boşsa primaryColor ile aynı
+  eyeFrameColor?: string; // İsteğe bağlı bağımsız dış çerçeve rengi
+  eyePupilColor?: string; // İsteğe bağlı bağımsız iç göz bebeği rengi
   backgroundColor: string; // '#FFFFFF', '#0F172A', 'transparent', vb.
   
   // Logo & İkon
