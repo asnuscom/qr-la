@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { authService } from '@/services/authService';
 import { ecosystemService, EcosystemAsset } from '@/services/ecosystemService';
+import { DEMO_HOST_UID } from '@/services/mockData';
 import { notificationService } from '@/services/notificationService';
 import NotificationCenterModal from '@/components/NotificationCenterModal';
 import { useTheme, ThemeColors } from '@/context/ThemeContext';
@@ -50,17 +51,18 @@ export default function MasterDashboardScreen() {
         const u = authService.getState().user;
         setCurrentUser(u);
         const data = await ecosystemService.getAllUserAssets(
-          u?.uid || 'demo-host-yavuz'
+          u?.uid || DEMO_HOST_UID
         );
         setAssets(data);
       } catch (err) {
-        console.error('Error loading ecosystem assets:', err);
+        console.error('Master assets load error:', err);
       } finally {
         setIsLoading(false);
       }
     }
     loadAssets();
   }, []);
+
 
   useEffect(() => {
     setUnreadNotifCount(notificationService.getUnreadCount());

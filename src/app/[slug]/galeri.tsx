@@ -85,9 +85,7 @@ export default function GalleryScreen() {
   };
 
   const user = authService.getState().user;
-  const isHost = Boolean(
-    user && (user.isHost || user.events?.includes(slug) || user.events?.includes('all') || user.email?.includes('samet'))
-  );
+  const isHost = Boolean(eventService.isUserEventOwner(event, user));
 
   const handleDeletePhoto = async (photoId: string) => {
     if (!slug) return;
@@ -97,7 +95,7 @@ export default function GalleryScreen() {
     }
     const doDelete = async () => {
       setPhotos((prev) => prev.filter((p) => p.id !== photoId));
-      await eventService.deletePhoto(slug, photoId);
+      await eventService.deletePhoto(slug, photoId, user);
     };
 
     if (Platform.OS === 'web') {

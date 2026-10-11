@@ -1,8 +1,11 @@
 import { EventModel, AlbumModel, PhotoModel, GuestbookEntryModel, PlanTierConfig, CouponDefinition } from '@/types';
 
+export const DEMO_HOST_UID = 'demo-host';
+
 export const DEMO_EVENT: EventModel = {
   id: 'event-samet-sule-2026',
   slug: 'demo-panel',
+  hostId: DEMO_HOST_UID,
   title: 'Samet & Şule Düğünü',
   subtitle: 'Bu mutlu anımıza ortak olduğunuz için teşekkür ederiz.',
   hosts: {
@@ -489,7 +492,7 @@ export function slugify(text: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
-export function generateDefaultEvent(slug: string, hostDisplayName?: string): EventModel {
+export function generateDefaultEvent(slug: string, hostDisplayName?: string, hostId?: string): EventModel {
   const cleanSlug = slugify(slug || 'etkinlik') || 'etkinlik';
   const parts = cleanSlug.split(/-ve-|-ile-|-and-|-/);
 
@@ -529,6 +532,7 @@ export function generateDefaultEvent(slug: string, hostDisplayName?: string): Ev
   return {
     id: `event-${cleanSlug}-${Date.now()}`,
     slug: cleanSlug,
+    hostId: hostId || undefined,
     title,
     subtitle: 'Bu mutlu anımıza ortak olduğunuz için teşekkür ederiz. Masanızdaki QR kodu okutarak anılarınızı hemen paylaşabilirsiniz.',
     hosts: {

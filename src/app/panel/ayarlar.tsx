@@ -1,7 +1,7 @@
 import { ShareEventModal } from '@/components/ShareEventModal';
 import { authService } from '@/services/authService';
 import { eventService } from '@/services/eventService';
-import { slugify } from '@/services/mockData';
+import { slugify, DEMO_HOST_UID } from '@/services/mockData';
 import { EventModel } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -30,14 +30,14 @@ export default function EventSettingsScreen() {
   const user = authService.getState().user;
   const userSlug =
     (user &&
-      user.uid !== 'demo-host-yavuz' &&
+      user.uid !== DEMO_HOST_UID &&
       user.events?.find((s) => s && s !== 'demo-panel' && s !== 'samet-ve-sule')) ||
     user?.events?.[0];
 
   const initialSlug = paramSlug || userSlug || 'demo-panel';
   const [loadedSlug, setLoadedSlug] = useState<string>(initialSlug);
   const activeSavedSlug = loadedSlug || initialSlug;
-  const isDemo = activeSavedSlug === 'demo-panel' || !user || user.uid === 'demo-host-yavuz';
+  const isDemo = activeSavedSlug === 'demo-panel' || !user || user.uid === DEMO_HOST_UID;
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -74,6 +74,8 @@ export default function EventSettingsScreen() {
     }
   }, []);
 
+  const [isUnauthorized, setIsUnauthorized] = useState(false);
+
   // Load existing event data
   useEffect(() => {
     const load = async () => {
@@ -82,6 +84,15 @@ export default function EventSettingsScreen() {
         const slugToLoad = paramSlug || initialSlug;
         const ev = await eventService.getEvent(slugToLoad, user?.displayName);
         if (ev) {
+          const isDemoSlug = ev.slug === 'demo-panel' || ev.slug === 'samet-ve-sule' || ev.slug === 'demo';
+          const isOwner = eventService.isUserEventOwner(ev, user);
+
+          if (!isDemoSlug && !isOwner) {
+            setIsUnauthorized(true);
+            setIsLoading(false);
+            return;
+          }
+
           setEventData(ev);
           setLoadedSlug(ev.slug);
           setSlug(ev.slug);
@@ -206,9 +217,14 @@ export default function EventSettingsScreen() {
 
       if (cleanSlug !== activeSavedSlug) {
         // Slug changed: run complete migration of Firestore documents and subcollections
-        await eventService.renameEventSlug(activeSavedSlug, cleanSlug, {
-          settings: updatedSettings as any,
-        });
+        await eventService.renameEventSlug(
+          activeSavedSlug,
+          cleanSlug,
+          {
+            settings: updatedSettings as any,
+          },
+          user
+        );
         if (user) {
           await authService.updateUserEventSlug(user.uid, activeSavedSlug, cleanSlug);
         }
@@ -219,9 +235,13 @@ export default function EventSettingsScreen() {
           router.setParams({ slug: cleanSlug });
         }
       } else {
-        await eventService.saveEvent(cleanSlug, {
-          settings: updatedSettings as any,
-        });
+        await eventService.saveEvent(
+          cleanSlug,
+          {
+            settings: updatedSettings as any,
+          },
+          user
+        );
         setLoadedSlug(cleanSlug);
         setSlug(cleanSlug);
         setSlugCheckStatus(null);
@@ -244,6 +264,41 @@ export default function EventSettingsScreen() {
       Alert.alert('Hata', e?.message || 'Ayarlar kaydedilirken bir hata oluştu.');
     }
   };
+
+  if (isUnauthorized) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.navbar}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => router.replace('/panel' as any)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={20} color="#1A1817" />
+          </TouchableOpacity>
+          <Text style={styles.navTitle} numberOfLines={1}>Yetkisiz Erişim</Text>
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, minHeight: 400 }}>
+          <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: '#FEF2F2', justifyContent: 'center', alignItems: 'center', marginBottom: 16 }}>
+            <Ionicons name="lock-closed" size={34} color="#EF4444" />
+          </View>
+          <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1817', marginBottom: 8, textAlign: 'center' }}>
+            Erişim Yetkiniz Bulunmuyor 🔒
+          </Text>
+          <Text style={{ fontSize: 14, color: '#6B7280', textAlign: 'center', maxWidth: 420, lineHeight: 22, marginBottom: 24 }}>
+            Bu etkinliğin gizlilik ve bağlantı ayarlarını yalnızca etkinlik sahibi düzenleyebilir.
+          </Text>
+          <TouchableOpacity
+            style={{ backgroundColor: '#C5A059', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }}
+            onPress={() => router.replace('/panel' as any)}
+            activeOpacity={0.85}
+          >
+            <Text style={{ color: '#FFF', fontWeight: '600', fontSize: 15 }}>Kendi Yönetim Panelime Dön</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (isLoading) {
     return (

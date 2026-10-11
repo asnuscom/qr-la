@@ -10,7 +10,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { AuthState, UserModel } from '@/types';
 import { eventService } from './eventService';
 import { auth, db, isRealFirebaseConfigured } from './firebase';
-import { slugify } from './mockData';
+import { slugify, DEMO_HOST_UID } from './mockData';
 import { appStorage } from './storage';
 
 const SESSION_STORAGE_KEY = 'qr_la_host_session';
@@ -67,7 +67,7 @@ interface LocalUserRecord {
 }
 
 const DEMO_USER: UserModel = {
-  uid: 'demo-host-yavuz',
+  uid: DEMO_HOST_UID,
   email: 'samet@qr-la.com',
   displayName: 'Samet & Şule (Ev Sahibi)',
   isHost: true,
@@ -350,7 +350,7 @@ class AuthService {
         createdAt: new Date().toISOString(),
       };
 
-      await eventService.getEvent(cleanSlug, displayName);
+      await eventService.getEvent(cleanSlug, displayName, userProfile.uid);
       localUsers.push({ email: cleanEmail, pass: cleanPass, userProfile });
       this.saveLocalUsers(localUsers);
 

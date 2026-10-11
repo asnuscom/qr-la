@@ -17,7 +17,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { authService } from '@/services/authService';
 import { eventService } from '@/services/eventService';
 import { ecosystemService, EcosystemAsset } from '@/services/ecosystemService';
-import { COUPON_CODES, PLAN_TIERS, ECOSYSTEM_PACKAGES } from '@/services/mockData';
+import { COUPON_CODES, PLAN_TIERS, ECOSYSTEM_PACKAGES, DEMO_HOST_UID } from '@/services/mockData';
 import { EventModel, PlanTierConfig, StorageTier } from '@/types';
 import { paymentService, PaymentItem, TransactionRecord } from '@/services/paymentService';
 import PaymentModal from '@/components/PaymentModal';
@@ -78,7 +78,7 @@ export default function PricingUpgradeScreen() {
       setIsLoadingAssets(true);
       try {
         const assets = await ecosystemService.getAllUserAssets(
-          currentUser?.uid || 'demo-host-yavuz'
+          currentUser?.uid || DEMO_HOST_UID
         );
         setUserAssets(assets);
 

@@ -2,7 +2,7 @@ import { StorageMeter } from '@/components/StorageMeter';
 import { ShareEventModal } from '@/components/ShareEventModal';
 import { authService } from '@/services/authService';
 import { eventService } from '@/services/eventService';
-import { DEMO_PHOTOS, slugify } from '@/services/mockData';
+import { DEMO_PHOTOS, slugify, DEMO_HOST_UID } from '@/services/mockData';
 import { EventModel, PhotoModel, UserModel } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -66,10 +66,9 @@ export default function EventHostPanelScreen() {
   }, []);
 
 
-  const resolveActiveSlug = (user: UserModel | null): string => {
-    if (paramSlug && paramSlug !== 'demo-panel') return paramSlug;
+  const getUserOwnSlug = (user: UserModel | null): string => {
     if (!user) return 'demo-panel';
-    if (user.uid === 'demo-host-yavuz') return 'demo-panel';
+    if (user.uid === DEMO_HOST_UID) return 'demo-panel';
     const personal = user.events?.find((s) => s && s !== 'demo-panel' && s !== 'samet-ve-sule');
     if (personal) return personal;
     const rawName = user.displayName || user.email?.split('@')[0] || 'etkinlik';
@@ -78,12 +77,41 @@ export default function EventHostPanelScreen() {
 
   const loadData = async (userToUse?: UserModel | null) => {
     const targetUser = userToUse !== undefined ? userToUse : currentUser;
-    const activeSlug = resolveActiveSlug(targetUser);
-    const ev = await eventService.getEvent(activeSlug, targetUser?.displayName);
+    let targetSlug = getUserOwnSlug(targetUser);
+
+    if (paramSlug && paramSlug !== 'demo-panel') {
+      if (!targetUser) {
+        Alert.alert(
+          'Giriş Yapmalısınız 🔒',
+          'Bu etkinliğin yönetim paneline erişebilmek için lütfen hesap sahibi olarak giriş yapınız.',
+          [{ text: 'Giriş Yap', onPress: () => router.push('/giris' as any) }]
+        );
+        router.replace('/giris' as any);
+        return;
+      }
+
+      // Check if targetUser owns the requested paramSlug
+      const candidateEvent = await eventService.getEvent(paramSlug);
+      const isOwner = eventService.isUserEventOwner(candidateEvent, targetUser);
+
+      if (isOwner) {
+        targetSlug = paramSlug;
+      } else {
+        Alert.alert(
+          'Yetkisiz Erişim 🔒',
+          `"${paramSlug}" bağlantılı etkinlik başka bir kullanıcıya aittir. Yalnızca etkinlik sahibi bu yönetim paneline erişebilir. Kendi panelinize yönlendiriliyorsunuz.`,
+          [{ text: 'Anladım' }]
+        );
+        router.replace('/panel' as any);
+        targetSlug = getUserOwnSlug(targetUser);
+      }
+    }
+
+    const ev = await eventService.getEvent(targetSlug, targetUser?.displayName, targetUser?.uid);
     if (ev) {
       setEvent(ev);
     }
-    const ph = await eventService.getPhotos(activeSlug);
+    const ph = await eventService.getPhotos(targetSlug);
     setPhotos(ph);
   };
 
@@ -98,14 +126,14 @@ export default function EventHostPanelScreen() {
     }, [paramSlug])
   );
 
-  // Live real-time listener for photos
+  // Live real-time listener for photos of currently loaded event
   useEffect(() => {
-    const activeSlug = resolveActiveSlug(currentUser);
-    const unsub = eventService.subscribePhotos(activeSlug, (updatedPhotos) => {
+    if (!event?.slug) return;
+    const unsub = eventService.subscribePhotos(event.slug, (updatedPhotos) => {
       setPhotos(updatedPhotos);
     });
     return () => unsub();
-  }, [currentUser, paramSlug]);
+  }, [event?.slug]);
 
   // Live subscription to auth state changes
   useEffect(() => {
@@ -184,7 +212,7 @@ export default function EventHostPanelScreen() {
 
 
 
-  const isDemo = event?.slug === 'demo-panel' || !currentUser || currentUser.uid === 'demo-host-yavuz';
+  const isDemo = event?.slug === 'demo-panel' || !currentUser || currentUser.uid === DEMO_HOST_UID;
 
   useEffect(() => {
     const initialUser = authService.getState().user;
@@ -437,7 +465,7 @@ export default function EventHostPanelScreen() {
     const executeDelete = async () => {
       // Optimistic instant UI update
       setPhotos((prev) => prev.filter((p) => p.id !== photoId));
-      await eventService.deletePhoto(event.slug, photoId);
+      await eventService.deletePhoto(event.slug, photoId, currentUser);
       await loadData(currentUser);
     };
 
