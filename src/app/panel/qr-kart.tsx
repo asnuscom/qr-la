@@ -1,7 +1,7 @@
 import { QRCardTemplate } from '@/components/QRCardTemplate';
 import { authService } from '@/services/authService';
 import { eventService } from '@/services/eventService';
-import { slugify } from '@/services/mockData';
+import { slugify, DEMO_HOST_UID } from '@/services/mockData';
 import { EventModel } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -37,7 +37,7 @@ export default function QRCardScreen() {
       setIsLoading(true);
       const user = authService.getState().user;
       let activeSlug = 'demo-panel';
-      if (user && user.uid !== 'demo-host-yavuz') {
+      if (user && user.uid !== DEMO_HOST_UID) {
         activeSlug =
           user.events?.find((s) => s && s !== 'demo-panel' && s !== 'samet-ve-sule') ||
           slugify(user.displayName || user.email?.split('@')[0] || 'etkinlik');

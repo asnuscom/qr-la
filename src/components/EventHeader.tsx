@@ -1,4 +1,5 @@
 import { authService } from '@/services/authService';
+import { eventService } from '@/services/eventService';
 import { EventModel, UserModel } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -28,14 +29,7 @@ export const EventHeader: React.FC<EventHeaderProps> = ({ event, activeTab = 'ho
     return () => unsub();
   }, []);
 
-  const isHost = Boolean(
-    currentUser && (
-      currentUser.uid === event.hostId ||
-      currentUser.events?.includes(event.slug) ||
-      (currentUser.uid === 'demo-host-yavuz' && (event.slug === 'samet-ve-sule' || event.slug === 'demo-panel')) ||
-      (currentUser.events && currentUser.events.length > 0)
-    )
-  );
+  const isHost = Boolean(eventService.isUserEventOwner(event, currentUser));
 
   useEffect(() => {
     const calculateTime = () => {

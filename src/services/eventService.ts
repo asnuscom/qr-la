@@ -21,6 +21,7 @@ import {
   DEMO_EVENT,
   DEMO_GUESTBOOK,
   DEMO_PHOTOS,
+  DEMO_HOST_UID,
   generateDefaultEvent,
   slugify,
 } from './mockData';
@@ -127,8 +128,41 @@ class EventService {
     }
   }
 
-  // Get or auto-generate event
-  async getEvent(slug: string, hostDisplayName?: string): Promise<EventModel> {
+  // Check if a user is the owner of an event
+  isUserEventOwner(
+    event: EventModel | null | undefined,
+    user: { uid: string; events?: string[] } | null | undefined
+  ): boolean {
+    if (!event || !user) return false;
+
+    // Demo user can manage demo wedding
+    if (user.uid === DEMO_HOST_UID) {
+      return (
+        event.slug === 'demo-panel' ||
+        event.slug === 'samet-ve-sule' ||
+        event.slug === 'demo'
+      );
+    }
+
+    // Match by hostId
+    if (event.hostId && event.hostId === user.uid) {
+      return true;
+    }
+
+    // Match by user's owned events list
+    if (user.events && Array.isArray(user.events) && user.events.includes(event.slug)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  // Get or auto-generate event with optional hostId assignment
+  async getEvent(
+    slug: string,
+    hostDisplayName?: string,
+    hostId?: string
+  ): Promise<EventModel> {
     // 1. If real Firebase is available, check Firestore first
     if (isRealFirebaseConfigured && db) {
       try {
@@ -137,6 +171,10 @@ class EventService {
 
         if (docSnap.exists()) {
           const remoteEvent = docSnap.data() as EventModel;
+          if (!remoteEvent.hostId && hostId) {
+            remoteEvent.hostId = hostId;
+            setDoc(docRef, { hostId }, { merge: true }).catch(() => {});
+          }
           this.events.set(slug, remoteEvent);
           return remoteEvent;
         } else {
@@ -144,8 +182,8 @@ class EventService {
           const isDemoSlug =
             slug === DEMO_EVENT.slug || slug === 'demo' || slug === 'demo-panel' || slug === 'samet-ve-sule';
           const defaultEvent = isDemoSlug
-            ? { ...DEMO_EVENT, slug }
-            : generateDefaultEvent(slug, hostDisplayName);
+            ? { ...DEMO_EVENT, slug, hostId: DEMO_HOST_UID }
+            : generateDefaultEvent(slug, hostDisplayName, hostId);
 
           // Save default event to Firestore so it is never empty
           await setDoc(docRef, defaultEvent);
@@ -186,10 +224,20 @@ class EventService {
 
     // 2. In-memory / Offline Cache fallback
     const cached = this.events.get(slug);
-    if (cached) return { ...cached };
+    if (cached) {
+      if (!cached.hostId && hostId) {
+        cached.hostId = hostId;
+        this.saveEventToStorage(slug, cached);
+      }
+      return { ...cached };
+    }
 
     const stored = this.loadSavedEventFromStorage(slug);
     if (stored) {
+      if (!stored.hostId && hostId) {
+        stored.hostId = hostId;
+        this.saveEventToStorage(slug, stored);
+      }
       this.events.set(slug, stored);
       return { ...stored };
     }
@@ -198,10 +246,11 @@ class EventService {
     const isDemo =
       slug === DEMO_EVENT.slug || slug === 'demo' || slug === 'demo-panel' || slug === 'samet-ve-sule';
     const generated = isDemo
-      ? { ...DEMO_EVENT, slug }
-      : generateDefaultEvent(slug, hostDisplayName);
+      ? { ...DEMO_EVENT, slug, hostId: DEMO_HOST_UID }
+      : generateDefaultEvent(slug, hostDisplayName, hostId);
 
     this.events.set(slug, generated);
+    this.saveEventToStorage(slug, generated);
     this.albums.set(slug, isDemo ? [...DEMO_ALBUMS] : [...DEFAULT_ALBUMS]);
 
     if (isDemo) {
@@ -284,31 +333,41 @@ class EventService {
     user: { uid: string; displayName?: string; email?: string; events?: string[] },
     customSlug?: string
   ): Promise<string> {
-    if (user.uid === 'demo-host-yavuz') return 'demo-panel';
+    if (user.uid === DEMO_HOST_UID) return 'demo-panel';
 
     const existing = user.events?.find(
       (s) => s && s !== 'demo-panel' && s !== 'samet-ve-sule'
     );
     if (existing && !customSlug) {
-      await this.getEvent(existing, user.displayName);
+      await this.getEvent(existing, user.displayName, user.uid);
       return existing;
     }
 
     const targetSlug = customSlug ? slugify(customSlug) : slugify(user.displayName || user.email?.split('@')[0] || 'etkinlik');
     const cleanSlug = targetSlug || 'etkinlik';
 
-    await this.getEvent(cleanSlug, user.displayName);
+    await this.getEvent(cleanSlug, user.displayName, user.uid);
     return cleanSlug;
   }
 
   // Save / Update Event details (e.g. from Host Setup Form)
-  async saveEvent(slug: string, updatedEvent: Partial<EventModel>): Promise<EventModel> {
+  async saveEvent(
+    slug: string,
+    updatedEvent: Partial<EventModel>,
+    callerUser?: { uid: string; events?: string[] } | null
+  ): Promise<EventModel> {
     await this.ensureAuth();
     const current = await this.getEvent(slug);
+
+    if (callerUser && !this.isUserEventOwner(current, callerUser)) {
+      throw new Error('Yetkisiz işlem: Bu etkinliği yalnızca sahibi düzenleyebilir.');
+    }
+
     const merged: EventModel = {
       ...current,
       ...updatedEvent,
       slug,
+      hostId: current.hostId || callerUser?.uid || undefined,
       theme: { ...current.theme, ...(updatedEvent.theme || {}) },
       venue: { ...current.venue, ...(updatedEvent.venue || {}) },
       hosts: { ...current.hosts, ...(updatedEvent.hosts || {}) },
@@ -334,7 +393,8 @@ class EventService {
   async renameEventSlug(
     oldSlug: string,
     rawNewSlug: string,
-    updatedData?: Partial<EventModel>
+    updatedData?: Partial<EventModel>,
+    callerUser?: { uid: string; events?: string[] } | null
   ): Promise<EventModel> {
     await this.ensureAuth();
     const cleanOldSlug = slugify(oldSlug);
@@ -344,8 +404,13 @@ class EventService {
       throw new Error('Yeni bağlantı adı en az 3 karakter olmalıdır.');
     }
 
+    const currentEvent = await this.getEvent(cleanOldSlug);
+    if (callerUser && !this.isUserEventOwner(currentEvent, callerUser)) {
+      throw new Error('Yetkisiz işlem: Bu etkinliğin bağlantısını yalnızca sahibi değiştirebilir.');
+    }
+
     if (cleanNewSlug === cleanOldSlug) {
-      return this.saveEvent(cleanOldSlug, updatedData || {});
+      return this.saveEvent(cleanOldSlug, updatedData || {}, callerUser);
     }
 
     if (RESERVED_SLUGS.has(cleanNewSlug)) {
@@ -358,7 +423,6 @@ class EventService {
     }
 
     // 1. Fetch current data from old slug
-    const currentEvent = await this.getEvent(cleanOldSlug);
     const currentPhotos = await this.getPhotos(cleanOldSlug);
     const currentAlbums = await this.getAlbums(cleanOldSlug);
     const currentGuestbook = await this.getGuestbook(cleanOldSlug);
@@ -937,7 +1001,18 @@ class EventService {
   }
 
 
-  async deletePhoto(slug: string, photoId: string): Promise<boolean> {
+  async deletePhoto(
+    slug: string,
+    photoId: string,
+    callerUser?: { uid: string; events?: string[] } | null
+  ): Promise<boolean> {
+    if (callerUser) {
+      const ev = await this.getEvent(slug);
+      if (!this.isUserEventOwner(ev, callerUser)) {
+        throw new Error('Yetkisiz işlem: Fotoğrafları yalnızca etkinlik sahibi silebilir.');
+      }
+    }
+
     const list = this.photos.get(slug) || this.loadSavedPhotosFromStorage(slug);
     const filtered = list.filter((p) => p.id !== photoId);
     this.photos.set(slug, filtered);

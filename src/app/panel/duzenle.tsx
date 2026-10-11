@@ -1,7 +1,7 @@
 import { authService } from '@/services/authService';
 import { eventService } from '@/services/eventService';
 import { isRealFirebaseConfigured, storage } from '@/services/firebase';
-import { slugify } from '@/services/mockData';
+import { slugify, DEMO_HOST_UID } from '@/services/mockData';
 import { convertHeicToJpegIfNeeded } from '@/services/compression';
 import { DatePickerModal, TimePickerModal } from '@/components/DateTimePickerModal';
 import { AlbumModel, EventModel, EventType, ScheduleItem } from '@/types';
@@ -130,7 +130,7 @@ export default function EventFormScreen() {
   const user = authService.getState().user;
   const userSlug =
     (user &&
-      user.uid !== 'demo-host-yavuz' &&
+      user.uid !== DEMO_HOST_UID &&
       user.events?.find(
         (s) => s && s !== 'demo-panel' && s !== 'samet-ve-sule'
       )) ||
@@ -138,7 +138,7 @@ export default function EventFormScreen() {
   const initialSlug = paramSlug || userSlug || 'demo-panel';
   const [loadedSlug, setLoadedSlug] = useState<string>(initialSlug);
   const activeSavedSlug = loadedSlug || initialSlug;
-  const isDemo = activeSavedSlug === 'demo-panel' || !user || user.uid === 'demo-host-yavuz';
+  const isDemo = activeSavedSlug === 'demo-panel' || !user || user.uid === DEMO_HOST_UID;
 
   const showDemoLockedNotice = (fieldName: string) => {
     Alert.alert(
@@ -213,6 +213,8 @@ export default function EventFormScreen() {
   const [albums, setAlbums] = useState<AlbumModel[]>([]);
   const [newCategoryName, setNewCategoryName] = useState('');
 
+  const [isUnauthorized, setIsUnauthorized] = useState(false);
+
   // Load existing event if available, or generate default
   useEffect(() => {
     const load = async () => {
@@ -221,6 +223,15 @@ export default function EventFormScreen() {
         const slugToLoad = paramSlug || initialSlug;
         const ev = await eventService.getEvent(slugToLoad, user?.displayName);
         if (ev) {
+          const isDemoSlug = ev.slug === 'demo-panel' || ev.slug === 'samet-ve-sule' || ev.slug === 'demo';
+          const isOwner = eventService.isUserEventOwner(ev, user);
+
+          if (!isDemoSlug && !isOwner) {
+            setIsUnauthorized(true);
+            setIsLoading(false);
+            return;
+          }
+
           setLoadedSlug(ev.slug);
           setEventType(ev.eventType || 'dugun');
           setBrideName(ev.hosts.brideOrPrimary || 'Şule');
@@ -546,7 +557,7 @@ export default function EventFormScreen() {
         schedule,
       };
 
-      await eventService.saveEvent(activeSavedSlug, updatedData);
+      await eventService.saveEvent(activeSavedSlug, updatedData, user);
       await eventService.saveAlbums(activeSavedSlug, albums);
 
       setIsSaving(false);
@@ -566,6 +577,41 @@ export default function EventFormScreen() {
       Alert.alert('Hata', e?.message || 'Etkinlik kaydedilirken bir sorun oluştu.');
     }
   };
+
+  if (isUnauthorized) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.navbar}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => router.replace('/panel' as any)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={20} color="#1A1817" />
+          </TouchableOpacity>
+          <Text style={styles.navTitle} numberOfLines={1}>Yetkisiz Erişim</Text>
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, minHeight: 400 }}>
+          <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: '#FEF2F2', justifyContent: 'center', alignItems: 'center', marginBottom: 16 }}>
+            <Ionicons name="lock-closed" size={34} color="#EF4444" />
+          </View>
+          <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1817', marginBottom: 8, textAlign: 'center' }}>
+            Erişim Yetkiniz Bulunmuyor 🔒
+          </Text>
+          <Text style={{ fontSize: 14, color: '#6B7280', textAlign: 'center', maxWidth: 420, lineHeight: 22, marginBottom: 24 }}>
+            Bu etkinlik başka bir kullanıcıya aittir. Yalnızca etkinliğin sahibi düzenleme yapabilir.
+          </Text>
+          <TouchableOpacity
+            style={{ backgroundColor: '#C5A059', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }}
+            onPress={() => router.replace('/panel' as any)}
+            activeOpacity={0.85}
+          >
+            <Text style={{ color: '#FFF', fontWeight: '600', fontSize: 15 }}>Kendi Yönetim Panelime Dön</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (isLoading) {
     return (

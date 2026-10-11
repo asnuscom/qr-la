@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { authService } from '@/services/authService';
 import { eventService } from '@/services/eventService';
-import { slugify } from '@/services/mockData';
+import { slugify, DEMO_HOST_UID } from '@/services/mockData';
 import { AuthState } from '@/types';
 
 export default function LoginScreen() {
@@ -53,7 +53,7 @@ export default function LoginScreen() {
   useEffect(() => {
     const unsub = authService.subscribe((state) => {
       setAuthState(state);
-      if (state.isAuthenticated && state.user && state.user.uid !== 'demo-host-yavuz') {
+      if (state.isAuthenticated && state.user && state.user.uid !== DEMO_HOST_UID) {
         // Redirect if already logged in with real user
         router.replace('/panel' as any);
       }

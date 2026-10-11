@@ -1,6 +1,6 @@
 import { authService } from '@/services/authService';
 import { eventService } from '@/services/eventService';
-import { COUPON_CODES, PLAN_TIERS } from '@/services/mockData';
+import { COUPON_CODES, PLAN_TIERS, DEMO_HOST_UID } from '@/services/mockData';
 import { EventModel, PlanTierConfig, StorageTier } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -32,7 +32,7 @@ export default function PricingUpgradeScreen() {
   const currentUser = authService.getState().user;
   const userSlug =
     (currentUser &&
-      currentUser.uid !== 'demo-host-yavuz' &&
+      currentUser.uid !== DEMO_HOST_UID &&
       currentUser.events?.find((s) => s && s !== 'demo-panel' && s !== 'samet-ve-sule')) ||
     currentUser?.events?.[0];
 

@@ -13,7 +13,7 @@ import { useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { PLAN_TIERS } from '@/services/mockData';
+import { PLAN_TIERS, DEMO_HOST_UID } from '@/services/mockData';
 import { authService } from '@/services/authService';
 import { UserModel } from '@/types';
 
@@ -61,7 +61,7 @@ export default function LandingScreen() {
     return () => unsub();
   }, []);
 
-  const isUserLoggedIn = Boolean(currentUser && currentUser.uid !== 'demo-host-yavuz');
+  const isUserLoggedIn = Boolean(currentUser && currentUser.uid !== DEMO_HOST_UID);
 
   const handleStartEvent = () => {
     if (isUserLoggedIn) {
