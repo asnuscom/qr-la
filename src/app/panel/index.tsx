@@ -15,6 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { authService } from '@/services/authService';
 import { ecosystemService, EcosystemAsset } from '@/services/ecosystemService';
+import { notificationService } from '@/services/notificationService';
+import NotificationCenterModal from '@/components/NotificationCenterModal';
 import { useTheme, ThemeColors } from '@/context/ThemeContext';
 import ThemeToggleBtn from '@/components/ThemeToggleBtn';
 
@@ -30,6 +32,8 @@ export default function MasterDashboardScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [createModalVisible, setCreateModalVisible] = useState(false);
+  const [notifModalVisible, setNotifModalVisible] = useState(false);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const { isDark, colors } = useTheme();
   const styles = getStyles(isDark, colors, isMobile, isWide);
 
@@ -56,6 +60,14 @@ export default function MasterDashboardScreen() {
       }
     }
     loadAssets();
+  }, []);
+
+  useEffect(() => {
+    setUnreadNotifCount(notificationService.getUnreadCount());
+    const unsub = notificationService.subscribe((list) => {
+      setUnreadNotifCount(list.filter((n) => !n.read).length);
+    });
+    return () => unsub();
   }, []);
 
   const copyLink = (liveUrl: string, assetId: string) => {
@@ -168,6 +180,25 @@ export default function MasterDashboardScreen() {
         </View>
 
         <View style={styles.navRight}>
+          <TouchableOpacity
+            style={[styles.headerToolBtn, styles.notifBellBtn, { borderColor: colors.border }]}
+            onPress={() => setNotifModalVisible(true)}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name={unreadNotifCount > 0 ? 'notifications' : 'notifications-outline'}
+              size={17}
+              color={unreadNotifCount > 0 ? '#C5A059' : colors.text}
+            />
+            {unreadNotifCount > 0 && (
+              <View style={styles.notifBadge}>
+                <Text style={styles.notifBadgeText}>
+                  {unreadNotifCount > 9 ? '9+' : unreadNotifCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
           <ThemeToggleBtn size="sm" />
 
           {!isMobile && (
@@ -995,6 +1026,12 @@ export default function MasterDashboardScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* 7. Bildirim Merkezi Modalı */}
+      <NotificationCenterModal
+        visible={notifModalVisible}
+        onClose={() => setNotifModalVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -1085,6 +1122,30 @@ function getStyles(
       paddingVertical: 7,
       borderRadius: 10,
       borderWidth: 1,
+    },
+    notifBellBtn: {
+      position: 'relative',
+      paddingHorizontal: 9,
+      paddingVertical: 7,
+    },
+    notifBadge: {
+      position: 'absolute',
+      top: -4,
+      right: -4,
+      backgroundColor: '#EF4444',
+      borderRadius: 9,
+      minWidth: 16,
+      height: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 3,
+      borderWidth: 1.5,
+      borderColor: isDark ? '#090D16' : '#FFFFFF',
+    },
+    notifBadgeText: {
+      color: '#FFFFFF',
+      fontSize: 9,
+      fontWeight: '800',
     },
     headerToolText: {
       fontSize: 13,

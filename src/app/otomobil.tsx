@@ -265,7 +265,7 @@ export default function VehicleLandingPage() {
               </View>
               <TouchableOpacity
                 style={styles.priceBtn}
-                onPress={() => router.push('/panel/tarifeler' as any)}
+                onPress={() => router.push({ pathname: '/panel/tarifeler', params: { tab: 'vehicle' } } as any)}
               >
                 <Text style={styles.priceBtnText}>Dijital Başla</Text>
               </TouchableOpacity>
@@ -288,7 +288,7 @@ export default function VehicleLandingPage() {
               </View>
               <TouchableOpacity
                 style={[styles.priceBtn, styles.priceBtnFeatured]}
-                onPress={() => router.push('/panel/tarifeler' as any)}
+                onPress={() => router.push({ pathname: '/panel/tarifeler', params: { tab: 'vehicle' } } as any)}
               >
                 <Text style={[styles.priceBtnText, { color: '#FFFFFF', fontWeight: '800' }]}>
                   Sticker Seti Satın Al
@@ -309,7 +309,7 @@ export default function VehicleLandingPage() {
               </View>
               <TouchableOpacity
                 style={styles.priceBtn}
-                onPress={() => router.push('/panel/tarifeler' as any)}
+                onPress={() => router.push({ pathname: '/panel/tarifeler', params: { tab: 'vehicle' } } as any)}
               >
                 <Text style={styles.priceBtnText}>Rider Seti Seç</Text>
               </TouchableOpacity>

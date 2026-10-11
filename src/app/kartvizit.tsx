@@ -265,7 +265,7 @@ export default function BusinessCardLandingPage() {
               </View>
               <TouchableOpacity
                 style={styles.priceBtn}
-                onPress={() => router.push('/panel/tarifeler' as any)}
+                onPress={() => router.push({ pathname: '/panel/tarifeler', params: { tab: 'vcard' } } as any)}
               >
                 <Text style={styles.priceBtnText}>Dijital Başla</Text>
               </TouchableOpacity>
@@ -288,7 +288,7 @@ export default function BusinessCardLandingPage() {
               </View>
               <TouchableOpacity
                 style={[styles.priceBtn, styles.priceBtnFeatured]}
-                onPress={() => router.push('/panel/tarifeler' as any)}
+                onPress={() => router.push({ pathname: '/panel/tarifeler', params: { tab: 'vcard' } } as any)}
               >
                 <Text style={[styles.priceBtnText, { color: '#FFFFFF', fontWeight: '800' }]}>
                   NFC Kart Satın Al
@@ -309,7 +309,7 @@ export default function BusinessCardLandingPage() {
               </View>
               <TouchableOpacity
                 style={styles.priceBtn}
-                onPress={() => router.push('/panel/tarifeler' as any)}
+                onPress={() => router.push({ pathname: '/panel/tarifeler', params: { tab: 'vcard' } } as any)}
               >
                 <Text style={styles.priceBtnText}>Metal Kartı Seç</Text>
               </TouchableOpacity>

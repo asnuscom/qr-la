@@ -1,15 +1,41 @@
-import React, { useEffect } from 'react';
-import { Stack } from 'expo-router';
+import { useEffect } from 'react';
+import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
+import { notificationService } from '@/services/notificationService';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function RootNavigator() {
   const { colors, isDark } = useTheme();
+
+  useEffect(() => {
+    notificationService.registerForPushNotificationsAsync().catch(() => {});
+
+    if (Platform.OS !== 'web') {
+      const response = Notifications.getLastNotificationResponse();
+      const initialUrl = response?.notification.request.content.data?.url;
+      if (typeof initialUrl === 'string') {
+        router.push(initialUrl as any);
+      }
+
+      const sub = Notifications.addNotificationResponseReceivedListener((resp) => {
+        const url = resp.notification.request.content.data?.url;
+        if (typeof url === 'string') {
+          router.push(url as any);
+        }
+      });
+
+      return () => {
+        sub.remove();
+      };
+    }
+  }, []);
 
   return (
     <>

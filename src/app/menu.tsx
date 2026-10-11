@@ -266,7 +266,7 @@ export default function RestaurantMenuLandingPage() {
               </View>
               <TouchableOpacity
                 style={styles.priceBtn}
-                onPress={() => router.push('/panel/tarifeler' as any)}
+                onPress={() => router.push({ pathname: '/panel/tarifeler', params: { tab: 'menu' } } as any)}
               >
                 <Text style={styles.priceBtnText}>Paketi Seç</Text>
               </TouchableOpacity>
@@ -289,7 +289,7 @@ export default function RestaurantMenuLandingPage() {
               </View>
               <TouchableOpacity
                 style={[styles.priceBtn, styles.priceBtnFeatured]}
-                onPress={() => router.push('/panel/tarifeler' as any)}
+                onPress={() => router.push({ pathname: '/panel/tarifeler', params: { tab: 'menu' } } as any)}
               >
                 <Text style={[styles.priceBtnText, { color: '#FFFFFF', fontWeight: '800' }]}>
                   Restoran Paketini Satın Al
@@ -310,7 +310,7 @@ export default function RestaurantMenuLandingPage() {
               </View>
               <TouchableOpacity
                 style={styles.priceBtn}
-                onPress={() => router.push('/panel/tarifeler' as any)}
+                onPress={() => router.push({ pathname: '/panel/tarifeler', params: { tab: 'menu' } } as any)}
               >
                 <Text style={styles.priceBtnText}>Zincir Paketi Seç</Text>
               </TouchableOpacity>

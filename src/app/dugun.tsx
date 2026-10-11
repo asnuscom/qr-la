@@ -73,7 +73,7 @@ export default function WeddingLandingPage() {
             <View style={styles.heroCtaRow}>
               <TouchableOpacity
                 style={styles.primaryCtaBtn}
-                onPress={() => router.push('/panel' as any)}
+                onPress={() => router.push('/panel/etkinlik' as any)}
                 activeOpacity={0.88}
               >
                 <Ionicons name="sparkles" size={18} color="#0F172A" />
@@ -264,7 +264,7 @@ export default function WeddingLandingPage() {
               </View>
               <TouchableOpacity
                 style={styles.priceBtn}
-                onPress={() => router.push('/panel/tarifeler' as any)}
+                onPress={() => router.push({ pathname: '/panel/tarifeler', params: { tab: 'wedding' } } as any)}
               >
                 <Text style={styles.priceBtnText}>Paketi Seç</Text>
               </TouchableOpacity>
@@ -287,7 +287,7 @@ export default function WeddingLandingPage() {
               </View>
               <TouchableOpacity
                 style={[styles.priceBtn, styles.priceBtnFeatured]}
-                onPress={() => router.push('/panel/tarifeler' as any)}
+                onPress={() => router.push({ pathname: '/panel/tarifeler', params: { tab: 'wedding' } } as any)}
               >
                 <Text style={[styles.priceBtnText, { color: '#0F172A', fontWeight: '800' }]}>
                   Hemen Satın Al & Başla
@@ -308,7 +308,7 @@ export default function WeddingLandingPage() {
               </View>
               <TouchableOpacity
                 style={styles.priceBtn}
-                onPress={() => router.push('/panel/tarifeler' as any)}
+                onPress={() => router.push({ pathname: '/panel/tarifeler', params: { tab: 'wedding' } } as any)}
               >
                 <Text style={styles.priceBtnText}>VIP Başla</Text>
               </TouchableOpacity>

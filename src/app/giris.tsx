@@ -296,10 +296,10 @@ export default function LoginScreen() {
           {tab === 'register' && (
             <>
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Adınız & Soyadınız (veya Çift İsimleri)</Text>
+                <Text style={styles.label}>Adınız & Soyadınız (veya İşletme / Çift Adı)</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Örn: Şule & Samet"
+                  placeholder="Örn: Samet Sunman"
                   placeholderTextColor="#9CA3AF"
                   value={displayName}
                   onChangeText={handleDisplayNameChange}
@@ -307,10 +307,10 @@ export default function LoginScreen() {
                 />
               </View>
 
-              {/* Event Link Customization & Availability */}
+              {/* QR Link Customization & Availability */}
               <View style={styles.inputGroup}>
                 <View style={styles.slugHeaderRow}>
-                  <Text style={styles.label}>Etkinlik QR Bağlantınız</Text>
+                  <Text style={styles.label}>Özel QR-la Bağlantınız (Kullanıcı Adı / Slug)</Text>
                   <Text style={styles.slugHint}>Değiştirebilirsiniz</Text>
                 </View>
 
@@ -324,7 +324,7 @@ export default function LoginScreen() {
                   <Text style={styles.slugPrefix}>qr-la.com/</Text>
                   <TextInput
                     style={styles.slugInput}
-                    placeholder="sule-ve-samet"
+                    placeholder="samet-sunman"
                     placeholderTextColor="#9CA3AF"
                     value={slug}
                     onChangeText={handleSlugChange}

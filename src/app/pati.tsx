@@ -266,7 +266,7 @@ export default function PetLandingPage() {
               </View>
               <TouchableOpacity
                 style={styles.priceBtn}
-                onPress={() => router.push('/panel/tarifeler' as any)}
+                onPress={() => router.push({ pathname: '/panel/tarifeler', params: { tab: 'pet' } } as any)}
               >
                 <Text style={styles.priceBtnText}>Dijital Başla</Text>
               </TouchableOpacity>
@@ -289,7 +289,7 @@ export default function PetLandingPage() {
               </View>
               <TouchableOpacity
                 style={[styles.priceBtn, styles.priceBtnFeatured]}
-                onPress={() => router.push('/panel/tarifeler' as any)}
+                onPress={() => router.push({ pathname: '/panel/tarifeler', params: { tab: 'pet' } } as any)}
               >
                 <Text style={[styles.priceBtnText, { color: '#FFFFFF', fontWeight: '800' }]}>
                   Lazer Künye Satın Al
@@ -310,7 +310,7 @@ export default function PetLandingPage() {
               </View>
               <TouchableOpacity
                 style={styles.priceBtn}
-                onPress={() => router.push('/panel/tarifeler' as any)}
+                onPress={() => router.push({ pathname: '/panel/tarifeler', params: { tab: 'pet' } } as any)}
               >
                 <Text style={styles.priceBtnText}>İkili Paketi Seç</Text>
               </TouchableOpacity>
