@@ -15,7 +15,7 @@ import Head from 'expo-router/head';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'qrcode';
-import { PLAN_TIERS, DEMO_HOST_UID } from '@/services/mockData';
+import { DEMO_HOST_UID } from '@/services/mockData';
 import { authService } from '@/services/authService';
 import { UserModel } from '@/types';
 import { useTheme } from '@/context/ThemeContext';
@@ -1193,87 +1193,6 @@ export default function LandingScreen() {
                 Panelinizden dilediğiniz zaman içeriği güncelleyin; tarama istatistiklerini ve raporları canlı takip edin.
               </Text>
             </View>
-          </View>
-        </View>
-
-        {/* ========================================================================= */}
-        {/* PRICING PLANS SECTION */}
-        {/* ========================================================================= */}
-        <View style={[styles.pricingSection, { backgroundColor: isDark ? '#0A0E18' : '#F1F5F9' }]}>
-          <View style={styles.sectionHeaderCentered}>
-            <View style={[styles.sectionOverlinePill, { backgroundColor: 'rgba(99, 102, 241, 0.1)' }]}>
-              <Text style={[styles.sectionOverlineText, { color: BRAND_PRIMARY }]}>ŞEFFAF &amp; ESNEK FİYATLAR</Text>
-            </View>
-            <Text style={[styles.sectionHeading, isMobile && styles.sectionHeadingMobile, { color: isDark ? '#F8FAFC' : '#0F172A' }]}>
-              İhtiyacınıza Uygun Paketi Seçin
-            </Text>
-            <Text style={[styles.sectionSub, isMobile && styles.sectionSubMobile, { color: isDark ? '#94A3B8' : '#64748B' }]}>
-              Tüm modüllerde ücretsiz başlayabilir, dilediğiniz an tek tıkla gelişmiş depolama veya fiziksel baskı paketlerine geçebilirsiniz.
-            </Text>
-          </View>
-
-          <View style={[styles.plansGrid, isDesktop ? styles.plansGridDesktop : styles.plansGridMobile]}>
-            {PLAN_TIERS.map((tier) => {
-              const isPopular = tier.tier === 'premium' || Boolean(tier.isPopular);
-              return (
-                <View
-                  key={tier.tier}
-                  style={[
-                    styles.planCard,
-                    {
-                      backgroundColor: isDark ? '#111827' : '#FFFFFF',
-                      borderColor: isPopular ? BRAND_PRIMARY : isDark ? '#1E293B' : '#E2E8F0',
-                    },
-                    isPopular && styles.planCardPopular,
-                  ]}
-                >
-                  {isPopular && (
-                    <View style={[styles.popularBadge, { backgroundColor: BRAND_PRIMARY }]}>
-                      <Text style={styles.popularBadgeText}>EN ÇOK SEÇİLEN</Text>
-                    </View>
-                  )}
-
-                  <Text style={[styles.planName, { color: isDark ? '#F8FAFC' : '#0F172A' }]}>{tier.name}</Text>
-                  <Text style={[styles.planTagline, { color: isDark ? '#94A3B8' : '#64748B' }]}>
-                    {tier.quotaMB} MB Bulut Depolama • {tier.retentionDays} Gün Arşiv
-                  </Text>
-
-                  <View style={styles.planPriceRow}>
-                    <Text style={[styles.planPriceNumber, { color: isPopular ? BRAND_PRIMARY : isDark ? '#F8FAFC' : '#0F172A' }]}>
-                      {tier.priceTL === 0 ? 'Ücretsiz' : `₺${tier.priceTL.toLocaleString('tr-TR')}`}
-                    </Text>
-                    {tier.priceTL > 0 && (
-                      <Text style={[styles.planPricePeriod, { color: isDark ? '#94A3B8' : '#64748B' }]}>/ tek seferlik</Text>
-                    )}
-                  </View>
-
-                  <View style={[styles.planDivider, { backgroundColor: isDark ? '#1E293B' : '#E2E8F0' }]} />
-
-                  <View style={styles.planFeaturesList}>
-                    {tier.features.map((feat, fIdx) => (
-                      <View key={fIdx} style={styles.planFeatureRow}>
-                        <Ionicons name="checkmark-circle" size={17} color="#10B981" />
-                        <Text style={[styles.planFeatureText, { color: isDark ? '#E2E8F0' : '#1E293B' }]}>{feat}</Text>
-                      </View>
-                    ))}
-                  </View>
-
-                  <TouchableOpacity
-                    style={[
-                      styles.planCtaBtn,
-                      isPopular
-                        ? [styles.planCtaBtnPopular, { backgroundColor: BRAND_PRIMARY, borderColor: BRAND_PRIMARY }]
-                        : { backgroundColor: isDark ? '#1E293B' : '#F1F5F9', borderColor: isDark ? '#334155' : '#CBD5E1' },
-                    ]}
-                    onPress={() => handleStartNow()}
-                  >
-                    <Text style={[styles.planCtaBtnText, isPopular ? { color: '#FFF' } : { color: isDark ? '#F8FAFC' : '#0F172A' }]}>
-                      {tier.priceTL === 0 ? 'Hemen Başla' : 'Paketi Satın Al'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              );
-            })}
           </View>
         </View>
 
