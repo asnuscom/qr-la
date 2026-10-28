@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -190,6 +190,28 @@ export default function LandingScreen() {
 
   const [activeModule, setActiveModule] = useState<ModuleKey>('wedding');
   const [currentUser, setCurrentUser] = useState<UserModel | null>(authService.getState().user);
+  const [moduleControls, setModuleControls] = useState<Record<PlatformModuleKey, ModuleControlConfig>>(DEFAULT_MODULE_CONTROLS);
+
+  useEffect(() => {
+    const unsub = adminService.subscribeModuleControls((controls) => {
+      setModuleControls(controls);
+    });
+    return () => unsub();
+  }, []);
+
+  const visibleModules = useMemo(() => {
+    return Object.values(MODULES).filter((mod) => {
+      const ctrl = moduleControls[mod.key];
+      if (!ctrl) return true;
+      return ctrl.isEnabled && !ctrl.isHiddenOnHome;
+    });
+  }, [moduleControls]);
+
+  useEffect(() => {
+    if (visibleModules.length > 0 && !visibleModules.some((m) => m.key === activeModule)) {
+      setActiveModule(visibleModules[0].key);
+    }
+  }, [visibleModules, activeModule]);
 
   useEffect(() => {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
