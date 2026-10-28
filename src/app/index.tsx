@@ -249,7 +249,14 @@ export default function LandingScreen() {
         />
         <meta property="og:url" content="https://qr-la.com" />
         <meta property="og:type" content="website" />
-        <meta property="og:image" content="https://qr-la.com/assets/images/icon.png" />
+        <meta property="og:image" content="https://qr-la.com/og-banner.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="QR-la | Çok Modüllü Dinamik QR Ekosistemi" />
+        <meta
+          name="twitter:description"
+          content="Uygulama indirtmeden tek bir QR kodla anıları toplayın, araç camında güvenle iletişime geçin, kartvizitinizi rehbere kaydettirin."
+        />
+        <meta name="twitter:image" content="https://qr-la.com/og-banner.png" />
         <link rel="canonical" href="https://qr-la.com" />
       </Head>
 

@@ -1,21 +1,69 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+  <!-- Ana Sayfa (Ecosystem Hub) -->
   <url>
     <loc>https://qr-la.com/</loc>
-    <lastmod>2026-10-09</lastmod>
+    <lastmod>2026-10-28</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
+
+  <!-- 1. Düğün & Etkinlik Canlı Fotoğraf QR -->
   <url>
-    <loc>https://qr-la.com/giris</loc>
-    <lastmod>2026-10-09</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
+    <loc>https://qr-la.com/dugun</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
   </url>
+
+  <!-- 2. Araç & Park Tagı Numara Gizleme QR -->
+  <url>
+    <loc>https://qr-la.com/otomobil</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- 3. Petguru x QR-la Akıllı Pati Künyesi & GPS Kayıp Takibi -->
+  <url>
+    <loc>https://qr-la.com/pati</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- 4. Yeni Nesil Dijital Kartvizit & NFC vCard -->
+  <url>
+    <loc>https://qr-la.com/kartvizit</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- 5. Restoran & Kafe Akıllı QR Menü & Garson Çağırma -->
+  <url>
+    <loc>https://qr-la.com/menu</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Canlı Düğün Demosu -->
   <url>
     <loc>https://qr-la.com/demo-panel</loc>
-    <lastmod>2026-10-09</lastmod>
+    <lastmod>2026-10-28</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
+  </url>
+
+  <!-- Giriş & Kayıt Ol -->
+  <url>
+    <loc>https://qr-la.com/giris</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
   </url>
 </urlset>

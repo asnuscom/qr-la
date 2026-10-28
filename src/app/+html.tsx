@@ -17,15 +17,15 @@ export default function Root({ children }: PropsWithChildren) {
         />
 
         {/* Primary SEO Meta Tags */}
-        <title>QR-la | Düğünde & Nikahta Karekodla Fotoğraf Yüklemesi - Davetiye Etkinlik Albümü</title>
-        <meta name="title" content="QR-la | Düğünde & Nikahta Karekodla Fotoğraf Yüklemesi - Davetiye Etkinlik Albümü" />
+        <title>QR-la | Yeni Nesil Dinamik QR Kod &amp; Akıllı Etiket Platformu</title>
+        <meta name="title" content="QR-la | Yeni Nesil Dinamik QR Kod &amp; Akıllı Etiket Platformu" />
         <meta
           name="description"
-          content="Düğün, nikah, nişan ve özel davetiye etkinliklerinizde masalardaki karekodla misafirlerinizden anında yüksek çözünürlüklü fotoğraf toplayın. Uygulama indirmeden karekodla fotoğraf yüklemesi, canlı TV/projeksiyon yayını ve tek tıkla ZIP arşiv indirme."
+          content="Düğünde masadan canlı fotoğraf toplama, araç camında numara gizleyen akıllı park tagı, Petguru GPS pati künyesi, NFC dijital kartvizit ve restoran QR menü. Tek dinamik ekosistem."
         />
         <meta
           name="keywords"
-          content="davetiye etkinlik, düğünde nikahta karekodla fotoğraf yüklemesi, düğün karekod fotoğraf, nikah karekod fotoğraf, karekodla fotoğraf toplama, masada qr kod fotoğraf, dijital davetiye etkinlik fotoğraf albümü, etkinlik karekod galeri, düğün masa kartı qr kod, kına gecesi karekod, sünnet karekod fotoğrafı, canlı projeksiyon düğün slayt"
+          content="qr-la, karekod fotoğraf toplama, düğün karekod fotoğraf, araç camı qr kod, park sticker qr, gizli numara araç qr, petguru evcil hayvan künye, dijital kartvizit vcard nfc, restoran menü qr, dinamik karekod platformu, akıllı etiket"
         />
         <meta name="robots" content="index, follow" />
         <meta name="language" content="Turkish" />
@@ -36,22 +36,24 @@ export default function Root({ children }: PropsWithChildren) {
         <meta property="og:url" content="https://qr-la.com/" />
         <meta property="og:site_name" content="QR-la" />
         <meta property="og:locale" content="tr_TR" />
-        <meta property="og:title" content="QR-la | Düğünde & Nikahta Karekodla Fotoğraf Yüklemesi" />
+        <meta property="og:title" content="QR-la | Yeni Nesil Dinamik QR Kod &amp; Akıllı Etiket Platformu" />
         <meta
           property="og:description"
-          content="Düğün, nikah ve davetiye etkinliklerinizde masalardaki karekodla misafirlerinizden fotoğraf toplayın. Uygulama indirmeden saniyeler içinde fotoğraflar dev ekrana yansısın!"
+          content="Düğünde masadan canlı fotoğraf toplama, araç camında numara gizleyen akıllı park tagı, Petguru GPS pati künyesi, NFC dijital kartvizit ve restoran QR menü."
         />
-        <meta property="og:image" content="https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1200&q=80" />
+        <meta property="og:image" content="https://qr-la.com/og-banner.png" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
 
         {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:url" content="https://qr-la.com/" />
-        <meta name="twitter:title" content="QR-la | Düğünde & Nikahta Karekodla Fotoğraf Yüklemesi" />
+        <meta name="twitter:title" content="QR-la | Yeni Nesil Dinamik QR Kod &amp; Akıllı Etiket Platformu" />
         <meta
           name="twitter:description"
-          content="Düğün ve etkinliklerinizde misafirlerinizin çektiği anıları masadaki karekodla toplayın. Uygulamasız, hızlı ve canlı projeksiyon destekli."
+          content="Düğünde masadan canlı fotoğraf toplama, araç camında numara gizleyen akıllı park tagı, Petguru GPS pati künyesi, NFC dijital kartvizit ve restoran QR menü."
         />
-        <meta name="twitter:image" content="https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1200&q=80" />
+        <meta name="twitter:image" content="https://qr-la.com/og-banner.png" />
 
         {/* Favicons & Icons */}
         <link rel="icon" type="image/png" href="/favicon.png" />
@@ -69,13 +71,13 @@ export default function Root({ children }: PropsWithChildren) {
                   '@id': 'https://qr-la.com/#website',
                   'url': 'https://qr-la.com/',
                   'name': 'QR-la',
-                  'description': 'Düğün, nikah ve etkinliklerde karekodla fotoğraf yükleme ve canlı paylaşım platformu',
+                  'description': 'Yeni nesil dinamik QR kod ve akıllı phygital etiket ekosistemi',
                   'inLanguage': 'tr-TR',
                 },
                 {
                   '@type': 'SoftwareApplication',
                   'name': 'QR-la',
-                  'applicationCategory': 'MultimediaApplication',
+                  'applicationCategory': 'BusinessApplication',
                   'operatingSystem': 'Web, iOS, Android',
                   'offers': {
                     '@type': 'Offer',
@@ -93,26 +95,42 @@ export default function Root({ children }: PropsWithChildren) {
                   'mainEntity': [
                     {
                       '@type': 'Question',
-                      'name': 'Düğünde ve nikahta karekodla fotoğraf yüklemesi nasıl yapılır?',
+                      'name': 'QR-la nedir ve hangi modülleri kapsar?',
                       'acceptedAnswer': {
                         '@type': 'Answer',
-                        'text': 'Misafirler masalarındaki zarif masa kartlarında bulunan karekodu telefon kameralarıyla okutur. Herhangi bir uygulama indirmelerine gerek kalmadan anında açılan web sayfasından çektikleri fotoğraf ve videoları tek tıkla yükleyebilirler.',
+                        'text': 'QR-la; düğün ve etkinliklerde canlı misafir fotoğrafı toplama, araç camında telefon numaranızı gizleyerek güvenli arama/WhatsApp mesajı sağlayan akıllı park stickerı, Petguru entegrasyonlu GPS pati künyesi, NFC dijital kartvizit ve temassız restoran QR menüyü tek bir platformda birleştiren yeni nesil dinamik QR kod ekosistemidir.',
                       },
                     },
                     {
                       '@type': 'Question',
-                      'name': 'Davetiye ve etkinliklerde QR kod kullanmanın avantajı nedir?',
+                      'name': 'Düğünde misafirlerin fotoğraf yüklemesi için uygulama indirmesi gerekir mi?',
                       'acceptedAnswer': {
                         '@type': 'Answer',
-                        'text': 'WhatsApp gibi platformlarda fotoğrafların kalitesi düşer ve toplamak günler sürer. QR-la ile tüm davetiye etkinliklerinizde yüksek çözünürlüklü fotoğraflar tek bir dijital albümde toplanır, salondaki dev ekrana canlı yansıtılır ve gece bitiminde tek tıkla ZIP arşivi olarak indirilir.',
+                        'text': 'Hayır! QR-la tamamen web tarayıcısı üzerinden çalışır. Misafirler masalardaki QR kodu okutarak uygulama indirmeden saniyeler içinde yüksek çözünürlüklü fotoğraflarını ve tebrik mesajlarını yükleyebilir.',
                       },
                     },
                     {
                       '@type': 'Question',
-                      'name': 'Misafirlerin uygulama indirmesi veya kayıt olması gerekir mi?',
+                      'name': 'Araç camı QR kodunda telefon numaram herkese açık mı görünür?',
                       'acceptedAnswer': {
                         '@type': 'Answer',
-                        'text': 'Hayır! QR-la tamamen tarayıcı üzerinden çalışır. Misafirler uygulama indirmeden, şifre girmeden sadece karekodu okutarak doğrudan fotoğraf yükleyebilir.',
+                        'text': 'Hayır. QR-la akıllı araç etiketinde numaranız tamamen gizli kalır. Karekodu okutan sürücüler QR-la güvenli köprüsü üzerinden numaranızı görmeden arama yapabilir veya hazır şablonlu WhatsApp mesajı gönderebilir.',
+                      },
+                    },
+                    {
+                      '@type': 'Question',
+                      'name': 'Pati künyesi Petguru ile nasıl çalışır?',
+                      'acceptedAnswer': {
+                        '@type': 'Answer',
+                        'text': 'QR-la akıllı pati künyesi tarandığında, tarayan kişinin onaylı GPS konumu anında Petguru altyapısına iletilir, evcil hayvan sahibine anlık bildirim gider ve acil durum tıbbi profili görüntülenir.',
+                      },
+                    },
+                    {
+                      '@type': 'Question',
+                      'name': 'Dinamik QR kodlar basıldıktan sonra içeriği değiştirilebilir mi?',
+                      'acceptedAnswer': {
+                        '@type': 'Answer',
+                        'text': 'Evet! QR-la dinamik altyapısı sayesinde fiziksel olarak bastırdığınız sticker veya stanttaki QR kodun hedef sayfasını ve bilgilerini yönetim panelinizden dilediğiniz an güncelleyebilirsiniz.',
                       },
                     },
                   ],

@@ -1,14 +1,32 @@
+# QR-la Search Engine Robot Rules
 User-agent: *
 Allow: /
+Allow: /dugun
+Allow: /otomobil
+Allow: /pati
+Allow: /kartvizit
+Allow: /menu
 Allow: /giris
 Allow: /demo-panel
+Allow: /public/
+Allow: /favicon.png
+Allow: /og-banner.png
 
-# Gizlilik geregi ozel davetli ve misafir sayfalarini arama motorlarina kapatiyoruz
+# Yönetim panelleri ve gizli alanlar
+Disallow: /admin
+Disallow: /admin/
+Disallow: /panel
+Disallow: /panel/
+
+# Özel davetli, etkinlik galerileri ve misafir yükleme sayfaları
 Disallow: /*/galeri
 Disallow: /*/yukle
 Disallow: /*/canli
 Disallow: /*/ani-defteri
-Disallow: /panel/
-Disallow: /panel
 
+# Kişisel araç ve pati künyesi dinamik sayfaları (numara ve konum gizliliği için)
+Disallow: /k/*
+Disallow: /p/*
+
+# Arama Motoru Haritası
 Sitemap: https://qr-la.com/sitemap.xml
