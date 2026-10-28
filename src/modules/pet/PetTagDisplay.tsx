@@ -226,14 +226,29 @@ export function PetTagDisplay({ pet: initialPet, initialMode }: PetTagDisplayPro
           </View>
         )}
 
-        {/* UNCLAIMED TAG NOTICE (IF NOT CLAIMED YET) */}
+                {/* UNCLAIMED TAG NOTICE (IF NOT CLAIMED YET) */}
         {!pet.isClaimed && (
           <View style={styles.unclaimedBox}>
             <Ionicons name="shield-outline" size={28} color="#F59E0B" />
-            <Text style={styles.unclaimedTitle}>Eşleştirilmemiş Akıllı Künye</Text>
+            <Text style={styles.unclaimedTitle}>Eşleştirilmemiş Petguru Künyesi</Text>
             <Text style={styles.unclaimedText}>
-              Bu lazer baskılı metal künye henüz bir evcil hayvana bağlanmamış. Künyeyi satın aldıysanız kendi evcil hayvanınızla eşleştirmek için yönetim paneline geçebilirsiniz.
+              Bu lazer baskılı çelik künye henüz bir can dostumuzla eşleştirilmemiş. Künyeyi satın aldıysanız Petguru hesabınıza bağlayarak hemen aktifleştirebilirsiniz.
             </Text>
+            <TouchableOpacity
+              style={styles.claimNowBtn}
+              onPress={() => {
+                const url = pet.claimUrl || `https://petguru.app/evcil-hayvanlarim/${pet.id}/claim`;
+                if (Platform.OS === 'web') {
+                  window.open(url, '_blank');
+                } else {
+                  Linking.openURL(url);
+                }
+              }}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="sparkles" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Text style={styles.claimNowBtnText}>Petguru'da Künyeyi Eşleştir (Claim Et)</Text>
+            </TouchableOpacity>
           </View>
         )}
 

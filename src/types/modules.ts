@@ -111,6 +111,8 @@ export interface PetData {
   vaccines: PetVaccine[];        // Aşı karnesi
   isClaimed: boolean;            // Fiziksel tasma künyesi sahiplenildi mi?
   uniqueTagCode?: string;        // Metal künye seri kodu ("PET-8X4B")
+  claimUrl?: string;             // Petguru claim sayfası URL'si
+  source?: 'petguru' | 'local';  // Veri kaynağı (Petguru canlı veritabanı veya yerel demo)
   viewCount: number;             // Tarama sayısı
   scanLogs: PetScanLog[];        // GPS ve zaman damgalı tarama geçmişi
   createdAt: string;

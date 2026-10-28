@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Platform, Linking } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -69,8 +69,20 @@ export default function PetTagRouteScreen() {
           </View>
           <Text style={styles.notFoundTitle}>Pati Künyesi Bulunamadı</Text>
           <Text style={styles.notFoundDesc}>
-            Aradığınız künye kodu (<Text style={{ fontWeight: '700' }}>{id}</Text>) henüz kaydedilmemiş veya silinmiş olabilir.
+            Aradığınız künye kodu (<Text style={{ fontWeight: '700' }}>{id}</Text>) henüz Petguru'da bir can dostumuzla eşleştirilmemiş olabilir.
           </Text>
+          <TouchableOpacity
+            style={[styles.notFoundBtn, { backgroundColor: '#10B981', marginBottom: 12 }]}
+            onPress={() => {
+              const url = `https://petguru.app/evcil-hayvanlarim/${id}/claim`;
+              if (Platform.OS === 'web') window.open(url, '_blank');
+              else Linking.openURL(url);
+            }}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="sparkles" size={18} color="#FFF" style={{ marginRight: 6 }} />
+            <Text style={styles.notFoundBtnText}>Petguru'da Bu Kodu Eşleştir (Claim)</Text>
+          </TouchableOpacity>
           <TouchableOpacity
             style={styles.notFoundBtn}
             onPress={() => router.push('/')}

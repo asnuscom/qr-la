@@ -333,9 +333,33 @@ export default function PetManagementScreen() {
         </View>
 
         <Text style={styles.pageTitle}>🐾 Akıllı Tasma Künyesi & Kayıp Takibi</Text>
-        <Text style={styles.pageSubtitle}>
+                <Text style={styles.pageSubtitle}>
           Paslanmaz çelik metal künyeler için ultra-kısa link formatı, tek dokunuşla kayıp alarmı ve GPS konum bildirme sistemi.
         </Text>
+
+        {/* Petguru Master Database Banner */}
+        <View style={styles.petguruSyncBanner}>
+          <View style={styles.petguruSyncIconWrap}>
+            <Ionicons name="cloud-done-outline" size={24} color="#10B981" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.petguruSyncTitle}>⚡ Petguru Canlı Veritabanı ile Senkronize</Text>
+            <Text style={styles.petguruSyncDesc}>
+              Evcil can dostunuzun aşı, çip ve sahip bilgileri doğrudan Petguru ekosisteminde saklanır. QR-la, bu künyeler için ultra hızlı QR yönlendirme ve canlı GPS alarm ağ geçididir.
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.petguruAppBtn}
+            onPress={() => {
+              const url = 'https://petguru.app/evcil-hayvanlarim';
+              if (Platform.OS === 'web') window.open(url, '_blank');
+              else Linking.openURL(url);
+            }}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.petguruAppBtnText}>Petguru'da Yönet ↗</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Existing Pets Horizontal Cards */}
         <View style={styles.petListSection}>
