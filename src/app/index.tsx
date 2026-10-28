@@ -238,6 +238,10 @@ export default function LandingScreen() {
   // FAQ Accordion State
   const [expandedFaq, setExpandedFaq] = useState<number | null>(0);
 
+  // Modals for Create and Demo selection
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
+
   // Subscribe to module visibility controls
   useEffect(() => {
     const unsub = adminService.subscribeModuleControls((controls) => {
@@ -413,7 +417,7 @@ export default function LandingScreen() {
                 styles.navDemoBtn,
                 { backgroundColor: isDark ? '#1E293B' : '#F1F5F9', borderColor: isDark ? '#334155' : '#E2E8F0' },
               ]}
-              onPress={() => router.push('/demo-panel' as any)}
+              onPress={() => setIsDemoModalOpen(true)}
             >
               <Ionicons name="sparkles" size={13} color={BRAND_PRIMARY} />
               <Text style={[styles.navDemoBtnText, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>Canlı Demo</Text>
@@ -479,7 +483,7 @@ export default function LandingScreen() {
             <View style={[styles.heroCtaRow, isMobile && styles.heroCtaRowMobile]}>
               <TouchableOpacity
                 style={[styles.heroPrimaryBtn, { backgroundColor: BRAND_PRIMARY }]}
-                onPress={() => handleStartNow()}
+                onPress={() => setIsCreateModalOpen(true)}
                 activeOpacity={0.88}
               >
                 <Text style={styles.heroPrimaryBtnText}>Hemen Ücretsiz QR Oluştur</Text>
@@ -491,7 +495,7 @@ export default function LandingScreen() {
                   styles.heroSecondaryBtn,
                   { borderColor: isDark ? '#334155' : '#CBD5E1', backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : '#FFFFFF' },
                 ]}
-                onPress={() => router.push('/demo-panel' as any)}
+                onPress={() => setIsDemoModalOpen(true)}
                 activeOpacity={0.8}
               >
                 <Ionicons name="layers-outline" size={19} color={BRAND_PRIMARY} />
@@ -1306,6 +1310,263 @@ export default function LandingScreen() {
           </View>
         </View>
       </ScrollView>
+      {/* ========================================================================= */}
+      {/* 1. MODÜL SEÇ & QR OLUŞTUR MODALI */}
+      {/* ========================================================================= */}
+      <Modal
+        visible={isCreateModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsCreateModalOpen(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalCard, { backgroundColor: isDark ? '#111827' : '#FFFFFF', borderColor: isDark ? '#1F2937' : '#E2E8F0' }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.modalTitle, { color: isDark ? '#F8FAFC' : '#0F172A' }]}>
+                  Hangi Modülde QR Oluşturmak İstiyorsunuz?
+                </Text>
+                <Text style={[styles.modalSubtitle, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+                  İhtiyacınıza uygun çözümü seçerek doğrudan kurulum ekranına geçin:
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setIsCreateModalOpen(false)} style={styles.modalCloseBtn}>
+                <Ionicons name="close" size={22} color={isDark ? '#94A3B8' : '#64748B'} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalGrid}>
+              {/* Araç */}
+              <TouchableOpacity
+                style={[styles.modalItemCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
+                onPress={() => {
+                  setIsCreateModalOpen(false);
+                  router.push(isUserLoggedIn ? ('/panel/arac' as any) : ({ pathname: '/giris', params: { tab: 'register', module: 'vehicle' } } as any));
+                }}
+              >
+                <View style={[styles.modalItemIconWrap, { backgroundColor: 'rgba(2, 132, 199, 0.15)' }]}>
+                  <Ionicons name="car-sport" size={22} color="#0284C7" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.modalItemTitle, { color: isDark ? '#F8FAFC' : '#0F172A' }]}>🚗 Araç &amp; Park Tagı</Text>
+                  <Text style={[styles.modalItemDesc, { color: isDark ? '#94A3B8' : '#64748B' }]}>Gizli numara maskeleme ve hazır WhatsApp şablonları</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+              </TouchableOpacity>
+
+              {/* Pati */}
+              <TouchableOpacity
+                style={[styles.modalItemCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
+                onPress={() => {
+                  setIsCreateModalOpen(false);
+                  router.push(isUserLoggedIn ? ('/panel/pati' as any) : ({ pathname: '/giris', params: { tab: 'register', module: 'pet' } } as any));
+                }}
+              >
+                <View style={[styles.modalItemIconWrap, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+                  <Ionicons name="paw" size={22} color="#10B981" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.modalItemTitle, { color: isDark ? '#F8FAFC' : '#0F172A' }]}>🐾 Petguru GPS Pati Künyesi</Text>
+                  <Text style={[styles.modalItemDesc, { color: isDark ? '#94A3B8' : '#64748B' }]}>Kayıp anında canlı harita bildirimi ve dijital aşı karnesi</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+              </TouchableOpacity>
+
+              {/* Kartvizit */}
+              <TouchableOpacity
+                style={[styles.modalItemCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
+                onPress={() => {
+                  setIsCreateModalOpen(false);
+                  router.push(isUserLoggedIn ? ('/panel/kartvizit' as any) : ({ pathname: '/giris', params: { tab: 'register', module: 'vcard' } } as any));
+                }}
+              >
+                <View style={[styles.modalItemIconWrap, { backgroundColor: 'rgba(99, 102, 241, 0.15)' }]}>
+                  <Ionicons name="briefcase" size={22} color="#6366F1" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.modalItemTitle, { color: isDark ? '#F8FAFC' : '#0F172A' }]}>💼 Dijital Kartvizit (NFC &amp; vCard)</Text>
+                  <Text style={[styles.modalItemDesc, { color: isDark ? '#94A3B8' : '#64748B' }]}>Tek dokunuşla rehbere kayıt ve profesyonel profil</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+              </TouchableOpacity>
+
+              {/* Menü */}
+              <TouchableOpacity
+                style={[styles.modalItemCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
+                onPress={() => {
+                  setIsCreateModalOpen(false);
+                  router.push(isUserLoggedIn ? ('/panel/menu' as any) : ({ pathname: '/giris', params: { tab: 'register', module: 'menu' } } as any));
+                }}
+              >
+                <View style={[styles.modalItemIconWrap, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
+                  <Ionicons name="restaurant" size={22} color="#F59E0B" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.modalItemTitle, { color: isDark ? '#F8FAFC' : '#0F172A' }]}>🍽️ Restoran &amp; Kafe Menü QR</Text>
+                  <Text style={[styles.modalItemDesc, { color: isDark ? '#94A3B8' : '#64748B' }]}>Fotoğraflı dijital menü ve garson çağırma sistemi</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+              </TouchableOpacity>
+
+              {/* Etkinlik */}
+              <TouchableOpacity
+                style={[styles.modalItemCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
+                onPress={() => {
+                  setIsCreateModalOpen(false);
+                  router.push(isUserLoggedIn ? ('/panel' as any) : ({ pathname: '/giris', params: { tab: 'register', module: 'event' } } as any));
+                }}
+              >
+                <View style={[styles.modalItemIconWrap, { backgroundColor: 'rgba(236, 72, 153, 0.15)' }]}>
+                  <Ionicons name="images" size={22} color="#EC4899" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.modalItemTitle, { color: isDark ? '#F8FAFC' : '#0F172A' }]}>📸 Etkinlik &amp; Davet Albümü</Text>
+                  <Text style={[styles.modalItemDesc, { color: isDark ? '#94A3B8' : '#64748B' }]}>Misafirlerden canlı fotoğraf toplama ve projeksiyon slaytı</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ========================================================================= */}
+      {/* 2. CANLI DEMO SEÇİM MODALI */}
+      {/* ========================================================================= */}
+      <Modal
+        visible={isDemoModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsDemoModalOpen(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalCard, { backgroundColor: isDark ? '#111827' : '#FFFFFF', borderColor: isDark ? '#1F2937' : '#E2E8F0' }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.modalTitle, { color: isDark ? '#F8FAFC' : '#0F172A' }]}>
+                  Canlı Demo İnceleyin
+                </Text>
+                <Text style={[styles.modalSubtitle, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+                  Tüm modüllerimizin gerçek canlı arayüzlerini ve demo panelini test edin:
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setIsDemoModalOpen(false)} style={styles.modalCloseBtn}>
+                <Ionicons name="close" size={22} color={isDark ? '#94A3B8' : '#64748B'} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalGrid}>
+              {/* Araç Demosu */}
+              <TouchableOpacity
+                style={[styles.modalItemCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
+                onPress={() => {
+                  setIsDemoModalOpen(false);
+                  router.push('/34abc123' as any);
+                }}
+              >
+                <View style={[styles.modalItemIconWrap, { backgroundColor: 'rgba(2, 132, 199, 0.15)' }]}>
+                  <Ionicons name="car-sport" size={22} color="#0284C7" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.modalItemTitle, { color: isDark ? '#F8FAFC' : '#0F172A' }]}>🚗 34 ABC 123 (Araç Tagı Demosu)</Text>
+                  <Text style={[styles.modalItemDesc, { color: isDark ? '#94A3B8' : '#64748B' }]}>Gizli numara WhatsApp köprüsünü ve kan grubu acil durum ekranını görün</Text>
+                </View>
+                <Ionicons name="open-outline" size={18} color="#0284C7" />
+              </TouchableOpacity>
+
+              {/* Pati Demosu */}
+              <TouchableOpacity
+                style={[styles.modalItemCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
+                onPress={() => {
+                  setIsDemoModalOpen(false);
+                  router.push('/p/duman' as any);
+                }}
+              >
+                <View style={[styles.modalItemIconWrap, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+                  <Ionicons name="paw" size={22} color="#10B981" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.modalItemTitle, { color: isDark ? '#F8FAFC' : '#0F172A' }]}>🐾 Duman (Pati Künyesi Demosu)</Text>
+                  <Text style={[styles.modalItemDesc, { color: isDark ? '#94A3B8' : '#64748B' }]}>Petguru entegrasyonlu GPS konum paylaşımı ve aşı karnesini test edin</Text>
+                </View>
+                <Ionicons name="open-outline" size={18} color="#10B981" />
+              </TouchableOpacity>
+
+              {/* Kartvizit Demosu */}
+              <TouchableOpacity
+                style={[styles.modalItemCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
+                onPress={() => {
+                  setIsDemoModalOpen(false);
+                  router.push('/samet-sunman' as any);
+                }}
+              >
+                <View style={[styles.modalItemIconWrap, { backgroundColor: 'rgba(99, 102, 241, 0.15)' }]}>
+                  <Ionicons name="briefcase" size={22} color="#6366F1" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.modalItemTitle, { color: isDark ? '#F8FAFC' : '#0F172A' }]}>💼 Samet Sunman (Dijital Kartvizit)</Text>
+                  <Text style={[styles.modalItemDesc, { color: isDark ? '#94A3B8' : '#64748B' }]}>Tek tıkla rehbere (.vcf) indirme ve sosyal medya profilini inceleyin</Text>
+                </View>
+                <Ionicons name="open-outline" size={18} color="#6366F1" />
+              </TouchableOpacity>
+
+              {/* Menü Demosu */}
+              <TouchableOpacity
+                style={[styles.modalItemCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
+                onPress={() => {
+                  setIsDemoModalOpen(false);
+                  router.push('/m/lucca-bistrot' as any);
+                }}
+              >
+                <View style={[styles.modalItemIconWrap, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
+                  <Ionicons name="restaurant" size={22} color="#F59E0B" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.modalItemTitle, { color: isDark ? '#F8FAFC' : '#0F172A' }]}>🍽️ Lucca Bistrot (Restoran QR Menü)</Text>
+                  <Text style={[styles.modalItemDesc, { color: isDark ? '#94A3B8' : '#64748B' }]}>Fotoğraflı menüyü gezin, garson çağırma butonunu test edin</Text>
+                </View>
+                <Ionicons name="open-outline" size={18} color="#F59E0B" />
+              </TouchableOpacity>
+
+              {/* Etkinlik Demosu */}
+              <TouchableOpacity
+                style={[styles.modalItemCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
+                onPress={() => {
+                  setIsDemoModalOpen(false);
+                  router.push('/samet-ve-sule' as any);
+                }}
+              >
+                <View style={[styles.modalItemIconWrap, { backgroundColor: 'rgba(236, 72, 153, 0.15)' }]}>
+                  <Ionicons name="images" size={22} color="#EC4899" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.modalItemTitle, { color: isDark ? '#F8FAFC' : '#0F172A' }]}>📸 Samet &amp; Şule (Etkinlik Albümü)</Text>
+                  <Text style={[styles.modalItemDesc, { color: isDark ? '#94A3B8' : '#64748B' }]}>Misafir fotoğraf yükleme galerisini ve anı defterini görün</Text>
+                </View>
+                <Ionicons name="open-outline" size={18} color="#EC4899" />
+              </TouchableOpacity>
+
+              {/* Yönetim Paneli */}
+              <TouchableOpacity
+                style={[styles.modalItemCard, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.1)' : '#EEF2FF', borderColor: 'rgba(99, 102, 241, 0.3)' }]}
+                onPress={() => {
+                  setIsDemoModalOpen(false);
+                  router.push('/panel' as any);
+                }}
+              >
+                <View style={[styles.modalItemIconWrap, { backgroundColor: '#6366F1' }]}>
+                  <Ionicons name="grid" size={22} color="#FFFFFF" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.modalItemTitle, { color: '#6366F1' }]}>📊 Çoklu Varlık Yönetim Paneli</Text>
+                  <Text style={[styles.modalItemDesc, { color: isDark ? '#94A3B8' : '#64748B' }]}>Tüm modüllerin tek bir merkezden yönetildiği demo panel</Text>
+                </View>
+                <Ionicons name="arrow-forward" size={18} color="#6366F1" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -2433,5 +2694,76 @@ const styles = StyleSheet.create({
   },
   footerSubNote: {
     fontSize: 11,
+  },
+
+  /* Modal Styles */
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    zIndex: 9999,
+  },
+  modalCard: {
+    maxWidth: 640,
+    width: '100%',
+    borderRadius: 24,
+    borderWidth: 1,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.35,
+    shadowRadius: 36,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 16,
+    marginBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    paddingBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: -0.4,
+    marginBottom: 4,
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  modalCloseBtn: {
+    padding: 4,
+  },
+  modalGrid: {
+    gap: 10,
+  },
+  modalItemCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  modalItemIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalItemTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  modalItemDesc: {
+    fontSize: 12,
+    lineHeight: 16,
   },
 });
