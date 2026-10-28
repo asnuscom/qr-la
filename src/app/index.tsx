@@ -70,7 +70,7 @@ const MODULES: Record<ModuleKey, ModuleConfig> = {
     demoSlug: '/34abc123',
     demoLabel: 'Örnek Araç Tagı (34 ABC 123)',
     actionRoute: '/panel/arac',
-    actionLabel: 'Araç Tagı Oluştur',
+    actionLabel: 'Araç Tagını İncele',
     landingSlug: '/otomobil',
     mockupImage:
       'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=1200&q=80',
@@ -99,7 +99,7 @@ const MODULES: Record<ModuleKey, ModuleConfig> = {
     demoSlug: '/p/duman',
     demoLabel: 'Örnek Pati Künyesi (Duman)',
     actionRoute: '/panel/pati',
-    actionLabel: 'Pati Künyesi Al',
+    actionLabel: 'Pati Künyesini İncele',
     landingSlug: '/pati',
     mockupImage:
       'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=1200&q=80',
@@ -128,7 +128,7 @@ const MODULES: Record<ModuleKey, ModuleConfig> = {
     demoSlug: '/samet-sunman',
     demoLabel: 'Örnek Kartvizit (Samet Sunman)',
     actionRoute: '/panel/kartvizit',
-    actionLabel: 'Dijital Kartvizit Oluştur',
+    actionLabel: 'Kartviziti İncele',
     landingSlug: '/kartvizit',
     mockupImage:
       'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=1200&q=80',
@@ -157,7 +157,7 @@ const MODULES: Record<ModuleKey, ModuleConfig> = {
     demoSlug: '/m/lucca-bistrot',
     demoLabel: 'Örnek Menü (Lucca Bistrot)',
     actionRoute: '/panel/menu',
-    actionLabel: 'Restoran Menüsü Oluştur',
+    actionLabel: 'Menüyü İncele',
     landingSlug: '/menu',
     mockupImage:
       'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1200&q=80',
@@ -186,7 +186,7 @@ const MODULES: Record<ModuleKey, ModuleConfig> = {
     demoSlug: '/samet-ve-sule',
     demoLabel: 'Örnek Etkinlik Albümü',
     actionRoute: '/panel',
-    actionLabel: 'Etkinlik Albümü Oluştur',
+    actionLabel: 'Albümü İncele',
     landingSlug: '/dugun',
     mockupImage:
       'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1200&q=80',
@@ -330,10 +330,10 @@ export default function LandingScreen() {
   const handleStartNow = (modKey?: ModuleKey) => {
     const key = modKey || activeModule;
     if (isUserLoggedIn) {
-      if (key === 'vehicle') router.push('/panel/arac' as any);
-      else if (key === 'pet') router.push('/panel/pati' as any);
-      else if (key === 'vcard') router.push('/panel/kartvizit' as any);
-      else if (key === 'menu') router.push('/panel/menu' as any);
+      if (key === 'vehicle') router.push('/otomobil' as any);
+      else if (key === 'pet') router.push('/pati' as any);
+      else if (key === 'vcard') router.push('/kartvizit' as any);
+      else if (key === 'menu') router.push('/menu' as any);
       else router.push('/panel' as any);
     } else {
       router.push({ pathname: '/giris', params: { tab: 'register' } } as any);
@@ -487,7 +487,7 @@ export default function LandingScreen() {
                 onPress={() => setIsCreateModalOpen(true)}
                 activeOpacity={0.88}
               >
-                <Text style={styles.heroPrimaryBtnText}>Hemen Ücretsiz QR Oluştur</Text>
+                <Text style={styles.heroPrimaryBtnText}>Modülleri İncele</Text>
                 <Ionicons name="arrow-forward" size={17} color="#FFF" />
               </TouchableOpacity>
 
@@ -735,9 +735,9 @@ export default function LandingScreen() {
                 <View style={styles.bentoBtnRow}>
                   <TouchableOpacity
                     style={[styles.bentoPrimaryActionBtn, { backgroundColor: '#0284C7' }]}
-                    onPress={() => router.push('/panel/arac' as any)}
+                    onPress={() => router.push('/otomobil' as any)}
                   >
-                    <Text style={styles.bentoPrimaryActionBtnText}>Araç Tagı Oluştur</Text>
+                    <Text style={styles.bentoPrimaryActionBtnText}>Araç Tagını İncele</Text>
                     <Ionicons name="arrow-forward" size={14} color="#FFF" />
                   </TouchableOpacity>
 
@@ -798,9 +798,9 @@ export default function LandingScreen() {
                 <View style={styles.bentoBtnRow}>
                   <TouchableOpacity
                     style={[styles.bentoPrimaryActionBtn, { backgroundColor: '#10B981' }]}
-                    onPress={() => router.push('/panel/pati' as any)}
+                    onPress={() => router.push('/pati' as any)}
                   >
-                    <Text style={styles.bentoPrimaryActionBtnText}>Pati Künyesi Al</Text>
+                    <Text style={styles.bentoPrimaryActionBtnText}>Pati Künyesini İncele</Text>
                     <Ionicons name="arrow-forward" size={14} color="#FFF" />
                   </TouchableOpacity>
 
@@ -849,9 +849,9 @@ export default function LandingScreen() {
 
                 <TouchableOpacity
                   style={[styles.bentoPrimaryActionBtn, { backgroundColor: BRAND_PRIMARY }]}
-                  onPress={() => router.push('/panel/kartvizit' as any)}
+                  onPress={() => router.push('/kartvizit' as any)}
                 >
-                  <Text style={styles.bentoPrimaryActionBtnText}>Kartvizit Başlat</Text>
+                  <Text style={styles.bentoPrimaryActionBtnText}>Kartviziti İncele</Text>
                   <Ionicons name="arrow-forward" size={14} color="#FFF" />
                 </TouchableOpacity>
               </View>
@@ -892,9 +892,9 @@ export default function LandingScreen() {
 
                 <TouchableOpacity
                   style={[styles.bentoPrimaryActionBtn, { backgroundColor: '#F59E0B' }]}
-                  onPress={() => router.push('/panel/menu' as any)}
+                  onPress={() => router.push('/menu' as any)}
                 >
-                  <Text style={styles.bentoPrimaryActionBtnText}>Menü Oluştur</Text>
+                  <Text style={styles.bentoPrimaryActionBtnText}>Menüyü İncele</Text>
                   <Ionicons name="arrow-forward" size={14} color="#FFF" />
                 </TouchableOpacity>
               </View>
@@ -935,9 +935,9 @@ export default function LandingScreen() {
 
                 <TouchableOpacity
                   style={[styles.bentoPrimaryActionBtn, { backgroundColor: '#EC4899' }]}
-                  onPress={() => router.push('/panel' as any)}
+                  onPress={() => router.push('/dugun' as any)}
                 >
-                  <Text style={styles.bentoPrimaryActionBtnText}>Albüm Başlat</Text>
+                  <Text style={styles.bentoPrimaryActionBtnText}>Albümü İncele</Text>
                   <Ionicons name="arrow-forward" size={14} color="#FFF" />
                 </TouchableOpacity>
               </View>
@@ -1055,7 +1055,7 @@ export default function LandingScreen() {
               <View style={styles.simCtaRow}>
                 <TouchableOpacity
                   style={[styles.simPrimaryBtn, { backgroundColor: selectedConfig.accentColor }]}
-                  onPress={() => handleStartNow(selectedConfig.key)}
+                  onPress={() => router.push(selectedConfig.landingSlug as any)}
                 >
                   <Text style={styles.simPrimaryBtnText}>{selectedConfig.actionLabel}</Text>
                   <Ionicons name="arrow-forward" size={15} color="#FFF" />
@@ -1325,10 +1325,10 @@ export default function LandingScreen() {
             <View style={styles.modalHeader}>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.modalTitle, { color: isDark ? '#F8FAFC' : '#0F172A' }]}>
-                  Hangi Modülde QR Oluşturmak İstiyorsunuz?
+                  Hangi Modülü İncelemek İstiyorsunuz?
                 </Text>
                 <Text style={[styles.modalSubtitle, { color: isDark ? '#94A3B8' : '#64748B' }]}>
-                  İhtiyacınıza uygun çözümü seçerek doğrudan kurulum ekranına geçin:
+                  İhtiyacınıza uygun çözümü seçerek detaylı sayfasına gidin:
                 </Text>
               </View>
               <TouchableOpacity onPress={() => setIsCreateModalOpen(false)} style={styles.modalCloseBtn}>
@@ -1342,7 +1342,7 @@ export default function LandingScreen() {
                 style={[styles.modalItemCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
                 onPress={() => {
                   setIsCreateModalOpen(false);
-                  router.push(isUserLoggedIn ? ('/panel/arac' as any) : ({ pathname: '/giris', params: { tab: 'register', module: 'vehicle' } } as any));
+                  router.push('/otomobil' as any);
                 }}
               >
                 <View style={[styles.modalItemIconWrap, { backgroundColor: 'rgba(2, 132, 199, 0.15)' }]}>
@@ -1360,7 +1360,7 @@ export default function LandingScreen() {
                 style={[styles.modalItemCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
                 onPress={() => {
                   setIsCreateModalOpen(false);
-                  router.push(isUserLoggedIn ? ('/panel/pati' as any) : ({ pathname: '/giris', params: { tab: 'register', module: 'pet' } } as any));
+                  router.push('/pati' as any);
                 }}
               >
                 <View style={[styles.modalItemIconWrap, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
@@ -1378,7 +1378,7 @@ export default function LandingScreen() {
                 style={[styles.modalItemCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
                 onPress={() => {
                   setIsCreateModalOpen(false);
-                  router.push(isUserLoggedIn ? ('/panel/kartvizit' as any) : ({ pathname: '/giris', params: { tab: 'register', module: 'vcard' } } as any));
+                  router.push('/kartvizit' as any);
                 }}
               >
                 <View style={[styles.modalItemIconWrap, { backgroundColor: 'rgba(99, 102, 241, 0.15)' }]}>
@@ -1396,7 +1396,7 @@ export default function LandingScreen() {
                 style={[styles.modalItemCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
                 onPress={() => {
                   setIsCreateModalOpen(false);
-                  router.push(isUserLoggedIn ? ('/panel/menu' as any) : ({ pathname: '/giris', params: { tab: 'register', module: 'menu' } } as any));
+                  router.push('/menu' as any);
                 }}
               >
                 <View style={[styles.modalItemIconWrap, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
@@ -1414,7 +1414,7 @@ export default function LandingScreen() {
                 style={[styles.modalItemCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
                 onPress={() => {
                   setIsCreateModalOpen(false);
-                  router.push(isUserLoggedIn ? ('/panel' as any) : ({ pathname: '/giris', params: { tab: 'register', module: 'event' } } as any));
+                  router.push('/dugun' as any);
                 }}
               >
                 <View style={[styles.modalItemIconWrap, { backgroundColor: 'rgba(236, 72, 153, 0.15)' }]}>
