@@ -741,12 +741,7 @@ export default function LandingScreen() {
                     <Ionicons name="arrow-forward" size={14} color="#FFF" />
                   </TouchableOpacity>
 
-                  <TouchableOpacity
-                    style={[styles.bentoSecondaryActionBtn, { borderColor: isDark ? '#334155' : '#CBD5E1' }]}
-                    onPress={() => router.push('/34abc123' as any)}
-                  >
-                    <Text style={[styles.bentoSecondaryActionBtnText, { color: isDark ? '#F8FAFC' : '#0F172A' }]}>Örnek Tag</Text>
-                  </TouchableOpacity>
+
                 </View>
               </View>
             </View>
@@ -804,12 +799,7 @@ export default function LandingScreen() {
                     <Ionicons name="arrow-forward" size={14} color="#FFF" />
                   </TouchableOpacity>
 
-                  <TouchableOpacity
-                    style={[styles.bentoSecondaryActionBtn, { borderColor: isDark ? '#334155' : '#CBD5E1' }]}
-                    onPress={() => router.push('/p/duman' as any)}
-                  >
-                    <Text style={[styles.bentoSecondaryActionBtnText, { color: isDark ? '#F8FAFC' : '#0F172A' }]}>Örnek Künye</Text>
-                  </TouchableOpacity>
+
                 </View>
               </View>
             </View>
@@ -1061,15 +1051,7 @@ export default function LandingScreen() {
                   <Ionicons name="arrow-forward" size={15} color="#FFF" />
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={[styles.simSecondaryBtn, { borderColor: isDark ? '#334155' : '#CBD5E1' }]}
-                  onPress={() => router.push(selectedConfig.demoSlug as any)}
-                >
-                  <Ionicons name="eye-outline" size={16} color={isDark ? '#F8FAFC' : '#0F172A'} />
-                  <Text style={[styles.simSecondaryBtnText, { color: isDark ? '#F8FAFC' : '#0F172A' }]}>
-                    {selectedConfig.demoLabel}
-                  </Text>
-                </TouchableOpacity>
+
               </View>
             </View>
           </View>
