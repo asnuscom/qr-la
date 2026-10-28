@@ -1,5 +1,17 @@
 import { appStorage } from './storage';
 
+export type PlatformModuleKey = 'wedding' | 'vehicle' | 'pet' | 'vcard' | 'menu';
+
+export interface ModuleControlConfig {
+  key: PlatformModuleKey;
+  label: string;
+  icon: string;
+  color: string;
+  isEnabled: boolean; // Platform genelinde açık/kapalı
+  isHiddenOnHome: boolean; // Anasayfada gizlensin mi
+  description: string;
+}
+
 export interface AdminUser {
   id: string;
   name: string;
@@ -75,6 +87,55 @@ const STORAGE_KEY_ADMIN_ASSETS = 'qrla_admin_assets';
 const STORAGE_KEY_ADMIN_COUPONS = 'qrla_admin_coupons';
 const STORAGE_KEY_ADMIN_SETTINGS = 'qrla_admin_settings';
 const STORAGE_KEY_ADMIN_ORDERS = 'qrla_admin_orders';
+const STORAGE_KEY_ADMIN_MODULE_CONTROLS = 'qrla_admin_module_controls';
+
+export const DEFAULT_MODULE_CONTROLS: Record<PlatformModuleKey, ModuleControlConfig> = {
+  wedding: {
+    key: 'wedding',
+    label: 'Düğün & Etkinlik',
+    icon: 'heart',
+    color: '#C5A059',
+    isEnabled: true,
+    isHiddenOnHome: false,
+    description: 'Misafir anı defteri ve canlı projeksiyon fotoğraf yükleme modülü.',
+  },
+  vehicle: {
+    key: 'vehicle',
+    label: 'Araç & Park Tagı',
+    icon: 'car-sport',
+    color: '#0284C7',
+    isEnabled: true,
+    isHiddenOnHome: false,
+    description: 'Numara maskeleme, acil kan grubu ve tek tıkla WhatsApp durum mesajları.',
+  },
+  pet: {
+    key: 'pet',
+    label: 'Pati Künyesi (Petguru)',
+    icon: 'paw',
+    color: '#10B981',
+    isEnabled: true,
+    isHiddenOnHome: false,
+    description: 'Kaybolan evcil dostlar için harita konumu ileten akıllı künye.',
+  },
+  vcard: {
+    key: 'vcard',
+    label: 'Dijital Kartvizit & NFC',
+    icon: 'briefcase',
+    color: '#8B5CF6',
+    isEnabled: true,
+    isHiddenOnHome: false,
+    description: 'Tek dokunuşla rehbere kayıt (.vcf) ve sosyal medya kartvizit profili.',
+  },
+  menu: {
+    key: 'menu',
+    label: 'Restoran & Kafe Menü QR',
+    icon: 'restaurant',
+    color: '#F59E0B',
+    isEnabled: true,
+    isHiddenOnHome: false,
+    description: 'Kafe ve restoranlar için fotoğraflı, çok dilli dijital masa menüsü.',
+  },
+};
 
 const DEFAULT_USERS: AdminUser[] = [
   {
@@ -398,6 +459,7 @@ const DEFAULT_LOGS: SystemLog[] = [
 class AdminService {
   private isUnlocked: boolean = false;
   private readonly MASTER_PIN = '1923';
+  private moduleListeners: Array<(controls: Record<PlatformModuleKey, ModuleControlConfig>) => void> = [];
 
   // Auth / Lock State
   async checkAdminAuth(): Promise<boolean> {
@@ -422,6 +484,43 @@ class AdminService {
   async logoutAdmin(): Promise<void> {
     this.isUnlocked = false;
     await appStorage.removeItem(STORAGE_KEY_ADMIN_AUTH);
+  }
+
+  // --- Module Controls (Toggle Enable & Hide on Home) ---
+  subscribeModuleControls(listener: (controls: Record<PlatformModuleKey, ModuleControlConfig>) => void): () => void {
+    this.moduleListeners.push(listener);
+    this.getModuleControls().then((c) => listener(c));
+    return () => {
+      this.moduleListeners = this.moduleListeners.filter((l) => l !== listener);
+    };
+  }
+
+  private notifyModuleControls(controls: Record<PlatformModuleKey, ModuleControlConfig>) {
+    this.moduleListeners.forEach((l) => l(controls));
+  }
+
+  async getModuleControls(): Promise<Record<PlatformModuleKey, ModuleControlConfig>> {
+    const raw = await appStorage.getItem(STORAGE_KEY_ADMIN_MODULE_CONTROLS);
+    if (!raw) return DEFAULT_MODULE_CONTROLS;
+    try {
+      return { ...DEFAULT_MODULE_CONTROLS, ...JSON.parse(raw) };
+    } catch {
+      return DEFAULT_MODULE_CONTROLS;
+    }
+  }
+
+  async updateModuleControl(
+    key: PlatformModuleKey,
+    updates: Partial<ModuleControlConfig>
+  ): Promise<Record<PlatformModuleKey, ModuleControlConfig>> {
+    const current = await this.getModuleControls();
+    const updated = {
+      ...current,
+      [key]: { ...current[key], ...updates },
+    };
+    await appStorage.setItem(STORAGE_KEY_ADMIN_MODULE_CONTROLS, JSON.stringify(updated));
+    this.notifyModuleControls(updated);
+    return updated;
   }
 
   // Users

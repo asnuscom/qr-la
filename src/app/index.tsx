@@ -17,6 +17,7 @@ import { PLAN_TIERS, DEMO_HOST_UID } from '@/services/mockData';
 import { authService } from '@/services/authService';
 import { UserModel } from '@/types';
 import { useTheme } from '@/context/ThemeContext';
+import { adminService, ModuleControlConfig, DEFAULT_MODULE_CONTROLS, PlatformModuleKey } from '@/services/adminService';
 import ThemeToggleBtn from '@/components/ThemeToggleBtn';
 
 type ModuleKey = 'wedding' | 'vehicle' | 'pet' | 'vcard' | 'menu';
@@ -403,7 +404,7 @@ export default function LandingScreen() {
             contentContainerStyle={styles.tabsScrollContent}
             style={styles.tabsScrollView}
           >
-            {Object.values(MODULES).map((mod) => {
+            {visibleModules.map((mod) => {
               const isSelected = activeModule === mod.key;
               return (
                 <TouchableOpacity
@@ -787,23 +788,12 @@ export default function LandingScreen() {
           </View>
 
           <View style={styles.footerLinksGrid}>
-            <TouchableOpacity onPress={() => setActiveModule('wedding')}>
-              <Text style={styles.footerLink}>💍 Düğün &amp; Etkinlik</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push('/panel/arac' as any)}>
-              <Text style={styles.footerLink}>🚗 Araç &amp; Park Tagı</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setActiveModule('pet')}>
-              <Text style={styles.footerLink}>🐾 Petguru Pati Künyesi</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setActiveModule('vcard')}>
-              <Text style={styles.footerLink}>💼 Dijital Kartvizit</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setActiveModule('menu')}>
-              <Text style={styles.footerLink}>🍽️ Menü QR</Text>
-            </TouchableOpacity>
+            {visibleModules.map((mod) => (
+              <TouchableOpacity key={mod.key} onPress={() => setActiveModule(mod.key)}>
+                <Text style={styles.footerLink}>{mod.label}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
-
           <View style={styles.footerDivider} />
           <Text style={styles.footerCopy}>
             &copy; 2026 QR-la Platformu. Tüm hakları saklıdır.

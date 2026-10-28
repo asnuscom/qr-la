@@ -25,9 +25,12 @@ import {
   AdminCoupon,
   SystemLog,
   SystemSettings,
+  PlatformModuleKey,
+  ModuleControlConfig,
+  DEFAULT_MODULE_CONTROLS,
 } from '@/services/adminService';
 
-type AdminTab = 'overview' | 'assets' | 'users' | 'finance' | 'settings';
+type AdminTab = 'overview' | 'modules' | 'assets' | 'users' | 'finance' | 'settings';
 
 export default function SuperAdminDashboardScreen() {
   const router = useRouter();
@@ -49,6 +52,7 @@ export default function SuperAdminDashboardScreen() {
   // Data States
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [kpis, setKpis] = useState<any>(null);
+  const [moduleControls, setModuleControls] = useState<Record<PlatformModuleKey, ModuleControlConfig>>(DEFAULT_MODULE_CONTROLS);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [assets, setAssets] = useState<AdminAssetItem[]>([]);
   const [orders, setOrders] = useState<AdminOrder[]>([]);
@@ -92,8 +96,9 @@ export default function SuperAdminDashboardScreen() {
   const loadAllAdminData = async () => {
     setIsLoadingData(true);
     try {
-      const [k, u, a, o, c, s, l] = await Promise.all([
+      const [k, m, u, a, o, c, s, l] = await Promise.all([
         adminService.getPlatformKPIs(),
+        adminService.getModuleControls(),
         adminService.getUsers(),
         adminService.getAssets(),
         adminService.getOrders(),
@@ -102,6 +107,7 @@ export default function SuperAdminDashboardScreen() {
         adminService.getLogs(),
       ]);
       setKpis(k);
+      setModuleControls(m);
       setUsers(u);
       setAssets(a);
       setOrders(o);
@@ -136,6 +142,29 @@ export default function SuperAdminDashboardScreen() {
   const handleLogoutAdmin = async () => {
     await adminService.logoutAdmin();
     setIsUnlocked(false);
+  };
+
+  // --- Module Toggle Actions ---
+  const handleToggleModuleEnabled = async (key: PlatformModuleKey) => {
+    const current = moduleControls[key];
+    const nextState = !current.isEnabled;
+    const updated = await adminService.updateModuleControl(key, { isEnabled: nextState });
+    setModuleControls(updated);
+    Alert.alert(
+      nextState ? '✅ Modül Aktifleştirildi' : '⚠️ Modül Devre Dışı Bırakıldı',
+      `"${current.label}" modülü platform genelinde ${nextState ? 'kullanıma açıldı' : 'kapatıldı'}.`
+    );
+  };
+
+  const handleToggleModuleHiddenOnHome = async (key: PlatformModuleKey) => {
+    const current = moduleControls[key];
+    const nextState = !current.isHiddenOnHome;
+    const updated = await adminService.updateModuleControl(key, { isHiddenOnHome: nextState });
+    setModuleControls(updated);
+    Alert.alert(
+      nextState ? '👁️ Anasayfada Gizlendi' : '🌟 Anasayfada Yayında',
+      `"${current.label}" modülü anasayfada ${nextState ? 'artık gösterilmeyecek.' : 'yeniden gösteriliyor.'}`
+    );
   };
 
   // User Actions
@@ -393,6 +422,15 @@ export default function SuperAdminDashboardScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
+            style={[styles.topBarActionBtn, { borderColor: colors.border, backgroundColor: colors.bgSecondary }]}
+            onPress={() => router.push('/' as any)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="home-outline" size={16} color={colors.textSecondary} />
+            {!isMobile && <Text style={[styles.topBarActionText, { color: colors.text }]}>Anasayfa</Text>}
+          </TouchableOpacity>
+
+          <TouchableOpacity
             style={[styles.topBarActionBtn, { borderColor: '#EF4444', backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}
             onPress={handleLogoutAdmin}
             activeOpacity={0.7}
@@ -417,6 +455,21 @@ export default function SuperAdminDashboardScreen() {
             />
             <Text style={[styles.tabBtnText, { color: activeTab === 'overview' ? colors.gold : colors.textSecondary }]}>
               Genel Bakış
+            </Text>
+          </TouchableOpacity>
+
+          {/* NEW: Modüller Tab */}
+          <TouchableOpacity
+            style={[styles.tabBtn, activeTab === 'modules' && [styles.activeTabBtn, { borderBottomColor: colors.gold }]]}
+            onPress={() => setActiveTab('modules')}
+          >
+            <Ionicons
+              name={activeTab === 'modules' ? 'apps' : 'apps-outline'}
+              size={18}
+              color={activeTab === 'modules' ? colors.gold : colors.textSecondary}
+            />
+            <Text style={[styles.tabBtnText, { color: activeTab === 'modules' ? colors.gold : colors.textSecondary }]}>
+              🧩 Modül Yönetimi (Aç/Kapa)
             </Text>
           </TouchableOpacity>
 
@@ -533,13 +586,74 @@ export default function SuperAdminDashboardScreen() {
                   </View>
                 </View>
 
-                {/* System Health & Modules Breakdown */}
+                {/* Modül Kontrol Özeti Kartı */}
+                <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <View style={styles.sectionHeaderBetween}>
+                    <View>
+                      <Text style={[styles.sectionTitle, { color: colors.text }]}>🧩 Modül & Anasayfa Görünürlük Durumu</Text>
+                      <Text style={[styles.sectionSub, { color: colors.textSecondary }]}>
+                        Anasayfada hangi modüllerin gösterildiğini buradan hızlıca izleyebilirsiniz.
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={[styles.primaryBtn, { backgroundColor: colors.gold, paddingVertical: 8, paddingHorizontal: 14 }]}
+                      onPress={() => setActiveTab('modules')}
+                    >
+                      <Text style={styles.primaryBtnText}>Modülleri Yönet →</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.quickModuleRow}>
+                    {(Object.keys(moduleControls) as PlatformModuleKey[]).map((key) => {
+                      const mod = moduleControls[key];
+                      const isOnlineOnHome = mod.isEnabled && !mod.isHiddenOnHome;
+                      return (
+                        <View
+                          key={key}
+                          style={[
+                            styles.quickModulePill,
+                            {
+                              backgroundColor: isOnlineOnHome
+                                ? 'rgba(16, 185, 129, 0.12)'
+                                : mod.isEnabled
+                                ? 'rgba(245, 158, 11, 0.12)'
+                                : 'rgba(239, 68, 68, 0.12)',
+                              borderColor: isOnlineOnHome
+                                ? '#10B981'
+                                : mod.isEnabled
+                                ? '#F59E0B'
+                                : '#EF4444',
+                            },
+                          ]}
+                        >
+                          <Ionicons
+                            name={mod.icon as any}
+                            size={14}
+                            color={isOnlineOnHome ? '#10B981' : mod.isEnabled ? '#F59E0B' : '#EF4444'}
+                          />
+                          <Text
+                            style={[
+                              styles.quickModuleText,
+                              {
+                                color: isOnlineOnHome ? '#10B981' : mod.isEnabled ? '#F59E0B' : '#EF4444',
+                              },
+                            ]}
+                          >
+                            {mod.label}: {isOnlineOnHome ? 'Anasayfada Açık' : mod.isEnabled ? 'Anasayfada Gizli' : 'Kapalı'}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </View>
+
+                {/* Health & Infrastructure */}
                 <View style={styles.sectionRow}>
                   {/* Left: Ecosystem Modules breakdown */}
                   <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border, flex: 1.2 }]}>
-                    <Text style={[styles.sectionTitle, { color: colors.text }]}>📦 Ekosistem Modül Dağılımı</Text>
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>📦 Ekosistem Varlık Sayıları</Text>
                     <Text style={[styles.sectionSub, { color: colors.textSecondary }]}>
-                      Platformdaki QR varlıklarının kategorilere göre dağılımı
+                      Oluşturulmuş QR varlıklarının dağılımı
                     </Text>
 
                     <View style={styles.moduleDistList}>
@@ -625,71 +739,190 @@ export default function SuperAdminDashboardScreen() {
                         <Text style={styles.healthStatus}>Cloudflare Aktif</Text>
                       </View>
                     </View>
-
-                    {settings?.maintenanceMode && (
-                      <View style={styles.maintenanceAlertBox}>
-                        <Ionicons name="warning" size={18} color="#EF4444" />
-                        <Text style={styles.maintenanceAlertText}>
-                          Platform şu anda Bakım Modunda! Yalnızca süper adminler erişebilir.
-                        </Text>
-                      </View>
-                    )}
                   </View>
                 </View>
+              </View>
+            )}
 
-                {/* Recent Platform Activity Logs */}
+            {/* TAB: MODULES MANAGEMENT (AÇIK / KAPALI & ANASAYFADA GİZLE) */}
+            {activeTab === 'modules' && (
+              <View style={styles.tabContainer}>
                 <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                   <View style={styles.sectionHeaderBetween}>
-                    <Text style={[styles.sectionTitle, { color: colors.text }]}>📜 Canlı Sistem & İşlem Logları</Text>
-                    <TouchableOpacity onPress={loadAllAdminData} activeOpacity={0.7}>
-                      <Text style={[styles.refreshText, { color: colors.gold }]}>Yenile ↻</Text>
+                    <View>
+                      <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                        🧩 Platform Modülleri ve Anasayfa Görünürlük Kontrolleri
+                      </Text>
+                      <Text style={[styles.sectionSub, { color: colors.textSecondary }]}>
+                        Modülleri platform genelinde açıp kapatabilir, veya anasayfada gizleyip yalnızca özel linklerle erişilebilir kılabilirsiniz. Değişiklikler anında canlıya yansır.
+                      </Text>
+                    </View>
+
+                    <TouchableOpacity
+                      style={[styles.primaryBtn, { backgroundColor: colors.gold, paddingVertical: 8, paddingHorizontal: 14 }]}
+                      onPress={() => router.push('/' as any)}
+                    >
+                      <Ionicons name="open-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                      <Text style={styles.primaryBtnText}>Anasayfada Gör</Text>
                     </TouchableOpacity>
                   </View>
 
-                  {logs.map((log) => (
-                    <View key={log.id} style={[styles.logItemRow, { borderBottomColor: colors.border }]}>
-                      <View style={styles.logLeft}>
+                  <View style={styles.moduleControlList}>
+                    {(Object.keys(moduleControls) as PlatformModuleKey[]).map((key) => {
+                      const mod = moduleControls[key];
+                      const isLiveOnHome = mod.isEnabled && !mod.isHiddenOnHome;
+
+                      return (
                         <View
+                          key={key}
                           style={[
-                            styles.logBadge,
+                            styles.moduleControlCard,
                             {
-                              backgroundColor:
-                                log.level === 'success'
-                                  ? 'rgba(16, 185, 129, 0.15)'
-                                  : log.level === 'warn'
-                                  ? 'rgba(245, 158, 11, 0.15)'
-                                  : log.level === 'error'
-                                  ? 'rgba(239, 68, 68, 0.15)'
-                                  : 'rgba(2, 132, 199, 0.15)',
+                              backgroundColor: colors.bgSecondary,
+                              borderColor: !mod.isEnabled
+                                ? '#EF4444'
+                                : mod.isHiddenOnHome
+                                ? '#F59E0B'
+                                : colors.border,
                             },
                           ]}
                         >
-                          <Text
-                            style={[
-                              styles.logBadgeText,
-                              {
-                                color:
-                                  log.level === 'success'
-                                    ? '#10B981'
-                                    : log.level === 'warn'
-                                    ? '#F59E0B'
-                                    : log.level === 'error'
-                                    ? '#EF4444'
-                                    : '#0284C7',
-                              },
-                            ]}
-                          >
-                            {log.level.toUpperCase()}
-                          </Text>
+                          <View style={styles.moduleControlHeader}>
+                            <View style={styles.moduleControlLeft}>
+                              <View style={[styles.moduleIconCircle, { backgroundColor: mod.color + '25' }]}>
+                                <Ionicons name={mod.icon as any} size={22} color={mod.color} />
+                              </View>
+                              <View>
+                                <View style={styles.moduleTitleRow}>
+                                  <Text style={[styles.moduleTitleText, { color: colors.text }]}>{mod.label}</Text>
+                                  {/* Badge */}
+                                  <View
+                                    style={[
+                                      styles.statusPill,
+                                      {
+                                        backgroundColor: !mod.isEnabled
+                                          ? 'rgba(239, 68, 68, 0.15)'
+                                          : mod.isHiddenOnHome
+                                          ? 'rgba(245, 158, 11, 0.15)'
+                                          : 'rgba(16, 185, 129, 0.15)',
+                                      },
+                                    ]}
+                                  >
+                                    <View
+                                      style={[
+                                        styles.statusDot,
+                                        {
+                                          backgroundColor: !mod.isEnabled
+                                            ? '#EF4444'
+                                            : mod.isHiddenOnHome
+                                            ? '#F59E0B'
+                                            : '#10B981',
+                                        },
+                                      ]}
+                                    />
+                                    <Text
+                                      style={[
+                                        styles.statusPillText,
+                                        {
+                                          color: !mod.isEnabled
+                                            ? '#EF4444'
+                                            : mod.isHiddenOnHome
+                                            ? '#F59E0B'
+                                            : '#10B981',
+                                        },
+                                      ]}
+                                    >
+                                      {!mod.isEnabled
+                                        ? 'Platformda Kapalı'
+                                        : mod.isHiddenOnHome
+                                        ? 'Anasayfada Gizli'
+                                        : 'Anasayfada Yayında'}
+                                    </Text>
+                                  </View>
+                                </View>
+                                <Text style={[styles.moduleDescText, { color: colors.textSecondary }]}>
+                                  {mod.description}
+                                </Text>
+                              </View>
+                            </View>
+                          </View>
+
+                          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+                          {/* Control Toggles Bar */}
+                          <View style={styles.moduleControlActions}>
+                            {/* Toggle 1: Platform Enable */}
+                            <View style={styles.toggleItem}>
+                              <Text style={[styles.toggleItemLabel, { color: colors.textSecondary }]}>
+                                Platform Durumu:
+                              </Text>
+                              <TouchableOpacity
+                                style={[
+                                  styles.actionSwitchBtn,
+                                  {
+                                    backgroundColor: mod.isEnabled
+                                      ? 'rgba(16, 185, 129, 0.12)'
+                                      : 'rgba(239, 68, 68, 0.12)',
+                                    borderColor: mod.isEnabled ? '#10B981' : '#EF4444',
+                                  },
+                                ]}
+                                onPress={() => handleToggleModuleEnabled(key)}
+                                activeOpacity={0.8}
+                              >
+                                <Ionicons
+                                  name={mod.isEnabled ? 'checkmark-circle' : 'close-circle'}
+                                  size={16}
+                                  color={mod.isEnabled ? '#10B981' : '#EF4444'}
+                                />
+                                <Text
+                                  style={[
+                                    styles.actionSwitchText,
+                                    { color: mod.isEnabled ? '#10B981' : '#EF4444' },
+                                  ]}
+                                >
+                                  {mod.isEnabled ? 'Modül Aktif' : 'Modül Devre Dışı'}
+                                </Text>
+                              </TouchableOpacity>
+                            </View>
+
+                            {/* Toggle 2: Home Page Visibility */}
+                            <View style={styles.toggleItem}>
+                              <Text style={[styles.toggleItemLabel, { color: colors.textSecondary }]}>
+                                Anasayfa Görünürlüğü:
+                              </Text>
+                              <TouchableOpacity
+                                style={[
+                                  styles.actionSwitchBtn,
+                                  {
+                                    backgroundColor: mod.isHiddenOnHome
+                                      ? 'rgba(245, 158, 11, 0.12)'
+                                      : 'rgba(2, 132, 199, 0.12)',
+                                    borderColor: mod.isHiddenOnHome ? '#F59E0B' : '#0284C7',
+                                  },
+                                ]}
+                                onPress={() => handleToggleModuleHiddenOnHome(key)}
+                                activeOpacity={0.8}
+                              >
+                                <Ionicons
+                                  name={mod.isHiddenOnHome ? 'eye-off' : 'eye'}
+                                  size={16}
+                                  color={mod.isHiddenOnHome ? '#F59E0B' : '#0284C7'}
+                                />
+                                <Text
+                                  style={[
+                                    styles.actionSwitchText,
+                                    { color: mod.isHiddenOnHome ? '#F59E0B' : '#0284C7' },
+                                  ]}
+                                >
+                                  {mod.isHiddenOnHome ? 'Anasayfada Gizli' : 'Anasayfada Görünüyor'}
+                                </Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
                         </View>
-                        <View>
-                          <Text style={[styles.logTitle, { color: colors.text }]}>{log.title}</Text>
-                          <Text style={[styles.logDetails, { color: colors.textSecondary }]}>{log.details}</Text>
-                        </View>
-                      </View>
-                      <Text style={[styles.logTime, { color: colors.textMuted }]}>{log.timestamp}</Text>
-                    </View>
-                  ))}
+                      );
+                    })}
+                  </View>
                 </View>
               </View>
             )}
@@ -1558,6 +1791,113 @@ function getStyles(isDark: boolean, colors: ThemeColors, isMobile: boolean, isWi
       color: '#10B981',
     },
 
+    // --- QUICK MODULE ROW (in Overview) ---
+    quickModuleRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+    },
+    quickModulePill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 8,
+      borderWidth: 1,
+    },
+    quickModuleText: {
+      fontSize: 12,
+      fontWeight: '700',
+    },
+
+    // --- MODULE CONTROLS TAB ---
+    moduleControlList: {
+      gap: 16,
+    },
+    moduleControlCard: {
+      padding: 18,
+      borderRadius: 14,
+      borderWidth: 1,
+    },
+    moduleControlHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    moduleControlLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
+      flex: 1,
+    },
+    moduleIconCircle: {
+      width: 48,
+      height: 48,
+      borderRadius: 12,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    moduleTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      marginBottom: 4,
+    },
+    moduleTitleText: {
+      fontSize: 16,
+      fontWeight: '800',
+    },
+    moduleDescText: {
+      fontSize: 13,
+      lineHeight: 18,
+    },
+    statusPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 3,
+      borderRadius: 6,
+    },
+    statusDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+    },
+    statusPillText: {
+      fontSize: 11,
+      fontWeight: '700',
+    },
+    moduleControlActions: {
+      flexDirection: isMobile ? 'column' : 'row',
+      justifyContent: 'space-between',
+      alignItems: isMobile ? 'flex-start' : 'center',
+      gap: 12,
+    },
+    toggleItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    toggleItemLabel: {
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    actionSwitchBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      borderRadius: 8,
+      borderWidth: 1,
+    },
+    actionSwitchText: {
+      fontSize: 13,
+      fontWeight: '700',
+    },
+
     // --- SECTIONS ---
     sectionRow: {
       flexDirection: isMobile ? 'column' : 'row',
@@ -1584,10 +1924,6 @@ function getStyles(isDark: boolean, colors: ThemeColors, isMobile: boolean, isWi
       alignItems: isMobile ? 'flex-start' : 'center',
       gap: 12,
       marginBottom: 16,
-    },
-    refreshText: {
-      fontSize: 13,
-      fontWeight: '600',
     },
 
     // --- MODULE DIST ---
@@ -1645,56 +1981,6 @@ function getStyles(isDark: boolean, colors: ThemeColors, isMobile: boolean, isWi
       fontSize: 12,
       fontWeight: '700',
       color: '#10B981',
-    },
-    maintenanceAlertBox: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-      backgroundColor: 'rgba(239, 68, 68, 0.12)',
-      padding: 12,
-      borderRadius: 10,
-      marginTop: 14,
-    },
-    maintenanceAlertText: {
-      flex: 1,
-      color: '#EF4444',
-      fontSize: 12,
-      fontWeight: '600',
-    },
-
-    // --- LOGS ---
-    logItemRow: {
-      flexDirection: isMobile ? 'column' : 'row',
-      justifyContent: 'space-between',
-      alignItems: isMobile ? 'flex-start' : 'center',
-      paddingVertical: 12,
-      borderBottomWidth: 1,
-      gap: 8,
-    },
-    logLeft: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-    },
-    logBadge: {
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 6,
-    },
-    logBadgeText: {
-      fontSize: 10,
-      fontWeight: '800',
-    },
-    logTitle: {
-      fontSize: 14,
-      fontWeight: '700',
-    },
-    logDetails: {
-      fontSize: 12,
-      marginTop: 2,
-    },
-    logTime: {
-      fontSize: 11,
     },
 
     // --- FILTER BAR ---
