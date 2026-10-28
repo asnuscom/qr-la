@@ -21,7 +21,7 @@ import { authService } from '@/services/authService';
 import { UserModel } from '@/types';
 import { useTheme } from '@/context/ThemeContext';
 import { adminService, ModuleControlConfig, DEFAULT_MODULE_CONTROLS, PlatformModuleKey } from '@/services/adminService';
-import ThemeToggleBtn from '@/components/ThemeToggleBtn';
+import MarketingNav from '@/components/MarketingNav';
 
 type ModuleKey = 'vehicle' | 'pet' | 'vcard' | 'menu' | 'wedding';
 
@@ -370,80 +370,8 @@ export default function LandingScreen() {
         <link rel="canonical" href="https://qr-la.com" />
       </Head>
 
-      {/* Floating Glass Navbar */}
-      <View style={[styles.navWrapper, { backgroundColor: isDark ? 'rgba(9, 13, 22, 0.88)' : 'rgba(255, 255, 255, 0.92)' }]}>
-        <View style={styles.navContainer}>
-          {/* Brand Logo */}
-          <TouchableOpacity
-            style={styles.logoRow}
-            onPress={() => router.push('/' as any)}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.logoBadgeIcon, { backgroundColor: BRAND_PRIMARY }]}>
-              <Ionicons name="qr-code" size={18} color="#FFFFFF" />
-            </View>
-            <Text style={[styles.logoText, { color: isDark ? '#F8FAFC' : '#0F172A' }]}>
-              QR<Text style={{ color: BRAND_PRIMARY }}>-LA</Text>
-            </Text>
-            <View style={styles.livePulseDot} />
-          </TouchableOpacity>
-
-          {/* Desktop Nav Links */}
-          {isDesktop && (
-            <View style={styles.navLinksRow}>
-              <TouchableOpacity onPress={() => router.push('/otomobil' as any)} style={styles.navLinkItem}>
-                <Text style={[styles.navLinkText, { color: isDark ? '#94A3B8' : '#64748B' }]}>Araç Tagı</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => router.push('/pati' as any)} style={styles.navLinkItem}>
-                <Text style={[styles.navLinkText, { color: isDark ? '#94A3B8' : '#64748B' }]}>Pati Künyesi</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => router.push('/kartvizit' as any)} style={styles.navLinkItem}>
-                <Text style={[styles.navLinkText, { color: isDark ? '#94A3B8' : '#64748B' }]}>Kartvizit</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => router.push('/menu' as any)} style={styles.navLinkItem}>
-                <Text style={[styles.navLinkText, { color: isDark ? '#94A3B8' : '#64748B' }]}>QR Menü</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => router.push('/dugun' as any)} style={styles.navLinkItem}>
-                <Text style={[styles.navLinkText, { color: isDark ? '#94A3B8' : '#64748B' }]}>Etkinlik</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Right Header Actions */}
-          <View style={styles.navRightActions}>
-            <ThemeToggleBtn />
-
-            <TouchableOpacity
-              style={[
-                styles.navDemoBtn,
-                { backgroundColor: isDark ? '#1E293B' : '#F1F5F9', borderColor: isDark ? '#334155' : '#E2E8F0' },
-              ]}
-              onPress={() => setIsDemoModalOpen(true)}
-            >
-              <Ionicons name="sparkles" size={13} color={BRAND_PRIMARY} />
-              <Text style={[styles.navDemoBtnText, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>Canlı Demo</Text>
-            </TouchableOpacity>
-
-            {isUserLoggedIn ? (
-              <TouchableOpacity
-                style={[styles.navPrimaryBtn, { backgroundColor: BRAND_PRIMARY }]}
-                onPress={() => router.push('/panel' as any)}
-              >
-                <Text style={styles.navPrimaryBtnText}>Panelim</Text>
-                <Ionicons name="arrow-forward" size={14} color="#FFF" />
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={[styles.navPrimaryBtn, { backgroundColor: BRAND_PRIMARY }]}
-                onPress={() => router.push('/giris' as any)}
-              >
-                <Text style={styles.navPrimaryBtnText}>Giriş Yap</Text>
-                <Ionicons name="arrow-forward" size={14} color="#FFF" />
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      </View>
+      {/* Unified Global Marketing Navbar */}
+      <MarketingNav activeModule="home" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
