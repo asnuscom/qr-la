@@ -240,6 +240,15 @@ export default function MasterDashboardScreen() {
                 <Ionicons name="shield-checkmark-outline" size={16} color="#8B5CF6" />
                 <Text style={[styles.headerToolText, { color: colors.text }]}>Tarifeler</Text>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.headerToolBtn, { borderColor: '#EF4444', backgroundColor: 'rgba(239, 68, 68, 0.08)' }]}
+                onPress={() => router.push('/admin' as any)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="shield-checkmark" size={16} color="#EF4444" />
+                <Text style={[styles.headerToolText, { color: '#EF4444', fontWeight: '700' }]}>Süper Admin</Text>
+              </TouchableOpacity>
             </>
           )}
 
@@ -384,6 +393,14 @@ export default function MasterDashboardScreen() {
             >
               <Ionicons name="shield-checkmark-outline" size={18} color="#8B5CF6" />
               <Text style={[styles.mobileToolText, { color: colors.text }]}>Tarifeler</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.mobileToolCard, { backgroundColor: colors.card, borderColor: '#EF4444' }]}
+              onPress={() => router.push('/admin' as any)}
+            >
+              <Ionicons name="shield-checkmark" size={18} color="#EF4444" />
+              <Text style={[styles.mobileToolText, { color: '#EF4444', fontWeight: '700' }]}>Admin</Text>
             </TouchableOpacity>
           </View>
         )}

@@ -1,0 +1,567 @@
+import { appStorage } from './storage';
+
+export interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  role: 'superadmin' | 'moderator' | 'user';
+  status: 'active' | 'suspended' | 'pending';
+  assetCount: number;
+  totalSpent: number;
+  createdAt: string;
+  lastLogin: string;
+}
+
+export interface AdminAssetItem {
+  id: string;
+  title: string;
+  moduleType: 'event' | 'vehicle' | 'pet' | 'vcard' | 'menu';
+  slug: string;
+  ownerEmail: string;
+  ownerName: string;
+  scans: number;
+  status: 'active' | 'suspended' | 'draft';
+  tier: string;
+  createdAt: string;
+}
+
+export interface AdminOrder {
+  id: string;
+  orderNumber: string;
+  userEmail: string;
+  userName: string;
+  title: string;
+  category: string;
+  amount: number;
+  date: string;
+  status: 'completed' | 'processing' | 'refunded';
+  paymentMethod: string;
+}
+
+export interface AdminCoupon {
+  code: string;
+  discountType: 'percentage' | 'fixed' | 'free_tier';
+  value: number; // percentage or TL
+  tier?: string;
+  usedCount: number;
+  maxUsage: number;
+  expiresAt: string;
+  isActive: boolean;
+}
+
+export interface SystemLog {
+  id: string;
+  level: 'info' | 'warn' | 'error' | 'success';
+  title: string;
+  details: string;
+  timestamp: string;
+  ip?: string;
+}
+
+export interface SystemSettings {
+  maintenanceMode: boolean;
+  maintenanceMessage: string;
+  globalAnnouncement: string;
+  isAnnouncementActive: boolean;
+  allowRegistrations: boolean;
+  defaultFreeStorageMB: number;
+  maxUploadSizeMB: number;
+  autoApproveNewEvents: boolean;
+}
+
+const STORAGE_KEY_ADMIN_AUTH = 'qrla_admin_authenticated';
+const STORAGE_KEY_ADMIN_USERS = 'qrla_admin_users';
+const STORAGE_KEY_ADMIN_ASSETS = 'qrla_admin_assets';
+const STORAGE_KEY_ADMIN_COUPONS = 'qrla_admin_coupons';
+const STORAGE_KEY_ADMIN_SETTINGS = 'qrla_admin_settings';
+const STORAGE_KEY_ADMIN_ORDERS = 'qrla_admin_orders';
+
+const DEFAULT_USERS: AdminUser[] = [
+  {
+    id: 'usr-1',
+    name: 'Samet Sunman',
+    email: 'casska@msn.com',
+    role: 'superadmin',
+    status: 'active',
+    assetCount: 6,
+    totalSpent: 2850,
+    createdAt: '2026-09-01T10:00:00.000Z',
+    lastLogin: '2026-10-28T14:30:00.000Z',
+  },
+  {
+    id: 'usr-2',
+    name: 'Yavuz Demir (Demo Host)',
+    email: 'demo@qr-la.com',
+    role: 'moderator',
+    status: 'active',
+    assetCount: 3,
+    totalSpent: 450,
+    createdAt: '2026-09-15T12:00:00.000Z',
+    lastLogin: '2026-10-28T12:15:00.000Z',
+  },
+  {
+    id: 'usr-3',
+    name: 'Şule & Samet Yılmaz',
+    email: 'sule.samet@dugun.com',
+    role: 'user',
+    status: 'active',
+    assetCount: 2,
+    totalSpent: 1290,
+    createdAt: '2026-10-01T09:30:00.000Z',
+    lastLogin: '2026-10-27T19:40:00.000Z',
+  },
+  {
+    id: 'usr-4',
+    name: 'Lucca Bistrot & Cocktail',
+    email: 'management@luccabebek.com',
+    role: 'user',
+    status: 'active',
+    assetCount: 1,
+    totalSpent: 1800,
+    createdAt: '2026-10-05T14:20:00.000Z',
+    lastLogin: '2026-10-28T11:00:00.000Z',
+  },
+  {
+    id: 'usr-5',
+    name: 'Cemre Aksoy (Pati Duman)',
+    email: 'cemre.aksoy@gmail.com',
+    role: 'user',
+    status: 'active',
+    assetCount: 2,
+    totalSpent: 250,
+    createdAt: '2026-10-12T16:00:00.000Z',
+    lastLogin: '2026-10-25T15:20:00.000Z',
+  },
+  {
+    id: 'usr-6',
+    name: 'Kaan Demirkan (Honda CBR)',
+    email: 'kaan.d@motoclub.com',
+    role: 'user',
+    status: 'active',
+    assetCount: 1,
+    totalSpent: 300,
+    createdAt: '2026-10-18T18:10:00.000Z',
+    lastLogin: '2026-10-28T09:12:00.000Z',
+  },
+  {
+    id: 'usr-7',
+    name: 'Test Spam Hesabı',
+    email: 'bot992@spammer.org',
+    role: 'user',
+    status: 'suspended',
+    assetCount: 0,
+    totalSpent: 0,
+    createdAt: '2026-10-22T04:10:00.000Z',
+    lastLogin: '2026-10-22T04:12:00.000Z',
+  },
+];
+
+const DEFAULT_ASSETS: AdminAssetItem[] = [
+  {
+    id: 'ast-1',
+    title: 'Samet & Şule Düğünü',
+    moduleType: 'event',
+    slug: 'samet-ve-sule',
+    ownerEmail: 'casska@msn.com',
+    ownerName: 'Samet Sunman',
+    scans: 1420,
+    status: 'active',
+    tier: 'VIP Sınırsız',
+    createdAt: '2026-10-01',
+  },
+  {
+    id: 'ast-2',
+    title: 'Honda CBR 650R (34 ABC 123)',
+    moduleType: 'vehicle',
+    slug: '34abc123',
+    ownerEmail: 'kaan.d@motoclub.com',
+    ownerName: 'Kaan Demirkan',
+    scans: 284,
+    status: 'active',
+    tier: 'Ömür Boyu Park Tagı',
+    createdAt: '2026-10-18',
+  },
+  {
+    id: 'ast-3',
+    title: 'Pati Duman (Petguru Künye)',
+    moduleType: 'pet',
+    slug: 'duman',
+    ownerEmail: 'cemre.aksoy@gmail.com',
+    ownerName: 'Cemre Aksoy',
+    scans: 95,
+    status: 'active',
+    tier: 'GPS Akıllı Künye',
+    createdAt: '2026-10-12',
+  },
+  {
+    id: 'ast-4',
+    title: 'Samet Sunman (vCard & NFC)',
+    moduleType: 'vcard',
+    slug: 'samet-sunman',
+    ownerEmail: 'casska@msn.com',
+    ownerName: 'Samet Sunman',
+    scans: 620,
+    status: 'active',
+    tier: 'Pro Dijital vCard',
+    createdAt: '2026-10-02',
+  },
+  {
+    id: 'ast-5',
+    title: 'Lucca Bistrot & Cocktail Bar Menü',
+    moduleType: 'menu',
+    slug: 'lucca-bistrot',
+    ownerEmail: 'management@luccabebek.com',
+    ownerName: 'Lucca Bistrot',
+    scans: 3840,
+    status: 'active',
+    tier: 'Kurumsal Restoran QR',
+    createdAt: '2026-10-05',
+  },
+  {
+    id: 'ast-6',
+    title: 'Demo Panel Etkinliği',
+    moduleType: 'event',
+    slug: 'demo-panel',
+    ownerEmail: 'demo@qr-la.com',
+    ownerName: 'Yavuz Demir',
+    scans: 8520,
+    status: 'active',
+    tier: 'Free Demo',
+    createdAt: '2026-09-15',
+  },
+  {
+    id: 'ast-7',
+    title: 'Şüpheli QR Kampanyası',
+    moduleType: 'vcard',
+    slug: 'kazan-bedava',
+    ownerEmail: 'bot992@spammer.org',
+    ownerName: 'Test Spam Hesabı',
+    scans: 12,
+    status: 'suspended',
+    tier: 'Free',
+    createdAt: '2026-10-22',
+  },
+];
+
+const DEFAULT_ORDERS: AdminOrder[] = [
+  {
+    id: 'ord-101',
+    orderNumber: 'QRLA-2026-9812',
+    userEmail: 'management@luccabebek.com',
+    userName: 'Lucca Bistrot',
+    title: 'Restoran Yıllık Menü Lisansı + 50 Adet Pleksi Karekod',
+    category: 'menu',
+    amount: 1800,
+    date: '2026-10-27 16:40',
+    status: 'completed',
+    paymentMethod: 'Kredi Kartı (3D Secure)',
+  },
+  {
+    id: 'ord-102',
+    orderNumber: 'QRLA-2026-9790',
+    userEmail: 'sule.samet@dugun.com',
+    userName: 'Şule & Samet Yılmaz',
+    title: 'VIP Düğün Paketi + 100 Masa QR Kartı',
+    category: 'event',
+    amount: 1290,
+    date: '2026-10-26 14:15',
+    status: 'completed',
+    paymentMethod: 'Havale / EFT',
+  },
+  {
+    id: 'ord-103',
+    orderNumber: 'QRLA-2026-9755',
+    userEmail: 'kaan.d@motoclub.com',
+    userName: 'Kaan Demirkan',
+    title: 'Araç UV Korumalı Ön Cam Stickerı',
+    category: 'vehicle',
+    amount: 300,
+    date: '2026-10-25 11:30',
+    status: 'completed',
+    paymentMethod: 'Kredi Kartı',
+  },
+  {
+    id: 'ord-104',
+    orderNumber: 'QRLA-2026-9721',
+    userEmail: 'cemre.aksoy@gmail.com',
+    userName: 'Cemre Aksoy',
+    title: 'Lazer Kazımalı Paslanmaz Çelik Pati Künyesi',
+    category: 'pet',
+    amount: 250,
+    date: '2026-10-24 18:22',
+    status: 'completed',
+    paymentMethod: 'Kredi Kartı',
+  },
+  {
+    id: 'ord-105',
+    orderNumber: 'QRLA-2026-9680',
+    userEmail: 'casska@msn.com',
+    userName: 'Samet Sunman',
+    title: 'Mat Siyah Lüks NFC Dijital Kartvizit',
+    category: 'vcard',
+    amount: 450,
+    date: '2026-10-22 10:05',
+    status: 'completed',
+    paymentMethod: 'Kredi Kartı',
+  },
+];
+
+const DEFAULT_COUPONS: AdminCoupon[] = [
+  {
+    code: 'QRVIP50',
+    discountType: 'percentage',
+    value: 50,
+    tier: 'premium',
+    usedCount: 28,
+    maxUsage: 100,
+    expiresAt: '2026-12-31',
+    isActive: true,
+  },
+  {
+    code: 'DUGUN2026',
+    discountType: 'percentage',
+    value: 20,
+    tier: 'vip',
+    usedCount: 64,
+    maxUsage: 200,
+    expiresAt: '2026-11-30',
+    isActive: true,
+  },
+  {
+    code: 'PETGURU100',
+    discountType: 'free_tier',
+    value: 100,
+    tier: 'standart',
+    usedCount: 15,
+    maxUsage: 50,
+    expiresAt: '2026-12-15',
+    isActive: true,
+  },
+  {
+    code: 'LAUNCHVIP',
+    discountType: 'free_tier',
+    value: 100,
+    tier: 'vip',
+    usedCount: 12,
+    maxUsage: 20,
+    expiresAt: '2026-11-15',
+    isActive: true,
+  },
+];
+
+const DEFAULT_SETTINGS: SystemSettings = {
+  maintenanceMode: false,
+  maintenanceMessage: 'Platformumuz planlı sistem güncellemesi nedeniyle kısa süre bakım modundadır.',
+  globalAnnouncement: '🎉 QR-la v2.0 Restoran Menü, Bildirim Merkezi ve Analitik Altyapısı Devrede!',
+  isAnnouncementActive: true,
+  allowRegistrations: true,
+  defaultFreeStorageMB: 500,
+  maxUploadSizeMB: 25,
+  autoApproveNewEvents: true,
+};
+
+const DEFAULT_LOGS: SystemLog[] = [
+  {
+    id: 'log-1',
+    level: 'info',
+    title: 'Yönetici Girişi Yapıldı',
+    details: 'Superadmin hesabı (casska@msn.com) başarıyla giriş yaptı.',
+    timestamp: '2026-10-28 14:30:12',
+    ip: '88.241.12.84',
+  },
+  {
+    id: 'log-2',
+    level: 'success',
+    title: 'Yeni Sipariş Onaylandı',
+    details: 'QRLA-2026-9812 nolu restoran siparişi başarıyla tahsil edildi.',
+    timestamp: '2026-10-27 16:40:55',
+    ip: '176.234.90.11',
+  },
+  {
+    id: 'log-3',
+    level: 'warn',
+    title: 'Şüpheli Kayıt Engellendi',
+    details: 'bot992@spammer.org hesabı spam kuralı tetiklediği için askıya alındı.',
+    timestamp: '2026-10-22 04:12:00',
+    ip: '194.32.10.45',
+  },
+  {
+    id: 'log-4',
+    level: 'info',
+    title: 'Sistem Yedeklemesi Tamamlandı',
+    details: 'Firestore ve Cloud Storage veritabanı yedeği alındı (142.8 GB).',
+    timestamp: '2026-10-28 03:00:00',
+    ip: '10.0.0.1 (cron)',
+  },
+];
+
+class AdminService {
+  private isUnlocked: boolean = false;
+  private readonly MASTER_PIN = '1923';
+
+  // Auth / Lock State
+  async checkAdminAuth(): Promise<boolean> {
+    if (this.isUnlocked) return true;
+    const stored = await appStorage.getItem(STORAGE_KEY_ADMIN_AUTH);
+    if (stored === 'true') {
+      this.isUnlocked = true;
+      return true;
+    }
+    return false;
+  }
+
+  async verifyPin(pin: string): Promise<boolean> {
+    if (pin === this.MASTER_PIN) {
+      this.isUnlocked = true;
+      await appStorage.setItem(STORAGE_KEY_ADMIN_AUTH, 'true');
+      return true;
+    }
+    return false;
+  }
+
+  async logoutAdmin(): Promise<void> {
+    this.isUnlocked = false;
+    await appStorage.removeItem(STORAGE_KEY_ADMIN_AUTH);
+  }
+
+  // Users
+  async getUsers(): Promise<AdminUser[]> {
+    const raw = await appStorage.getItem(STORAGE_KEY_ADMIN_USERS);
+    if (!raw) return DEFAULT_USERS;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return DEFAULT_USERS;
+    }
+  }
+
+  async updateUserStatus(userId: string, newStatus: AdminUser['status']): Promise<AdminUser[]> {
+    const users = await this.getUsers();
+    const updated = users.map((u) => (u.id === userId ? { ...u, status: newStatus } : u));
+    await appStorage.setItem(STORAGE_KEY_ADMIN_USERS, JSON.stringify(updated));
+    return updated;
+  }
+
+  async updateUserRole(userId: string, newRole: AdminUser['role']): Promise<AdminUser[]> {
+    const users = await this.getUsers();
+    const updated = users.map((u) => (u.id === userId ? { ...u, role: newRole } : u));
+    await appStorage.setItem(STORAGE_KEY_ADMIN_USERS, JSON.stringify(updated));
+    return updated;
+  }
+
+  // Assets
+  async getAssets(): Promise<AdminAssetItem[]> {
+    const raw = await appStorage.getItem(STORAGE_KEY_ADMIN_ASSETS);
+    if (!raw) return DEFAULT_ASSETS;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return DEFAULT_ASSETS;
+    }
+  }
+
+  async updateAssetStatus(assetId: string, newStatus: AdminAssetItem['status']): Promise<AdminAssetItem[]> {
+    const assets = await this.getAssets();
+    const updated = assets.map((a) => (a.id === assetId ? { ...a, status: newStatus } : a));
+    await appStorage.setItem(STORAGE_KEY_ADMIN_ASSETS, JSON.stringify(updated));
+    return updated;
+  }
+
+  async deleteAsset(assetId: string): Promise<AdminAssetItem[]> {
+    const assets = await this.getAssets();
+    const updated = assets.filter((a) => a.id !== assetId);
+    await appStorage.setItem(STORAGE_KEY_ADMIN_ASSETS, JSON.stringify(updated));
+    return updated;
+  }
+
+  // Orders
+  async getOrders(): Promise<AdminOrder[]> {
+    const raw = await appStorage.getItem(STORAGE_KEY_ADMIN_ORDERS);
+    if (!raw) return DEFAULT_ORDERS;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return DEFAULT_ORDERS;
+    }
+  }
+
+  // Coupons
+  async getCoupons(): Promise<AdminCoupon[]> {
+    const raw = await appStorage.getItem(STORAGE_KEY_ADMIN_COUPONS);
+    if (!raw) return DEFAULT_COUPONS;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return DEFAULT_COUPONS;
+    }
+  }
+
+  async addCoupon(coupon: AdminCoupon): Promise<AdminCoupon[]> {
+    const list = await this.getCoupons();
+    const updated = [coupon, ...list.filter((c) => c.code !== coupon.code)];
+    await appStorage.setItem(STORAGE_KEY_ADMIN_COUPONS, JSON.stringify(updated));
+    return updated;
+  }
+
+  async toggleCoupon(code: string): Promise<AdminCoupon[]> {
+    const list = await this.getCoupons();
+    const updated = list.map((c) => (c.code === code ? { ...c, isActive: !c.isActive } : c));
+    await appStorage.setItem(STORAGE_KEY_ADMIN_COUPONS, JSON.stringify(updated));
+    return updated;
+  }
+
+  async deleteCoupon(code: string): Promise<AdminCoupon[]> {
+    const list = await this.getCoupons();
+    const updated = list.filter((c) => c.code !== code);
+    await appStorage.setItem(STORAGE_KEY_ADMIN_COUPONS, JSON.stringify(updated));
+    return updated;
+  }
+
+  // Settings
+  async getSettings(): Promise<SystemSettings> {
+    const raw = await appStorage.getItem(STORAGE_KEY_ADMIN_SETTINGS);
+    if (!raw) return DEFAULT_SETTINGS;
+    try {
+      return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    } catch {
+      return DEFAULT_SETTINGS;
+    }
+  }
+
+  async updateSettings(settings: Partial<SystemSettings>): Promise<SystemSettings> {
+    const current = await this.getSettings();
+    const updated = { ...current, ...settings };
+    await appStorage.setItem(STORAGE_KEY_ADMIN_SETTINGS, JSON.stringify(updated));
+    return updated;
+  }
+
+  // Logs
+  async getLogs(): Promise<SystemLog[]> {
+    return DEFAULT_LOGS;
+  }
+
+  // Platform Metrics summary
+  async getPlatformKPIs() {
+    const users = await this.getUsers();
+    const assets = await this.getAssets();
+    const orders = await this.getOrders();
+
+    const totalScans = assets.reduce((acc, a) => acc + a.scans, 0);
+    const totalRevenue = orders.reduce((acc, o) => (o.status === 'completed' ? acc + o.amount : acc), 0);
+
+    return {
+      totalUsers: users.length,
+      activeUsers: users.filter((u) => u.status === 'active').length,
+      totalAssets: assets.length,
+      activeAssets: assets.filter((a) => a.status === 'active').length,
+      totalScans,
+      totalRevenue,
+      recentOrdersCount: orders.length,
+      storageUsedGB: 142.8,
+      storageMaxGB: 1000,
+      uptimePercentage: '99.98%',
+    };
+  }
+}
+
+export const adminService = new AdminService();
