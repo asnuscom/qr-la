@@ -141,8 +141,8 @@ export default function PhygitalShopScreen() {
             onPress={() => router.push('/panel' as any)}
             activeOpacity={0.8}
           >
-            <Ionicons name="apps-outline" size={17} color="#C5A059" />
-            <Text style={[styles.headerBtnText, { color: '#C5A059' }]}>Varlıklarım</Text>
+            <Ionicons name="apps-outline" size={17} color="#6366F1" />
+            <Text style={[styles.headerBtnText, { color: '#6366F1' }]}>Varlıklarım</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -549,7 +549,7 @@ function getStyles(isDark: boolean, colors: ThemeColors) {
       paddingVertical: 8,
       paddingHorizontal: 12,
       borderRadius: 10,
-      backgroundColor: isDark ? '#1B1E2E' : '#FAF7F2',
+      backgroundColor: isDark ? '#1B1E2E' : '#F1F5F9',
       borderWidth: 1,
       borderColor: colors.border,
     },
@@ -649,7 +649,7 @@ function getStyles(isDark: boolean, colors: ThemeColors) {
       maxWidth: 300,
       height: 220,
       position: 'relative',
-      backgroundColor: isDark ? '#1E2230' : '#FAF7F2',
+      backgroundColor: isDark ? '#1E2230' : '#F1F5F9',
     },
     productImage: {
       width: '100%',
@@ -704,7 +704,7 @@ function getStyles(isDark: boolean, colors: ThemeColors) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
-      backgroundColor: isDark ? '#1B1E2E' : '#FAF7F2',
+      backgroundColor: isDark ? '#1B1E2E' : '#F1F5F9',
       padding: 8,
       borderRadius: 8,
       marginBottom: 16,
@@ -767,7 +767,7 @@ function getStyles(isDark: boolean, colors: ThemeColors) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      backgroundColor: isDark ? '#1B1E2E' : '#FAF7F2',
+      backgroundColor: isDark ? '#1B1E2E' : '#F1F5F9',
       borderRadius: 14,
       padding: 14,
       flexWrap: 'wrap',
@@ -877,7 +877,7 @@ function getStyles(isDark: boolean, colors: ThemeColors) {
       marginBottom: 6,
     },
     input: {
-      backgroundColor: isDark ? '#1B1E2E' : '#FAF7F2',
+      backgroundColor: isDark ? '#1B1E2E' : '#F1F5F9',
       borderWidth: 1,
       borderColor: colors.border,
       borderRadius: 10,
@@ -893,7 +893,7 @@ function getStyles(isDark: boolean, colors: ThemeColors) {
       paddingVertical: 6,
       paddingHorizontal: 12,
       borderRadius: 10,
-      backgroundColor: isDark ? '#1B1E2E' : '#FAF7F2',
+      backgroundColor: isDark ? '#1B1E2E' : '#F1F5F9',
       borderWidth: 1,
       borderColor: colors.border,
       marginRight: 8,
@@ -922,7 +922,7 @@ function getStyles(isDark: boolean, colors: ThemeColors) {
       gap: 6,
       paddingVertical: 10,
       borderRadius: 10,
-      backgroundColor: isDark ? '#1B1E2E' : '#FAF7F2',
+      backgroundColor: isDark ? '#1B1E2E' : '#F1F5F9',
       borderWidth: 1,
       borderColor: colors.border,
     },
@@ -940,7 +940,7 @@ function getStyles(isDark: boolean, colors: ThemeColors) {
       fontWeight: '700',
     },
     checkoutSummaryCard: {
-      backgroundColor: isDark ? '#1B1E2E' : '#FAF7F2',
+      backgroundColor: isDark ? '#1B1E2E' : '#F1F5F9',
       borderRadius: 12,
       padding: 12,
       marginTop: 6,

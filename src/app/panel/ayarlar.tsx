@@ -289,7 +289,7 @@ export default function EventSettingsScreen() {
             Bu etkinliğin gizlilik ve bağlantı ayarlarını yalnızca etkinlik sahibi düzenleyebilir.
           </Text>
           <TouchableOpacity
-            style={{ backgroundColor: '#C5A059', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }}
+            style={{ backgroundColor: '#6366F1', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }}
             onPress={() => router.replace('/panel' as any)}
             activeOpacity={0.85}
           >
@@ -304,7 +304,7 @@ export default function EventSettingsScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#C5A059" />
+          <ActivityIndicator size="large" color="#6366F1" />
           <Text style={styles.loadingText}>Ayarlar yükleniyor...</Text>
         </View>
       </SafeAreaView>
@@ -386,7 +386,7 @@ export default function EventSettingsScreen() {
         <View style={styles.formCard}>
           <View style={styles.cardHeaderRow}>
             <View style={styles.cardHeaderIconWrap}>
-              <Ionicons name="link-outline" size={20} color="#C5A059" />
+              <Ionicons name="link-outline" size={20} color="#6366F1" />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.cardHeader}>1. Özel Bağlantı (Slug / URL)</Text>
@@ -466,7 +466,7 @@ export default function EventSettingsScreen() {
                   autoCorrect={false}
                 />
                 {isCheckingSlug ? (
-                  <ActivityIndicator size="small" color="#C5A059" style={{ marginRight: 8 }} />
+                  <ActivityIndicator size="small" color="#6366F1" style={{ marginRight: 8 }} />
                 ) : slug !== activeSavedSlug ? (
                   <TouchableOpacity
                     onPress={() => {
@@ -551,7 +551,7 @@ export default function EventSettingsScreen() {
             <Switch
               value={isPrivate}
               onValueChange={setIsPrivate}
-              trackColor={{ false: '#D1D5DB', true: '#C5A059' }}
+              trackColor={{ false: '#D1D5DB', true: '#6366F1' }}
             />
           </View>
 
@@ -610,7 +610,7 @@ export default function EventSettingsScreen() {
             <Switch
               value={!enableCompression}
               onValueChange={(val) => setEnableCompression(!val)}
-              trackColor={{ false: '#D1D5DB', true: '#C5A059' }}
+              trackColor={{ false: '#D1D5DB', true: '#6366F1' }}
             />
           </View>
 
@@ -625,7 +625,7 @@ export default function EventSettingsScreen() {
             <Switch
               value={autoApprovePhotos}
               onValueChange={setAutoApprovePhotos}
-              trackColor={{ false: '#D1D5DB', true: '#C5A059' }}
+              trackColor={{ false: '#D1D5DB', true: '#6366F1' }}
             />
           </View>
         </View>
@@ -655,7 +655,7 @@ export default function EventSettingsScreen() {
             <Switch
               value={allowGuestDownloads}
               onValueChange={setAllowGuestDownloads}
-              trackColor={{ false: '#D1D5DB', true: '#C5A059' }}
+              trackColor={{ false: '#D1D5DB', true: '#6366F1' }}
             />
           </View>
 
@@ -670,7 +670,7 @@ export default function EventSettingsScreen() {
             <Switch
               value={allowGuestbook}
               onValueChange={setAllowGuestbook}
-              trackColor={{ false: '#D1D5DB', true: '#C5A059' }}
+              trackColor={{ false: '#D1D5DB', true: '#6366F1' }}
             />
           </View>
         </View>
@@ -700,7 +700,7 @@ export default function EventSettingsScreen() {
             <Switch
               value={isLiveFeedActive}
               onValueChange={setIsLiveFeedActive}
-              trackColor={{ false: '#D1D5DB', true: '#C5A059' }}
+              trackColor={{ false: '#D1D5DB', true: '#6366F1' }}
             />
           </View>
 
@@ -747,7 +747,7 @@ export default function EventSettingsScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
   },
   center: {
     flex: 1,
@@ -798,7 +798,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
-    backgroundColor: '#C5A059',
+    backgroundColor: '#6366F1',
     paddingHorizontal: 16,
     paddingVertical: 9,
     borderRadius: 12,
@@ -1127,7 +1127,7 @@ const styles = StyleSheet.create({
     color: '#B45309',
   },
   pinBox: {
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
     padding: 12,
     borderRadius: 12,
     marginTop: 10,
@@ -1148,7 +1148,7 @@ const styles = StyleSheet.create({
   pinInput: {
     backgroundColor: '#FFF',
     borderWidth: 1.5,
-    borderColor: '#C5A059',
+    borderColor: '#6366F1',
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -1190,10 +1190,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#C5A059',
+    backgroundColor: '#6366F1',
     paddingVertical: 15,
     borderRadius: 14,
-    shadowColor: '#C5A059',
+    shadowColor: '#6366F1',
     shadowOpacity: 0.3,
     shadowRadius: 10,
     elevation: 3,

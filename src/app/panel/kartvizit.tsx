@@ -313,14 +313,14 @@ export default function VCardManagementScreen() {
             onPress={() => router.push('/panel')}
             activeOpacity={0.8}
           >
-            <Ionicons name="arrow-back" size={20} color="#C5A059" />
+            <Ionicons name="arrow-back" size={20} color="#6366F1" />
             <Text style={styles.backBtnText}>Panela Dön</Text>
           </TouchableOpacity>
 
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <ThemeToggleBtn size="sm" />
             <View style={styles.headerBadge}>
-              <Ionicons name="card" size={14} color="#C5A059" />
+              <Ionicons name="card" size={14} color="#6366F1" />
               <Text style={styles.headerBadgeText}>Dijital Kartvizit & NFC</Text>
             </View>
           </View>
@@ -370,7 +370,7 @@ export default function VCardManagementScreen() {
               activeOpacity={0.85}
             >
               <View style={styles.addNewCardIconCircle}>
-                <Ionicons name="add" size={24} color="#C5A059" />
+                <Ionicons name="add" size={24} color="#6366F1" />
               </View>
               <Text style={styles.addNewCardText}>Yeni Kartvizit</Text>
             </TouchableOpacity>
@@ -399,7 +399,7 @@ export default function VCardManagementScreen() {
                 }}
                 activeOpacity={0.8}
               >
-                <Ionicons name="eye-outline" size={16} color="#C5A059" />
+                <Ionicons name="eye-outline" size={16} color="#6366F1" />
                 <Text style={styles.quickLiveBtnText}>Canlı Gör</Text>
               </TouchableOpacity>
 
@@ -749,7 +749,7 @@ export default function VCardManagementScreen() {
               <View style={styles.portList}>
                 {portfolioLinks.map((p, idx) => (
                   <View key={idx} style={styles.portItemRow}>
-                    <Ionicons name="document-text-outline" size={18} color="#C5A059" />
+                    <Ionicons name="document-text-outline" size={18} color="#6366F1" />
                     <View style={{ flex: 1, marginLeft: 8 }}>
                       <Text style={styles.portItemTitle}>{p.title}</Text>
                       <Text style={styles.portItemUrl} numberOfLines={1}>{p.url}</Text>
@@ -789,7 +789,7 @@ export default function VCardManagementScreen() {
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <View style={styles.modalTitleRow}>
-                  <Ionicons name="hardware-chip-outline" size={22} color="#C5A059" />
+                  <Ionicons name="hardware-chip-outline" size={22} color="#6366F1" />
                   <Text style={styles.modalTitle}>Lüks NFC Akıllı Kartvizit</Text>
                 </View>
                 <TouchableOpacity onPress={() => setNfcModalVisible(false)}>
@@ -883,7 +883,7 @@ const getStyles = (isDark: boolean, colors: ThemeColors) =>
       paddingVertical: 6,
     },
     backBtnText: {
-      color: '#C5A059',
+      color: '#6366F1',
       fontSize: 14,
       fontWeight: '700',
     },
@@ -975,7 +975,7 @@ const getStyles = (isDark: boolean, colors: ThemeColors) =>
       padding: 12,
     },
     addNewCardBtnActive: {
-      borderColor: '#C5A059',
+      borderColor: '#6366F1',
       backgroundColor: isDark ? 'rgba(197, 160, 89, 0.1)' : '#FAF5EA',
     },
     addNewCardIconCircle: {
@@ -1040,7 +1040,7 @@ const getStyles = (isDark: boolean, colors: ThemeColors) =>
     quickNfcBtn: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: '#C5A059',
+      backgroundColor: '#6366F1',
       paddingHorizontal: 12,
       paddingVertical: 8,
       borderRadius: 12,
@@ -1077,7 +1077,7 @@ const getStyles = (isDark: boolean, colors: ThemeColors) =>
       marginBottom: 6,
     },
     textInput: {
-      backgroundColor: isDark ? 'rgba(0, 0, 0, 0.4)' : '#FAF7F2',
+      backgroundColor: isDark ? 'rgba(0, 0, 0, 0.4)' : '#F1F5F9',
       borderWidth: 1,
       borderColor: colors.border,
       borderRadius: 12,
@@ -1123,7 +1123,7 @@ const getStyles = (isDark: boolean, colors: ThemeColors) =>
     themeCardItem: {
       flex: 1,
       minWidth: 140,
-      backgroundColor: isDark ? 'rgba(0, 0, 0, 0.35)' : '#FAF7F2',
+      backgroundColor: isDark ? 'rgba(0, 0, 0, 0.35)' : '#F1F5F9',
       borderWidth: 1,
       borderColor: colors.border,
       borderRadius: 14,
@@ -1150,7 +1150,7 @@ const getStyles = (isDark: boolean, colors: ThemeColors) =>
     },
     // Bank inputs
     bankInputBlock: {
-      backgroundColor: isDark ? 'rgba(0, 0, 0, 0.25)' : '#FAF7F2',
+      backgroundColor: isDark ? 'rgba(0, 0, 0, 0.25)' : '#F1F5F9',
       borderRadius: 16,
       padding: 14,
       borderWidth: 1,
@@ -1161,7 +1161,7 @@ const getStyles = (isDark: boolean, colors: ThemeColors) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: '#C5A059',
+      backgroundColor: '#6366F1',
       borderRadius: 12,
       gap: 6,
     },
@@ -1196,7 +1196,7 @@ const getStyles = (isDark: boolean, colors: ThemeColors) =>
     },
     // Portfolio
     portfolioInputBlock: {
-      backgroundColor: isDark ? 'rgba(0, 0, 0, 0.25)' : '#FAF7F2',
+      backgroundColor: isDark ? 'rgba(0, 0, 0, 0.25)' : '#F1F5F9',
       borderRadius: 16,
       padding: 14,
       borderWidth: 1,
@@ -1206,7 +1206,7 @@ const getStyles = (isDark: boolean, colors: ThemeColors) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: '#C5A059',
+      backgroundColor: '#6366F1',
       paddingVertical: 10,
       borderRadius: 12,
       gap: 6,
@@ -1244,7 +1244,7 @@ const getStyles = (isDark: boolean, colors: ThemeColors) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: '#C5A059',
+      backgroundColor: '#6366F1',
       paddingVertical: 15,
       borderRadius: 16,
       gap: 8,
@@ -1387,7 +1387,7 @@ const getStyles = (isDark: boolean, colors: ThemeColors) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: '#C5A059',
+      backgroundColor: '#6366F1',
       paddingVertical: 12,
       borderRadius: 14,
       gap: 6,

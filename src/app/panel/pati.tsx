@@ -10,6 +10,7 @@ import {
   Platform,
   ActivityIndicator,
   Image,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -217,7 +218,7 @@ export default function PetManagementScreen() {
     setIsSaving(true);
     try {
       const effectiveSlug = cleanPetSlug(slug || name);
-      const petPayload: Partial<PetData> & { name: string; ownerPhone: string } = {
+      const petPayload: Partial<PetData> & { name: string; ownerPhone: string; slug: string } = {
         id: selectedPetId === 'new' ? undefined : selectedPetId,
         slug: effectiveSlug,
         userId: currentUser?.uid || 'demo-host-ayse',
@@ -1184,7 +1185,7 @@ const getStyles = (isDark: boolean, colors: ThemeColors) =>
       marginBottom: 6,
     },
     textInput: {
-      backgroundColor: isDark ? 'rgba(0, 0, 0, 0.4)' : '#FAF7F2',
+      backgroundColor: isDark ? 'rgba(0, 0, 0, 0.4)' : '#F1F5F9',
       borderWidth: 1,
       borderColor: colors.border,
       borderRadius: 12,
@@ -1205,7 +1206,7 @@ const getStyles = (isDark: boolean, colors: ThemeColors) =>
       flex: 1,
       paddingVertical: 9,
       borderRadius: 10,
-      backgroundColor: isDark ? 'rgba(0, 0, 0, 0.4)' : '#FAF7F2',
+      backgroundColor: isDark ? 'rgba(0, 0, 0, 0.4)' : '#F1F5F9',
       borderWidth: 1,
       borderColor: colors.border,
       alignItems: 'center',
@@ -1234,7 +1235,7 @@ const getStyles = (isDark: boolean, colors: ThemeColors) =>
       justifyContent: 'center',
       paddingVertical: 9,
       borderRadius: 10,
-      backgroundColor: isDark ? 'rgba(0, 0, 0, 0.4)' : '#FAF7F2',
+      backgroundColor: isDark ? 'rgba(0, 0, 0, 0.4)' : '#F1F5F9',
       borderWidth: 1,
       borderColor: colors.border,
       gap: 4,
@@ -1438,7 +1439,7 @@ const getStyles = (isDark: boolean, colors: ThemeColors) =>
       width: 14,
       height: 14,
       borderRadius: 7,
-      backgroundColor: isDark ? '#062015' : '#FAF7F2',
+      backgroundColor: isDark ? '#062015' : '#F1F5F9',
       borderWidth: 2,
       borderColor: '#9CA3AF',
       position: 'absolute',
@@ -1503,6 +1504,47 @@ const getStyles = (isDark: boolean, colors: ThemeColors) =>
       backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#F3EFE6',
       paddingVertical: 12,
       borderRadius: 14,
+    },
+    petguruSyncBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : '#F0FDF4',
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(16, 185, 129, 0.3)' : '#BBF7D0',
+      borderRadius: 14,
+      padding: 14,
+      marginBottom: 20,
+      gap: 12,
+    },
+    petguruSyncIconWrap: {
+      width: 42,
+      height: 42,
+      borderRadius: 10,
+      backgroundColor: 'rgba(16, 185, 129, 0.15)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    petguruSyncTitle: {
+      fontSize: 14,
+      fontWeight: '800',
+      color: '#10B981',
+      marginBottom: 2,
+    },
+    petguruSyncDesc: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      lineHeight: 16,
+    },
+    petguruAppBtn: {
+      backgroundColor: '#10B981',
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 10,
+    },
+    petguruAppBtnText: {
+      color: '#FFFFFF',
+      fontSize: 12,
+      fontWeight: '700',
     },
     closeBtnText: {
       color: colors.text,

@@ -95,7 +95,7 @@ export default function MasterDashboardScreen() {
   const getModuleBadge = (type: EcosystemAsset['moduleType']) => {
     switch (type) {
       case 'event':
-        return { label: 'Düğün & Etkinlik', icon: 'heart', color: '#C5A059' };
+        return { label: 'Etkinlik & Davet Albümü', icon: 'images', color: '#EC4899' };
       case 'vehicle':
         return { label: 'Araç & Park Tagı', icon: 'car-sport', color: '#0284C7' };
       case 'pet':
@@ -146,7 +146,7 @@ export default function MasterDashboardScreen() {
   if (isLoading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: colors.bg }]}>
-        <ActivityIndicator size="large" color="#C5A059" />
+        <ActivityIndicator size="large" color="#6366F1" />
         <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
           Ortak panel ve QR varlıklarınız yükleniyor...
         </Text>
@@ -169,10 +169,13 @@ export default function MasterDashboardScreen() {
             </View>
             <View>
               <View style={styles.logoRow}>
-                <Text style={[styles.brandTitle, { color: colors.text }]}>QR-la</Text>
+                <Text style={[styles.brandTitle, { color: colors.text }]}>
+                  QR<Text style={{ color: '#6366F1' }}>-la</Text>
+                </Text>
                 <View style={styles.brandBadge}>
                   <Text style={styles.brandBadgeText}>WORKSPACE</Text>
                 </View>
+                <View style={styles.livePulseDot} />
               </View>
               <Text style={[styles.brandSubtitle, { color: colors.textSecondary }]}>
                 Ortak Yönetim Paneli
@@ -190,7 +193,7 @@ export default function MasterDashboardScreen() {
             <Ionicons
               name={unreadNotifCount > 0 ? 'notifications' : 'notifications-outline'}
               size={17}
-              color={unreadNotifCount > 0 ? '#C5A059' : colors.text}
+              color={unreadNotifCount > 0 ? '#6366F1' : colors.text}
             />
             {unreadNotifCount > 0 && (
               <View style={styles.notifBadge}>
@@ -219,7 +222,7 @@ export default function MasterDashboardScreen() {
                 onPress={() => router.push('/panel/qr-studio' as any)}
                 activeOpacity={0.8}
               >
-                <Ionicons name="sparkles-outline" size={16} color="#C5A059" />
+                <Ionicons name="sparkles-outline" size={16} color="#6366F1" />
                 <Text style={[styles.headerToolText, { color: colors.text }]}>QR Stüdyo</Text>
               </TouchableOpacity>
 
@@ -276,7 +279,7 @@ export default function MasterDashboardScreen() {
             <View style={{ flex: 1 }}>
               <View style={styles.heroTagRow}>
                 <View style={styles.heroTagBadge}>
-                  <Ionicons name="layers" size={12} color="#C5A059" />
+                  <Ionicons name="layers" size={12} color="#6366F1" />
                   <Text style={styles.heroTagText}>ÇOKLU MODÜL MERKEZİ</Text>
                 </View>
                 <View style={styles.heroLiveBadge}>
@@ -312,7 +315,7 @@ export default function MasterDashboardScreen() {
           <View style={[styles.heroStatsRow, { borderTopColor: colors.border }]}>
             <View style={styles.statItem}>
               <View style={[styles.statIconWrap, { backgroundColor: 'rgba(197, 160, 89, 0.12)' }]}>
-                <Ionicons name="qr-code-outline" size={18} color="#C5A059" />
+                <Ionicons name="qr-code-outline" size={18} color="#6366F1" />
               </View>
               <View>
                 <Text style={[styles.statNum, { color: colors.text }]}>{assets.length}</Text>
@@ -375,7 +378,7 @@ export default function MasterDashboardScreen() {
               style={[styles.mobileToolCard, { backgroundColor: colors.card, borderColor: colors.border }]}
               onPress={() => router.push('/panel/qr-studio' as any)}
             >
-              <Ionicons name="sparkles-outline" size={18} color="#C5A059" />
+              <Ionicons name="sparkles-outline" size={18} color="#6366F1" />
               <Text style={[styles.mobileToolText, { color: colors.text }]}>Stüdyo</Text>
             </TouchableOpacity>
 
@@ -422,12 +425,12 @@ export default function MasterDashboardScreen() {
                     {
                       backgroundColor: isActive
                         ? isDark
-                          ? '#C5A059'
+                          ? '#6366F1'
                           : '#1A1817'
                         : colors.card,
                       borderColor: isActive
                         ? isDark
-                          ? '#C5A059'
+                          ? '#6366F1'
                           : '#1A1817'
                         : colors.border,
                     },
@@ -512,7 +515,7 @@ export default function MasterDashboardScreen() {
             onPress={() => setCreateModalVisible(true)}
             activeOpacity={0.8}
           >
-            <Ionicons name="add-circle-outline" size={16} color="#C5A059" />
+            <Ionicons name="add-circle-outline" size={16} color="#6366F1" />
             <Text style={[styles.inlineAddBtnText, { color: colors.text }]}>Yeni Varlık</Text>
           </TouchableOpacity>
         </View>
@@ -520,7 +523,7 @@ export default function MasterDashboardScreen() {
         {filteredAssets.length === 0 ? (
           <View style={[styles.emptyBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.emptyIconCircle}>
-              <Ionicons name="qr-code-outline" size={36} color="#C5A059" />
+              <Ionicons name="qr-code-outline" size={36} color="#6366F1" />
             </View>
             <Text style={[styles.emptyTitle, { color: colors.text }]}>
               Bu kategoride henüz QR varlığınız bulunmuyor
@@ -705,9 +708,9 @@ export default function MasterDashboardScreen() {
                         styles.openDedicatedPanelBtn,
                         {
                           backgroundColor:
-                            badge.color === '#C5A059'
+                            badge.color === '#6366F1'
                               ? isDark
-                                ? '#C5A059'
+                                ? '#6366F1'
                                 : '#1A1817'
                               : badge.color,
                         },
@@ -718,14 +721,14 @@ export default function MasterDashboardScreen() {
                       <Ionicons
                         name="settings-outline"
                         size={15}
-                        color={badge.color === '#C5A059' && isDark ? '#1A1817' : '#FFFFFF'}
+                        color={badge.color === '#6366F1' && isDark ? '#1A1817' : '#FFFFFF'}
                       />
                       <Text
                         style={[
                           styles.openDedicatedPanelBtnText,
                           {
                             color:
-                              badge.color === '#C5A059' && isDark
+                              badge.color === '#6366F1' && isDark
                                 ? '#1A1817'
                                 : '#FFFFFF',
                           },
@@ -736,7 +739,7 @@ export default function MasterDashboardScreen() {
                       <Ionicons
                         name="chevron-forward"
                         size={15}
-                        color={badge.color === '#C5A059' && isDark ? '#1A1817' : '#FFFFFF'}
+                        color={badge.color === '#6366F1' && isDark ? '#1A1817' : '#FFFFFF'}
                       />
                     </TouchableOpacity>
 
@@ -767,8 +770,8 @@ export default function MasterDashboardScreen() {
                         }
                         activeOpacity={0.8}
                       >
-                        <Ionicons name="sparkles-outline" size={13} color="#C5A059" />
-                        <Text style={[styles.subActionText, { color: '#C5A059' }]}>
+                        <Ionicons name="sparkles-outline" size={13} color="#6366F1" />
+                        <Text style={[styles.subActionText, { color: '#6366F1' }]}>
                           QR Stüdyo
                         </Text>
                       </TouchableOpacity>
@@ -817,7 +820,7 @@ export default function MasterDashboardScreen() {
               </Text>
               <View style={styles.suiteToolLinkRow}>
                 <Text style={styles.suiteToolLinkText}>Raporları İncele</Text>
-                <Ionicons name="arrow-forward" size={14} color="#C5A059" />
+                <Ionicons name="arrow-forward" size={14} color="#6366F1" />
               </View>
             </TouchableOpacity>
 
@@ -827,7 +830,7 @@ export default function MasterDashboardScreen() {
               activeOpacity={0.85}
             >
               <View style={[styles.suiteIconCircle, { backgroundColor: 'rgba(197, 160, 89, 0.12)' }]}>
-                <Ionicons name="sparkles" size={22} color="#C5A059" />
+                <Ionicons name="sparkles" size={22} color="#6366F1" />
               </View>
               <Text style={[styles.suiteToolTitle, { color: colors.text }]}>
                 QR Kod Tasarım Stüdyosu
@@ -837,7 +840,7 @@ export default function MasterDashboardScreen() {
               </Text>
               <View style={styles.suiteToolLinkRow}>
                 <Text style={styles.suiteToolLinkText}>Stüdyoya Git</Text>
-                <Ionicons name="arrow-forward" size={14} color="#C5A059" />
+                <Ionicons name="arrow-forward" size={14} color="#6366F1" />
               </View>
             </TouchableOpacity>
 
@@ -857,7 +860,7 @@ export default function MasterDashboardScreen() {
               </Text>
               <View style={styles.suiteToolLinkRow}>
                 <Text style={styles.suiteToolLinkText}>Ürünleri Gör</Text>
-                <Ionicons name="arrow-forward" size={14} color="#C5A059" />
+                <Ionicons name="arrow-forward" size={14} color="#6366F1" />
               </View>
             </TouchableOpacity>
 
@@ -877,7 +880,7 @@ export default function MasterDashboardScreen() {
               </Text>
               <View style={styles.suiteToolLinkRow}>
                 <Text style={styles.suiteToolLinkText}>Paketleri İncele</Text>
-                <Ionicons name="arrow-forward" size={14} color="#C5A059" />
+                <Ionicons name="arrow-forward" size={14} color="#6366F1" />
               </View>
             </TouchableOpacity>
           </View>
@@ -931,8 +934,8 @@ export default function MasterDashboardScreen() {
                 }}
                 activeOpacity={0.8}
               >
-                <View style={[styles.modalOptIcon, { backgroundColor: 'rgba(197, 160, 89, 0.15)' }]}>
-                  <Ionicons name="heart" size={24} color="#C5A059" />
+                <View style={[styles.modalOptIcon, { backgroundColor: 'rgba(236, 72, 153, 0.15)' }]}>
+                  <Ionicons name="images" size={24} color="#EC4899" />
                 </View>
                 <View style={{ flex: 1 }}>
                   <View style={styles.modalOptTitleRow}>
@@ -947,7 +950,7 @@ export default function MasterDashboardScreen() {
                     Misafirlerden anlık fotoğraf & video toplama, dijital anı defteri, canlı projeksiyon ve müzik istekleri.
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#C5A059" />
+                <Ionicons name="chevron-forward" size={18} color="#EC4899" />
               </TouchableOpacity>
 
               {/* Option 2: Araç & Park Tagı */}
@@ -1098,7 +1101,7 @@ function getStyles(
       width: 38,
       height: 38,
       borderRadius: 10,
-      backgroundColor: '#C5A059',
+      backgroundColor: '#6366F1',
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -1107,13 +1110,19 @@ function getStyles(
       alignItems: 'center',
       gap: 8,
     },
+    livePulseDot: {
+      width: 7,
+      height: 7,
+      borderRadius: 3.5,
+      backgroundColor: '#10B981',
+    },
     brandTitle: {
       fontSize: 18,
       fontWeight: '900',
       letterSpacing: -0.5,
     },
     brandBadge: {
-      backgroundColor: 'rgba(197, 160, 89, 0.15)',
+      backgroundColor: 'rgba(99, 102, 241, 0.12)',
       paddingHorizontal: 6,
       paddingVertical: 2,
       borderRadius: 6,
@@ -1121,7 +1130,7 @@ function getStyles(
     brandBadgeText: {
       fontSize: 9,
       fontWeight: '800',
-      color: '#C5A059',
+      color: '#6366F1',
       letterSpacing: 0.5,
     },
     brandSubtitle: {
@@ -1174,11 +1183,11 @@ function getStyles(
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
-      backgroundColor: '#C5A059',
+      backgroundColor: '#6366F1',
       paddingHorizontal: 16,
       paddingVertical: 9,
       borderRadius: 10,
-      shadowColor: '#C5A059',
+      shadowColor: '#6366F1',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.3,
       shadowRadius: 6,
@@ -1242,7 +1251,7 @@ function getStyles(
     heroTagText: {
       fontSize: 10,
       fontWeight: '800',
-      color: '#C5A059',
+      color: '#6366F1',
       letterSpacing: 0.5,
     },
     heroLiveBadge: {
@@ -1280,11 +1289,11 @@ function getStyles(
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
-      backgroundColor: '#C5A059',
+      backgroundColor: '#6366F1',
       paddingHorizontal: 20,
       paddingVertical: 12,
       borderRadius: 12,
-      shadowColor: '#C5A059',
+      shadowColor: '#6366F1',
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.25,
       shadowRadius: 8,
@@ -1443,7 +1452,7 @@ function getStyles(
       marginBottom: 18,
     },
     emptyCtaBtn: {
-      backgroundColor: '#C5A059',
+      backgroundColor: '#6366F1',
       paddingHorizontal: 20,
       paddingVertical: 10,
       borderRadius: 10,
@@ -1671,7 +1680,7 @@ function getStyles(
     suiteToolLinkText: {
       fontSize: 12,
       fontWeight: '700',
-      color: '#C5A059',
+      color: '#6366F1',
     },
 
     // 6. Modal
@@ -1750,7 +1759,7 @@ function getStyles(
     popularBadgeText: {
       fontSize: 10,
       fontWeight: '800',
-      color: '#C5A059',
+      color: '#6366F1',
     },
     modalOptDesc: {
       fontSize: 12,

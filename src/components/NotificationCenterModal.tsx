@@ -19,7 +19,7 @@ function getCategoryConfig(cat: InAppNotification['category']) {
     case 'vehicle':
       return { icon: 'car-sport', color: '#0284C7', label: 'Araç' };
     case 'photo':
-      return { icon: 'camera', color: '#C5A059', label: 'Düğün' };
+      return { icon: 'images', color: '#EC4899', label: 'Etkinlik' };
     case 'pet':
       return { icon: 'paw', color: '#10B981', label: 'Pati' };
     case 'scan':
@@ -127,7 +127,7 @@ export default function NotificationCenterModal({
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <View style={styles.bellIconBox}>
-                <Ionicons name="notifications" size={18} color="#C5A059" />
+                <Ionicons name="notifications" size={18} color="#6366F1" />
               </View>
               <View>
                 <View style={styles.titleRow}>
@@ -198,7 +198,7 @@ export default function NotificationCenterModal({
                   onPress={() => notificationService.markAllAsRead()}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name="checkmark-done-outline" size={14} color="#C5A059" />
+                  <Ionicons name="checkmark-done-outline" size={14} color="#6366F1" />
                   <Text style={styles.actionTextBtnLabel}>Tümünü Oku</Text>
                 </TouchableOpacity>
               )}
@@ -252,7 +252,7 @@ export default function NotificationCenterModal({
                       {item.url && (
                         <View style={styles.itemActionHint}>
                           <Text style={styles.itemActionText}>Görüntülemek için dokunun</Text>
-                          <Ionicons name="arrow-forward" size={12} color="#C5A059" />
+                          <Ionicons name="arrow-forward" size={12} color="#6366F1" />
                         </View>
                       )}
                     </View>
@@ -271,7 +271,7 @@ export default function NotificationCenterModal({
               onPress={handleSendTestNotification}
               activeOpacity={0.85}
             >
-              <Ionicons name="flash" size={15} color="#C5A059" />
+              <Ionicons name="flash" size={15} color="#6366F1" />
               <Text style={styles.testBtnText}>Canlı Test Bildirimi Tetikle (Demo)</Text>
             </TouchableOpacity>
           </View>
@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   unreadBadge: {
-    backgroundColor: '#C5A059',
+    backgroundColor: '#6366F1',
     paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 10,
@@ -384,7 +384,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#C5A059',
+    backgroundColor: '#6366F1',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1E293B',
   },
   filterPillActive: {
-    backgroundColor: '#C5A059',
+    backgroundColor: '#6366F1',
   },
   filterPillText: {
     color: '#94A3B8',
@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   actionTextBtnLabel: {
-    color: '#C5A059',
+    color: '#6366F1',
     fontSize: 11,
     fontWeight: '600',
   },
@@ -513,7 +513,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   itemActionText: {
-    color: '#C5A059',
+    color: '#6366F1',
     fontSize: 11,
     fontWeight: '600',
   },
@@ -521,7 +521,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#C5A059',
+    backgroundColor: '#6366F1',
     marginTop: 6,
   },
   footer: {
@@ -537,14 +537,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     backgroundColor: 'rgba(197, 160, 89, 0.12)',
-    borderColor: '#C5A059',
+    borderColor: '#6366F1',
     borderWidth: 1,
     paddingHorizontal: 16,
     paddingVertical: 9,
     borderRadius: 12,
   },
   testBtnText: {
-    color: '#C5A059',
+    color: '#6366F1',
     fontSize: 12,
     fontWeight: '700',
   },

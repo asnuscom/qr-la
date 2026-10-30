@@ -78,8 +78,8 @@ export default function AnalyticsScreen() {
             onPress={() => router.push('/panel' as any)}
             activeOpacity={0.8}
           >
-            <Ionicons name="apps-outline" size={17} color="#C5A059" />
-            <Text style={[styles.headerBtnText, { color: '#C5A059' }]}>Varlıklarım</Text>
+            <Ionicons name="apps-outline" size={17} color="#6366F1" />
+            <Text style={[styles.headerBtnText, { color: '#6366F1' }]}>Varlıklarım</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -382,7 +382,7 @@ function getStyles(isDark: boolean, colors: ThemeColors) {
       paddingVertical: 8,
       paddingHorizontal: 12,
       borderRadius: 10,
-      backgroundColor: isDark ? '#1B1E2E' : '#FAF7F2',
+      backgroundColor: isDark ? '#1B1E2E' : '#F1F5F9',
       borderWidth: 1,
       borderColor: colors.border,
     },
@@ -543,7 +543,7 @@ function getStyles(isDark: boolean, colors: ThemeColors) {
     barTrack: {
       width: 24,
       height: 120,
-      backgroundColor: isDark ? '#1B1E2E' : '#FAF7F2',
+      backgroundColor: isDark ? '#1B1E2E' : '#F1F5F9',
       borderRadius: 8,
       overflow: 'hidden',
       justifyContent: 'flex-end',
@@ -597,7 +597,7 @@ function getStyles(isDark: boolean, colors: ThemeColors) {
     progressBarTrack: {
       width: '100%',
       height: 6,
-      backgroundColor: isDark ? '#1B1E2E' : '#FAF7F2',
+      backgroundColor: isDark ? '#1B1E2E' : '#F1F5F9',
       borderRadius: 3,
       overflow: 'hidden',
     },
@@ -650,7 +650,7 @@ function getStyles(isDark: boolean, colors: ThemeColors) {
     activityRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: isDark ? '#1B1E2E' : '#FAF7F2',
+      backgroundColor: isDark ? '#1B1E2E' : '#F1F5F9',
       borderRadius: 14,
       padding: 12,
       gap: 12,

@@ -195,7 +195,7 @@ export default function QRStudioScreen() {
                   align-items: center;
                   min-height: 100vh;
                   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                  background: #FAF7F2;
+                  background: #F8FAFC;
                 }
                 .card {
                   padding: 40px;
@@ -434,7 +434,7 @@ export default function QRStudioScreen() {
               <Ionicons
                 name="link-outline"
                 size={18}
-                color={activeTab === 'content' ? '#D4AF37' : '#94A3B8'}
+                color={activeTab === 'content' ? '#6366F1' : '#94A3B8'}
               />
               <Text style={[styles.tabItemText, activeTab === 'content' && styles.tabItemTextActive]}>
                 İçerik
@@ -448,7 +448,7 @@ export default function QRStudioScreen() {
               <Ionicons
                 name="color-palette-outline"
                 size={18}
-                color={activeTab === 'colors' ? '#D4AF37' : '#94A3B8'}
+                color={activeTab === 'colors' ? '#6366F1' : '#94A3B8'}
               />
               <Text style={[styles.tabItemText, activeTab === 'colors' && styles.tabItemTextActive]}>
                 Renkler
@@ -462,7 +462,7 @@ export default function QRStudioScreen() {
               <Ionicons
                 name="shapes-outline"
                 size={18}
-                color={activeTab === 'shapes' ? '#D4AF37' : '#94A3B8'}
+                color={activeTab === 'shapes' ? '#6366F1' : '#94A3B8'}
               />
               <Text style={[styles.tabItemText, activeTab === 'shapes' && styles.tabItemTextActive]}>
                 Şekiller
@@ -476,7 +476,7 @@ export default function QRStudioScreen() {
               <Ionicons
                 name="image-outline"
                 size={18}
-                color={activeTab === 'logo' ? '#D4AF37' : '#94A3B8'}
+                color={activeTab === 'logo' ? '#6366F1' : '#94A3B8'}
               />
               <Text style={[styles.tabItemText, activeTab === 'logo' && styles.tabItemTextActive]}>
                 Logo/İkon
@@ -490,7 +490,7 @@ export default function QRStudioScreen() {
               <Ionicons
                 name="scan-outline"
                 size={18}
-                color={activeTab === 'frame' ? '#D4AF37' : '#94A3B8'}
+                color={activeTab === 'frame' ? '#6366F1' : '#94A3B8'}
               />
               <Text style={[styles.tabItemText, activeTab === 'frame' && styles.tabItemTextActive]}>
                 Çerçeve
@@ -585,7 +585,7 @@ export default function QRStudioScreen() {
                     style={[styles.toggleBtn, config.colorMode === 'gradient' && styles.toggleBtnActive]}
                     onPress={() => setConfig((prev) => ({ ...prev, colorMode: 'gradient' }))}
                   >
-                    <Ionicons name="color-filter-outline" size={17} color={config.colorMode === 'gradient' ? '#D4AF37' : '#94A3B8'} />
+                    <Ionicons name="color-filter-outline" size={17} color={config.colorMode === 'gradient' ? '#6366F1' : '#94A3B8'} />
                     <Text style={[styles.toggleBtnText, config.colorMode === 'gradient' && styles.toggleBtnTextActive]}>
                       Çift Renk Gradyan
                     </Text>
@@ -595,7 +595,7 @@ export default function QRStudioScreen() {
                     style={[styles.toggleBtn, config.colorMode === 'solid' && styles.toggleBtnActive]}
                     onPress={() => setConfig((prev) => ({ ...prev, colorMode: 'solid' }))}
                   >
-                    <Ionicons name="ellipse" size={17} color={config.colorMode === 'solid' ? '#D4AF37' : '#94A3B8'} />
+                    <Ionicons name="ellipse" size={17} color={config.colorMode === 'solid' ? '#6366F1' : '#94A3B8'} />
                     <Text style={[styles.toggleBtnText, config.colorMode === 'solid' && styles.toggleBtnTextActive]}>
                       Düz Tek Renk
                     </Text>
@@ -606,7 +606,7 @@ export default function QRStudioScreen() {
                 <Text style={styles.fieldLabel}>Birincil Renk (Ana Ton / Gövde):</Text>
                 <View style={styles.paletteGrid}>
                   {[
-                    '#000000', '#1E293B', '#D4AF37', '#10B981', '#3B82F6', '#8B5CF6',
+                    '#000000', '#0F172A', '#6366F1', '#0284C7', '#10B981', '#EC4899', '#F59E0B',
                     '#EC4899', '#EA580C', '#0F172A', '#E11D48',
                   ].map((color) => (
                     <TouchableOpacity
@@ -725,7 +725,7 @@ export default function QRStudioScreen() {
                   {/* Göz Renk Paleti */}
                   <View style={styles.paletteGrid}>
                     {[
-                      '#000000', '#1E293B', '#D4AF37', '#10B981',
+                      '#000000', '#1E293B', '#6366F1', '#10B981',
                       '#3B82F6', '#8B5CF6', '#EC4899', '#EA580C', '#E11D48',
                     ].map((color) => {
                       const activeEyeColor = config.eyeColor || (config.colorMode === 'solid' ? config.primaryColor : '#000000');
@@ -787,7 +787,7 @@ export default function QRStudioScreen() {
                 <View style={styles.bgOptionsRow}>
                   {[
                     { id: '#FFFFFF', label: 'Saf Beyaz (Varsayılan)', isDark: false },
-                    { id: '#FAF7F2', label: 'Fildişi Lüks', isDark: false },
+                    { id: '#F8FAFC', label: 'Fildişi Lüks', isDark: false },
                     { id: '#0F172A', label: 'Karbon (#0F172A)', isDark: true },
                     { id: '#000000', label: 'Saf Siyah', isDark: true },
                     { id: 'transparent', label: 'Şeffaf (PNG)', isDark: false },
@@ -935,7 +935,7 @@ export default function QRStudioScreen() {
 
                   <View style={[styles.paletteGrid, { marginTop: 6 }]}>
                     {[
-                      '#000000', '#1E293B', '#D4AF37', '#10B981',
+                      '#000000', '#1E293B', '#6366F1', '#10B981',
                       '#3B82F6', '#8B5CF6', '#EC4899', '#EA580C', '#E11D48',
                     ].map((color) => {
                       const activeEyeColor = config.eyeColor || (config.colorMode === 'solid' ? config.primaryColor : '#000000');
@@ -1002,7 +1002,7 @@ export default function QRStudioScreen() {
                     style={[styles.toggleBtn, config.logoType === 'emoji' && styles.toggleBtnActive]}
                     onPress={() => setConfig((prev) => ({ ...prev, logoType: 'emoji' }))}
                   >
-                    <Ionicons name="happy-outline" size={17} color={config.logoType === 'emoji' ? '#D4AF37' : '#94A3B8'} />
+                    <Ionicons name="happy-outline" size={17} color={config.logoType === 'emoji' ? '#6366F1' : '#94A3B8'} />
                     <Text style={[styles.toggleBtnText, config.logoType === 'emoji' && styles.toggleBtnTextActive]}>
                       Hazır İkon
                     </Text>
@@ -1012,7 +1012,7 @@ export default function QRStudioScreen() {
                     style={[styles.toggleBtn, config.logoType === 'url' && styles.toggleBtnActive]}
                     onPress={() => setConfig((prev) => ({ ...prev, logoType: 'url' }))}
                   >
-                    <Ionicons name="link-outline" size={17} color={config.logoType === 'url' ? '#D4AF37' : '#94A3B8'} />
+                    <Ionicons name="link-outline" size={17} color={config.logoType === 'url' ? '#6366F1' : '#94A3B8'} />
                     <Text style={[styles.toggleBtnText, config.logoType === 'url' && styles.toggleBtnTextActive]}>
                       Görsel Linki
                     </Text>
@@ -1022,7 +1022,7 @@ export default function QRStudioScreen() {
                     style={[styles.toggleBtn, config.logoType === 'none' && styles.toggleBtnActive]}
                     onPress={() => setConfig((prev) => ({ ...prev, logoType: 'none' }))}
                   >
-                    <Ionicons name="close-circle-outline" size={17} color={config.logoType === 'none' ? '#D4AF37' : '#94A3B8'} />
+                    <Ionicons name="close-circle-outline" size={17} color={config.logoType === 'none' ? '#6366F1' : '#94A3B8'} />
                     <Text style={[styles.toggleBtnText, config.logoType === 'none' && styles.toggleBtnTextActive]}>
                       Logosuz
                     </Text>
@@ -1207,7 +1207,7 @@ function getStyles(isDark: boolean, colors: ThemeColors) {
     backBtn: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: isDark ? '#1E293B' : '#FAF7F2',
+      backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
       borderWidth: 1,
       borderColor: colors.border,
       paddingHorizontal: 12,
@@ -1246,7 +1246,7 @@ function getStyles(isDark: boolean, colors: ThemeColors) {
       gap: 6,
     },
     svgActionBtn: {
-      backgroundColor: isDark ? '#1E293B' : '#FAF7F2',
+      backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
       borderWidth: 1,
       borderColor: colors.border,
     },
@@ -1254,7 +1254,7 @@ function getStyles(isDark: boolean, colors: ThemeColors) {
       backgroundColor: colors.gold,
     },
     printActionBtn: {
-      backgroundColor: isDark ? '#1E293B' : '#FAF7F2',
+      backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
       borderWidth: 1,
       borderColor: colors.border,
     },
@@ -1372,7 +1372,7 @@ function getStyles(isDark: boolean, colors: ThemeColors) {
       paddingHorizontal: 8,
       paddingVertical: 6,
       borderRadius: 8,
-      backgroundColor: isDark ? '#1E293B' : '#FAF7F2',
+      backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
       borderWidth: 1,
       borderColor: colors.border,
     },
@@ -1453,7 +1453,7 @@ function getStyles(isDark: boolean, colors: ThemeColors) {
     },
     tabItemActive: {
       borderBottomColor: colors.gold,
-      backgroundColor: isDark ? '#1E293B44' : '#FAF7F2',
+      backgroundColor: isDark ? '#1E293B44' : '#F8FAFC',
     },
     tabItemText: {
       color: colors.textSecondary,
@@ -1511,7 +1511,7 @@ function getStyles(isDark: boolean, colors: ThemeColors) {
     },
     assetChipActive: {
       borderColor: colors.gold,
-      backgroundColor: isDark ? '#1E293B' : '#FAF7F2',
+      backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
     },
     assetChipIcon: {
       fontSize: 20,
@@ -1567,7 +1567,7 @@ function getStyles(isDark: boolean, colors: ThemeColors) {
     },
     toggleBtnActive: {
       borderColor: colors.gold,
-      backgroundColor: isDark ? '#1E293B' : '#FAF7F2',
+      backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
     },
     toggleBtnText: {
       color: colors.textSecondary,
@@ -1604,7 +1604,7 @@ function getStyles(isDark: boolean, colors: ThemeColors) {
     },
     miniOptionBtnActive: {
       borderColor: colors.gold,
-      backgroundColor: isDark ? '#1E293B' : '#FAF7F2',
+      backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
     },
     miniOptionText: {
       color: colors.textSecondary,
@@ -1633,7 +1633,7 @@ function getStyles(isDark: boolean, colors: ThemeColors) {
     },
     bgOptionCardActive: {
       borderColor: colors.gold,
-      backgroundColor: isDark ? '#1E293B' : '#FAF7F2',
+      backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
     },
     bgSwatch: {
       width: 18,
@@ -1662,7 +1662,7 @@ function getStyles(isDark: boolean, colors: ThemeColors) {
     },
     shapeCardActive: {
       borderColor: colors.gold,
-      backgroundColor: isDark ? '#1E293B' : '#FAF7F2',
+      backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
     },
     shapeCardTitle: {
       color: colors.text,
@@ -1690,7 +1690,7 @@ function getStyles(isDark: boolean, colors: ThemeColors) {
     },
     emojiBtnActive: {
       borderColor: colors.gold,
-      backgroundColor: isDark ? '#1E293B' : '#FAF7F2',
+      backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
     },
     emojiText: {
       fontSize: 22,

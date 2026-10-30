@@ -213,7 +213,7 @@ export default function PricingUpgradeScreen() {
   const getTierDisplay = (tier: StorageTier) => {
     switch (tier) {
       case 'vip':
-        return { name: 'VIP Masalsı Düğün', color: '#C5A059', quota: '15 GB (Sınırsız)' };
+        return { name: 'VIP Masalsı Düğün', color: '#6366F1', quota: '15 GB (Sınırsız)' };
       case 'premium':
         return { name: 'Premium Düğün', color: '#10B981', quota: '5 GB' };
       case 'standart':
@@ -327,7 +327,7 @@ export default function PricingUpgradeScreen() {
             <View style={styles.assetSelectorHeader}>
               <View style={styles.assetSelectorTitleRow}>
                 <View style={styles.selectorIconWrap}>
-                  <Ionicons name="qr-code" size={18} color="#C5A059" />
+                  <Ionicons name="qr-code" size={18} color="#6366F1" />
                 </View>
                 <View>
                   <Text style={[styles.assetSelectorTitle, { color: colors.text }]}>
@@ -349,7 +349,7 @@ export default function PricingUpgradeScreen() {
             </View>
 
             {isLoadingAssets ? (
-              <ActivityIndicator size="small" color="#C5A059" style={{ marginVertical: 12 }} />
+              <ActivityIndicator size="small" color="#6366F1" style={{ marginVertical: 12 }} />
             ) : userAssets.length === 0 ? (
               <View style={styles.noAssetBox}>
                 <Text style={[styles.noAssetText, { color: colors.textSecondary }]}>
@@ -383,12 +383,12 @@ export default function PricingUpgradeScreen() {
                         {
                           backgroundColor: isSelected
                             ? isDark
-                              ? '#C5A059'
+                              ? '#6366F1'
                               : '#1A1817'
                             : colors.surface,
                           borderColor: isSelected
                             ? isDark
-                              ? '#C5A059'
+                              ? '#6366F1'
                               : '#1A1817'
                             : colors.border,
                         },
@@ -516,7 +516,7 @@ export default function PricingUpgradeScreen() {
             <View style={[styles.currentPlanBanner, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <View style={styles.currentPlanHeader}>
                 <View style={styles.currentPlanTitleRow}>
-                  <Ionicons name="sparkles" size={18} color="#C5A059" />
+                  <Ionicons name="sparkles" size={18} color="#6366F1" />
                   <Text style={[styles.currentPlanLabel, { color: colors.textSecondary }]}>
                     SEÇİLİ QR LİSANS DURUMU
                   </Text>
@@ -553,7 +553,7 @@ export default function PricingUpgradeScreen() {
           <View style={[styles.couponCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.couponHeader}>
               <View style={styles.couponIconBox}>
-                <Ionicons name="gift" size={20} color="#C5A059" />
+                <Ionicons name="gift" size={20} color="#6366F1" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.couponTitle, { color: colors.text }]}>Kupon & Promosyon Kodu</Text>
@@ -624,7 +624,7 @@ export default function PricingUpgradeScreen() {
                 <Ionicons
                   name="heart"
                   size={15}
-                  color={activeTab === 'wedding' ? '#C5A059' : colors.textSecondary}
+                  color={activeTab === 'wedding' ? '#6366F1' : colors.textSecondary}
                 />
                 <Text
                   style={[
@@ -734,7 +734,7 @@ export default function PricingUpgradeScreen() {
                 <Ionicons
                   name="diamond"
                   size={15}
-                  color={activeTab === 'suite' ? '#C5A059' : colors.textSecondary}
+                  color={activeTab === 'suite' ? '#6366F1' : colors.textSecondary}
                 />
                 <Text
                   style={[
@@ -756,7 +756,7 @@ export default function PricingUpgradeScreen() {
                 <Ionicons
                   name="receipt-outline"
                   size={15}
-                  color={activeTab === 'history' ? '#C5A059' : colors.textSecondary}
+                  color={activeTab === 'history' ? '#6366F1' : colors.textSecondary}
                 />
                 <Text
                   style={[
@@ -822,7 +822,7 @@ export default function PricingUpgradeScreen() {
                     </View>
 
                     <View style={[styles.quotaBadge, { backgroundColor: colors.surface }]}>
-                      <Ionicons name="cloud-upload-outline" size={15} color="#C5A059" />
+                      <Ionicons name="cloud-upload-outline" size={15} color="#6366F1" />
                       <Text style={[styles.quotaBadgeText, { color: colors.text }]}>
                         {tier.quotaMB >= 1024 ? tier.quotaMB / 1024 + ' GB' : tier.quotaMB + ' MB'} Bulut Kotası
                       </Text>
@@ -1065,11 +1065,11 @@ export default function PricingUpgradeScreen() {
                     styles.planCard,
                     styles.planCardPopular,
                     styles.suiteCard,
-                    { backgroundColor: colors.card, borderColor: '#C5A059' },
+                    { backgroundColor: colors.card, borderColor: '#6366F1' },
                   ]}
                 >
                   <View style={styles.suiteHeaderBadge}>
-                    <Ionicons name="diamond" size={16} color="#C5A059" />
+                    <Ionicons name="diamond" size={16} color="#6366F1" />
                     <Text style={styles.suiteHeaderBadgeText}>HER ŞEY DAHİL VIP LİSANS</Text>
                   </View>
 
@@ -1091,7 +1091,7 @@ export default function PricingUpgradeScreen() {
                   <View style={styles.features}>
                     {suite.features.map((feat, i) => (
                       <View key={i} style={styles.featureRow}>
-                        <Ionicons name="checkmark-circle" size={16} color="#C5A059" />
+                        <Ionicons name="checkmark-circle" size={16} color="#6366F1" />
                         <Text style={[styles.featureText, { color: colors.textSecondary }]}>{feat}</Text>
                       </View>
                     ))}
@@ -1118,7 +1118,7 @@ export default function PricingUpgradeScreen() {
               <View style={[styles.historyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <View style={styles.historyHeader}>
                   <View style={styles.historyHeaderIcon}>
-                    <Ionicons name="receipt" size={20} color="#C5A059" />
+                    <Ionicons name="receipt" size={20} color="#6366F1" />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.historyTitle, { color: colors.text }]}>
@@ -1246,7 +1246,7 @@ function getStyles(isDark: boolean, _colors?: ThemeColors) {
     panelLinkText: {
       fontSize: 12,
       fontWeight: '700',
-      color: '#C5A059',
+      color: '#6366F1',
     },
     content: {
       paddingHorizontal: 16,
@@ -1301,7 +1301,7 @@ function getStyles(isDark: boolean, _colors?: ThemeColors) {
     activeTargetBadgeText: {
       fontSize: 11,
       fontWeight: '700',
-      color: '#C5A059',
+      color: '#6366F1',
     },
     assetPillsRow: {
       gap: 10,
@@ -1432,7 +1432,7 @@ function getStyles(isDark: boolean, _colors?: ThemeColors) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
-      backgroundColor: '#C5A059',
+      backgroundColor: '#6366F1',
       paddingHorizontal: 16,
       borderRadius: 10,
       justifyContent: 'center',
@@ -1477,7 +1477,7 @@ function getStyles(isDark: boolean, _colors?: ThemeColors) {
     },
     categoryTabBtnActive: {
       backgroundColor: isDark ? 'rgba(197, 160, 89, 0.18)' : '#1A1817',
-      borderColor: isDark ? '#C5A059' : '#1A1817',
+      borderColor: isDark ? '#6366F1' : '#1A1817',
     },
     categoryTabText: {
       fontSize: 13,
@@ -1485,7 +1485,7 @@ function getStyles(isDark: boolean, _colors?: ThemeColors) {
       color: isDark ? '#94A3B8' : '#64748B',
     },
     categoryTabTextActive: {
-      color: isDark ? '#C5A059' : '#FFFFFF',
+      color: isDark ? '#6366F1' : '#FFFFFF',
       fontWeight: '700',
     },
 
@@ -1505,7 +1505,7 @@ function getStyles(isDark: boolean, _colors?: ThemeColors) {
       position: 'relative',
     },
     planCardPopular: {
-      borderColor: '#C5A059',
+      borderColor: '#6366F1',
       borderWidth: 2,
     },
     planCardCurrent: {
@@ -1516,7 +1516,7 @@ function getStyles(isDark: boolean, _colors?: ThemeColors) {
       position: 'absolute',
       top: -10,
       right: 18,
-      backgroundColor: '#C5A059',
+      backgroundColor: '#6366F1',
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
@@ -1610,10 +1610,10 @@ function getStyles(isDark: boolean, _colors?: ThemeColors) {
       borderRadius: 10,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: '#C5A059',
+      backgroundColor: '#6366F1',
     },
     chooseBtnPopular: {
-      backgroundColor: '#C5A059',
+      backgroundColor: '#6366F1',
     },
     chooseBtnDisabled: {
       backgroundColor: 'rgba(150, 150, 150, 0.2)',
@@ -1651,7 +1651,7 @@ function getStyles(isDark: boolean, _colors?: ThemeColors) {
     suiteHeaderBadgeText: {
       fontSize: 11,
       fontWeight: '800',
-      color: '#C5A059',
+      color: '#6366F1',
     },
 
     // Faturalar

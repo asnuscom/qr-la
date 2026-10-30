@@ -74,7 +74,7 @@ export default function EcosystemAssetsScreen() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#C5A059" />
+        <ActivityIndicator size="large" color="#6366F1" />
         <Text style={styles.loadingText}>QR Varlıklarınız yükleniyor...</Text>
       </View>
     );
@@ -114,12 +114,12 @@ export default function EcosystemAssetsScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.headerBtn, { borderColor: '#D4AF37' }]}
+            style={[styles.headerBtn, { borderColor: '#6366F1' }]}
             onPress={() => router.push('/panel/qr-studio' as any)}
             activeOpacity={0.8}
           >
-            <Ionicons name="sparkles-outline" size={17} color="#D4AF37" />
-            <Text style={[styles.headerBtnText, { color: '#D4AF37' }]}>QR Stüdyo</Text>
+            <Ionicons name="sparkles-outline" size={17} color="#6366F1" />
+            <Text style={[styles.headerBtnText, { color: '#6366F1' }]}>QR Stüdyo</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -140,7 +140,7 @@ export default function EcosystemAssetsScreen() {
         {/* Title & Hub Overview */}
         <View style={styles.titleWrap}>
           <View style={styles.titleIconCircle}>
-            <Ionicons name="apps" size={28} color="#C5A059" />
+            <Ionicons name="apps" size={28} color="#6366F1" />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.pageTitle}>Tüm QR Varlıklarım</Text>
@@ -336,7 +336,7 @@ export default function EcosystemAssetsScreen() {
                       </TouchableOpacity>
 
                       <TouchableOpacity
-                        style={[styles.actionBtnEdit, { borderColor: '#D4AF37' }]}
+                        style={[styles.actionBtnEdit, { borderColor: '#6366F1' }]}
                         onPress={() =>
                           router.push({
                             pathname: '/panel/qr-studio',
@@ -345,8 +345,8 @@ export default function EcosystemAssetsScreen() {
                         }
                         activeOpacity={0.8}
                       >
-                        <Ionicons name="sparkles" size={13} color="#D4AF37" />
-                        <Text style={[styles.actionBtnEditText, { color: '#D4AF37' }]}>Stüdyo</Text>
+                        <Ionicons name="sparkles" size={13} color="#6366F1" />
+                        <Text style={[styles.actionBtnEditText, { color: '#6366F1' }]}>Stüdyo</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -368,7 +368,7 @@ export default function EcosystemAssetsScreen() {
           <View style={styles.modalCard}>
             <View style={styles.modalHeaderRow}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Ionicons name="add-circle" size={24} color="#C5A059" />
+                <Ionicons name="add-circle" size={24} color="#6366F1" />
                 <Text style={styles.modalTitle}>Yeni QR Varlık Oluştur</Text>
               </View>
               <TouchableOpacity onPress={() => setCreateModalVisible(false)}>
@@ -389,7 +389,7 @@ export default function EcosystemAssetsScreen() {
                 }}
               >
                 <View style={[styles.optionIconWrap, { backgroundColor: 'rgba(197, 160, 89, 0.15)' }]}>
-                  <Ionicons name="heart" size={22} color="#C5A059" />
+                  <Ionicons name="heart" size={22} color="#6366F1" />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.optionTitle}>💍 Düğün & Etkinlik Albümü</Text>
@@ -526,7 +526,7 @@ function getStyles(isDark: boolean, colors: ThemeColors) {
       paddingVertical: 8,
       paddingHorizontal: 12,
       borderRadius: 10,
-      backgroundColor: isDark ? '#1B1E2E' : '#FAF7F2',
+      backgroundColor: isDark ? '#1B1E2E' : '#F1F5F9',
       borderWidth: 1,
       borderColor: colors.border,
     },
@@ -626,7 +626,7 @@ function getStyles(isDark: boolean, colors: ThemeColors) {
     },
     filterPillActive: {
       borderColor: colors.gold,
-      backgroundColor: isDark ? 'rgba(197, 160, 89, 0.15)' : '#FAF7F2',
+      backgroundColor: isDark ? 'rgba(197, 160, 89, 0.15)' : '#F1F5F9',
     },
     filterPillText: {
       color: colors.textSecondary,
@@ -727,7 +727,7 @@ function getStyles(isDark: boolean, colors: ThemeColors) {
     slugBadge: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: isDark ? '#1B1E2E' : '#FAF7F2',
+      backgroundColor: isDark ? '#1B1E2E' : '#F1F5F9',
       paddingVertical: 4,
       paddingHorizontal: 10,
       borderRadius: 8,
@@ -751,7 +751,7 @@ function getStyles(isDark: boolean, colors: ThemeColors) {
       paddingVertical: 4,
       paddingHorizontal: 8,
       borderRadius: 8,
-      backgroundColor: isDark ? '#1B1E2E' : '#FAF7F2',
+      backgroundColor: isDark ? '#1B1E2E' : '#F1F5F9',
     },
     copyLinkBtnText: {
       color: colors.textSecondary,
@@ -789,7 +789,7 @@ function getStyles(isDark: boolean, colors: ThemeColors) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 5,
-      backgroundColor: isDark ? '#1E2230' : '#FAF7F2',
+      backgroundColor: isDark ? '#1E2230' : '#F1F5F9',
       borderWidth: 1,
       borderColor: colors.border,
       paddingVertical: 6,
@@ -805,7 +805,7 @@ function getStyles(isDark: boolean, colors: ThemeColors) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 5,
-      backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#FAF7F2',
+      backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9',
       borderWidth: 1,
       borderColor: colors.border,
       paddingVertical: 6,
@@ -875,7 +875,7 @@ function getStyles(isDark: boolean, colors: ThemeColors) {
       gap: 12,
       padding: 14,
       borderRadius: 14,
-      backgroundColor: isDark ? '#1B1E2E' : '#FAF7F2',
+      backgroundColor: isDark ? '#1B1E2E' : '#F1F5F9',
       borderWidth: 1,
       borderColor: colors.border,
     },

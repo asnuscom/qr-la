@@ -53,7 +53,7 @@ const COVER_PRESETS = [
 ];
 
 const THEME_PRESETS = [
-  { name: 'Şampanya Altın', color: '#C5A059' },
+  { name: 'Şampanya Altın', color: '#EC4899' },
   { name: 'Gül Kurusu', color: '#B76E79' },
   { name: 'Zümrüt Yeşili', color: '#059669' },
   { name: 'Asil Gece', color: '#1E293B' },
@@ -180,7 +180,7 @@ export default function EventFormScreen() {
   const [showManualInvitationUrl, setShowManualInvitationUrl] = useState(false);
   const [coverPhotoUrl, setCoverPhotoUrl] = useState(COVER_PRESETS[0].url);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
-  const [primaryColor, setPrimaryColor] = useState('#C5A059');
+  const [primaryColor, setPrimaryColor] = useState('#EC4899');
 
   const [venueName, setVenueName] = useState('Sait Halim Paşa Yalısı');
   const [venueAddress, setVenueAddress] = useState(
@@ -239,7 +239,7 @@ export default function EventFormScreen() {
           setTitle(ev.title);
           setSubtitle(ev.subtitle || '');
           setCoverPhotoUrl(ev.coverPhotoUrl);
-          setPrimaryColor(ev.theme.primaryColor || '#C5A059');
+          setPrimaryColor(ev.theme.primaryColor || '#EC4899');
           setVenueName(ev.venue.name);
           setVenueAddress(ev.venue.address);
           setMapUrl(ev.venue.mapUrl);
@@ -545,7 +545,7 @@ export default function EventFormScreen() {
         coverPhotoUrl,
         theme: {
           primaryColor,
-          backgroundColor: '#FAF7F2',
+          backgroundColor: '#F1F5F9',
           secondaryColor: '#EAD7BB',
           textColor: '#1A1817',
         },
@@ -602,7 +602,7 @@ export default function EventFormScreen() {
             Bu etkinlik başka bir kullanıcıya aittir. Yalnızca etkinliğin sahibi düzenleme yapabilir.
           </Text>
           <TouchableOpacity
-            style={{ backgroundColor: '#C5A059', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }}
+            style={{ backgroundColor: '#EC4899', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }}
             onPress={() => router.replace('/panel' as any)}
             activeOpacity={0.85}
           >
@@ -617,7 +617,7 @@ export default function EventFormScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#C5A059" />
+          <ActivityIndicator size="large" color="#EC4899" />
           <Text style={styles.loadingText}>Etkinlik ayarları yükleniyor...</Text>
         </View>
       </SafeAreaView>
@@ -839,7 +839,7 @@ export default function EventFormScreen() {
             activeOpacity={0.8}
           >
             <View style={styles.settingsRedirectIcon}>
-              <Ionicons name="settings-outline" size={20} color="#C5A059" />
+              <Ionicons name="settings-outline" size={20} color="#EC4899" />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.settingsRedirectTitle}>
@@ -849,7 +849,7 @@ export default function EventFormScreen() {
                 Kısa link (qr-la.com/{activeSavedSlug}), galeri şifresi, canlı projeksiyon ve indirme kuralları için tıklayın.
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color="#C5A059" />
+            <Ionicons name="chevron-forward" size={18} color="#EC4899" />
           </TouchableOpacity>
 
           <View style={styles.inputGroup}>
@@ -872,7 +872,7 @@ export default function EventFormScreen() {
               activeOpacity={0.85}
             >
               <View style={styles.pickerIconWrap}>
-                <Ionicons name="calendar" size={22} color="#C5A059" />
+                <Ionicons name="calendar" size={22} color="#EC4899" />
               </View>
               <View style={{ flex: 1 }}>
                 <View style={styles.pickerHeaderRow}>
@@ -945,7 +945,7 @@ export default function EventFormScreen() {
             <View style={styles.invitationHeaderRow}>
               <View style={styles.invitationHeaderLeft}>
                 <View style={styles.invitationIconCircle}>
-                  <Ionicons name="mail-open-outline" size={20} color="#C5A059" />
+                  <Ionicons name="mail-open-outline" size={20} color="#EC4899" />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.invitationTitle}>Dijital Davetiye (Fotoğraf / PDF / Link)</Text>
@@ -1203,7 +1203,7 @@ export default function EventFormScreen() {
                 style={styles.input}
                 value={primaryColor}
                 onChangeText={setPrimaryColor}
-                placeholder="#C5A059"
+                placeholder="#EC4899"
                 autoCapitalize="none"
               />
             </View>
@@ -1473,7 +1473,7 @@ export default function EventFormScreen() {
                       <Ionicons
                         name={isSystem ? 'folder' : 'folder-outline'}
                         size={18}
-                        color={isSystem ? '#C5A059' : '#8A6D3B'}
+                        color={isSystem ? '#EC4899' : '#8A6D3B'}
                       />
                       <Text style={styles.categoryNameText}>{album.name}</Text>
                       {isSystem && (
@@ -1537,7 +1537,7 @@ export default function EventFormScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
   },
   scroll: {
     paddingBottom: 50,
@@ -1568,7 +1568,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
@@ -1584,7 +1584,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
-    backgroundColor: '#C5A059',
+    backgroundColor: '#EC4899',
     paddingHorizontal: 16,
     paddingVertical: 9,
     borderRadius: 12,
@@ -1611,7 +1611,7 @@ const styles = StyleSheet.create({
     marginBottom: 18,
     borderWidth: 1,
     borderColor: '#F3EFE6',
-    shadowColor: '#C5A059',
+    shadowColor: '#EC4899',
     shadowOpacity: 0.08,
     shadowRadius: 10,
     elevation: 2,
@@ -1640,15 +1640,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: '#EFE7DA',
     // @ts-ignore
     userSelect: Platform.OS === 'web' ? 'none' : undefined,
   },
   typeChipActive: {
-    backgroundColor: '#C5A059',
-    borderColor: '#C5A059',
+    backgroundColor: '#EC4899',
+    borderColor: '#EC4899',
   },
   typeChipText: {
     fontSize: 12,
@@ -1673,7 +1673,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   input: {
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: '#E5E7EB',
     borderRadius: 12,
@@ -1690,7 +1690,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: '#EFE7DA',
     paddingHorizontal: 12,
@@ -1719,7 +1719,7 @@ const styles = StyleSheet.create({
     userSelect: Platform.OS === 'web' ? 'none' : undefined,
   },
   presetCardActive: {
-    borderColor: '#C5A059',
+    borderColor: '#EC4899',
   },
   presetImage: {
     width: '100%',
@@ -1737,7 +1737,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   presetTagActive: {
-    backgroundColor: '#C5A059',
+    backgroundColor: '#EC4899',
   },
   presetTagText: {
     color: '#FFF',
@@ -1757,7 +1757,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: '#E5E7EB',
     paddingVertical: 8,
@@ -1779,7 +1779,7 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   quickScheduleChip: {
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: '#EFE7DA',
     paddingHorizontal: 10,
@@ -1800,7 +1800,7 @@ const styles = StyleSheet.create({
   scheduleItemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: '#F3EFE6',
     borderRadius: 14,
@@ -1823,7 +1823,7 @@ const styles = StyleSheet.create({
   scheduleTimeBadge: {
     backgroundColor: '#FFF',
     borderWidth: 1,
-    borderColor: '#C5A059',
+    borderColor: '#EC4899',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
@@ -1831,7 +1831,7 @@ const styles = StyleSheet.create({
   scheduleTimeText: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#C5A059',
+    color: '#EC4899',
   },
   scheduleInfoCol: {
     flex: 1,
@@ -1860,14 +1860,14 @@ const styles = StyleSheet.create({
   scheduleEditCard: {
     backgroundColor: '#FFF',
     borderWidth: 1.5,
-    borderColor: '#C5A059',
+    borderColor: '#EC4899',
     borderRadius: 14,
     padding: 14,
   },
   scheduleEditTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#C5A059',
+    color: '#EC4899',
     marginBottom: 10,
   },
   scheduleEditActions: {
@@ -1891,7 +1891,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: '#C5A059',
+    backgroundColor: '#EC4899',
   },
   saveEditBtnText: {
     fontSize: 12,
@@ -1917,7 +1917,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#C5A059',
+    backgroundColor: '#EC4899',
     paddingVertical: 10,
     borderRadius: 10,
     marginTop: 8,
@@ -1961,7 +1961,7 @@ const styles = StyleSheet.create({
     lineHeight: 15,
   },
   categoryCountBadge: {
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: '#EFE7DA',
     paddingHorizontal: 8,
@@ -1980,7 +1980,7 @@ const styles = StyleSheet.create({
   },
   addCategoryInput: {
     flex: 1,
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: '#E5E7EB',
     borderRadius: 12,
@@ -1993,7 +1993,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#C5A059',
+    backgroundColor: '#EC4899',
     paddingHorizontal: 16,
     borderRadius: 12,
     justifyContent: 'center',
@@ -2010,7 +2010,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: '#F3EFE6',
     paddingHorizontal: 14,
@@ -2046,11 +2046,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#C5A059',
+    backgroundColor: '#EC4899',
     paddingVertical: 16,
     marginHorizontal: 16,
     borderRadius: 16,
-    shadowColor: '#C5A059',
+    shadowColor: '#EC4899',
     shadowOpacity: 0.3,
     shadowRadius: 10,
     elevation: 3,
@@ -2134,7 +2134,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: '#E5E7EB',
     borderRadius: 12,
@@ -2154,7 +2154,7 @@ const styles = StyleSheet.create({
   slugInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1.5,
     borderColor: '#E5E7EB',
     borderRadius: 12,
@@ -2286,8 +2286,8 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   timePresetChipActive: {
-    backgroundColor: '#C5A059',
-    borderColor: '#C5A059',
+    backgroundColor: '#EC4899',
+    borderColor: '#EC4899',
   },
   timePresetChipText: {
     fontSize: 12,
@@ -2343,7 +2343,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#C5A059',
+    backgroundColor: '#EC4899',
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 10,
@@ -2366,12 +2366,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1.5,
     borderColor: '#EFE7DA',
     borderRadius: 16,
     padding: 14,
-    shadowColor: '#C5A059',
+    shadowColor: '#EC4899',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 6,
@@ -2428,7 +2428,7 @@ const styles = StyleSheet.create({
   },
   invitationSectionContainer: {
     marginTop: 14,
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1.5,
     borderColor: '#EFE7DA',
     borderRadius: 16,
@@ -2537,7 +2537,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
@@ -2560,11 +2560,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#C5A059',
+    backgroundColor: '#EC4899',
     paddingVertical: 10,
     paddingHorizontal: 10,
     borderRadius: 10,
-    shadowColor: '#C5A059',
+    shadowColor: '#EC4899',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 3,

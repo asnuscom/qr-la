@@ -83,7 +83,7 @@ export default function QRCardScreen() {
   if (isLoading || !event) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#C5A059" />
+        <ActivityIndicator size="large" color="#6366F1" />
       </View>
     );
   }
@@ -126,7 +126,7 @@ export default function QRCardScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
   },
   scroll: {
     paddingBottom: 40,
@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,

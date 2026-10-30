@@ -526,8 +526,8 @@ export default function EventHostPanelScreen() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={onRefresh}
-            tintColor="#C5A059"
-            colors={['#C5A059']}
+            tintColor="#EC4899"
+            colors={['#EC4899']}
           />
         }
       >
@@ -618,7 +618,7 @@ export default function EventHostPanelScreen() {
             activeOpacity={0.8}
           >
             <View style={[styles.suiteIconWrap, { backgroundColor: 'rgba(197, 160, 89, 0.15)' }]}>
-              <Ionicons name="apps" size={16} color="#C5A059" />
+              <Ionicons name="apps" size={16} color="#EC4899" />
             </View>
             <Text style={styles.suiteBtnTitle}>Tüm Varlıklarım</Text>
             <View style={styles.suiteBadgeWrap}>
@@ -660,11 +660,11 @@ export default function EventHostPanelScreen() {
             activeOpacity={0.8}
           >
             <View style={[styles.suiteIconWrap, { backgroundColor: 'rgba(212, 175, 55, 0.15)' }]}>
-              <Ionicons name="sparkles" size={16} color="#D4AF37" />
+              <Ionicons name="sparkles" size={16} color="#EC4899" />
             </View>
             <Text style={styles.suiteBtnTitle}>QR Stüdyo</Text>
             <View style={[styles.suiteBadgeWrap, { backgroundColor: 'rgba(212, 175, 55, 0.15)' }]}>
-              <Text style={[styles.suiteBadgeText, { color: '#D4AF37' }]}>Yeni</Text>
+              <Text style={[styles.suiteBadgeText, { color: '#EC4899' }]}>Yeni</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -698,7 +698,7 @@ export default function EventHostPanelScreen() {
                 İsimler, kapak görseli, mekan, akış saatleri ve albüm kategorileri
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#C5A059" />
+            <Ionicons name="chevron-forward" size={20} color="#EC4899" />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -726,8 +726,8 @@ export default function EventHostPanelScreen() {
             onPress={() => router.push('/panel/qr-kart' as any)}
             activeOpacity={0.8}
           >
-            <View style={[styles.actionIconWrap, { backgroundColor: '#FAF7F2' }]}>
-              <Ionicons name="print-outline" size={24} color="#C5A059" />
+            <View style={[styles.actionIconWrap, { backgroundColor: '#F1F5F9' }]}>
+              <Ionicons name="print-outline" size={24} color="#EC4899" />
             </View>
             <Text style={styles.actionTitle}>Masa Kartları</Text>
             <Text style={styles.actionDesc}>Yazdırılabilir QR masa standı şablonunu hazırla.</Text>
@@ -787,7 +787,7 @@ export default function EventHostPanelScreen() {
             activeOpacity={0.8}
           >
             <View style={[styles.actionIconWrap, { backgroundColor: '#FAF5EA' }]}>
-              <Ionicons name="apps-outline" size={24} color="#C5A059" />
+              <Ionicons name="apps-outline" size={24} color="#EC4899" />
             </View>
             <Text style={styles.actionTitle}>Tüm Varlıklarım</Text>
             <Text style={styles.actionDesc}>Düğün, araç, pati, kartvizit ve menü QR portföyünüz.</Text>
@@ -823,7 +823,7 @@ export default function EventHostPanelScreen() {
             activeOpacity={0.8}
           >
             <View style={[styles.actionIconWrap, { backgroundColor: '#FAF5EA' }]}>
-              <Ionicons name="sparkles-outline" size={24} color="#D4AF37" />
+              <Ionicons name="sparkles-outline" size={24} color="#EC4899" />
             </View>
             <Text style={styles.actionTitle}>QR Tasarım Stüdyosu</Text>
             <Text style={styles.actionDesc}>Özel renkler, logolar, nokta stilleri, vektörel SVG ve HD baskı.</Text>
@@ -987,7 +987,7 @@ export default function EventHostPanelScreen() {
           {photos.length === 0 ? (
             <View style={styles.emptyModBox}>
               <View style={styles.emptyModIconCircle}>
-                <Ionicons name="images-outline" size={32} color="#C5A059" />
+                <Ionicons name="images-outline" size={32} color="#EC4899" />
               </View>
               <Text style={styles.emptyModTitle}>Henüz Fotoğraf Yüklenmedi</Text>
               <Text style={styles.emptyModSubtitle}>
@@ -1018,10 +1018,10 @@ export default function EventHostPanelScreen() {
                 activeOpacity={0.8}
               >
                 {isLoadingSamples ? (
-                  <ActivityIndicator color="#C5A059" size="small" />
+                  <ActivityIndicator color="#EC4899" size="small" />
                 ) : (
                   <>
-                    <Ionicons name="sparkles" size={16} color="#C5A059" />
+                    <Ionicons name="sparkles" size={16} color="#EC4899" />
                     <Text style={styles.emptyModBtnSamplesText}>
                       Örnek Fotoğrafları Yükle (Test Et)
                     </Text>
@@ -1220,7 +1220,7 @@ export default function EventHostPanelScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
   },
   scroll: {
     paddingBottom: 40,
@@ -1240,7 +1240,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
@@ -1284,7 +1284,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#C5A059',
+    backgroundColor: '#EC4899',
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 12,
@@ -1378,7 +1378,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
     padding: 12,
     borderRadius: 12,
     marginVertical: 10,
@@ -1416,7 +1416,7 @@ const styles = StyleSheet.create({
   modCountText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#C5A059',
+    color: '#EC4899',
   },
   modDesc: {
     fontSize: 12,
@@ -1484,9 +1484,9 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#C5A059',
+    borderColor: '#EC4899',
     gap: 12,
-    shadowColor: '#C5A059',
+    shadowColor: '#EC4899',
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 2,
@@ -1504,7 +1504,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#C5A059',
+    backgroundColor: '#EC4899',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1540,7 +1540,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#C5A059',
+    backgroundColor: '#EC4899',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1602,7 +1602,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#C5A059',
+    backgroundColor: '#EC4899',
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 10,
@@ -1626,7 +1626,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
@@ -1656,7 +1656,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#C5A059',
+    backgroundColor: '#EC4899',
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 10,
@@ -1670,7 +1670,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: '#EFE7DA',
     paddingVertical: 10,
@@ -1687,7 +1687,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1.5,
     borderColor: '#EAD7BB',
     paddingVertical: 12,
@@ -1698,7 +1698,7 @@ const styles = StyleSheet.create({
     maxWidth: 290,
   },
   emptyModBtnSamplesText: {
-    color: '#C5A059',
+    color: '#EC4899',
     fontSize: 13,
     fontWeight: '700',
   },
@@ -1736,7 +1736,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   catCountBadge: {
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
     paddingVertical: 4,
     paddingHorizontal: 10,
     borderRadius: 8,
@@ -1756,7 +1756,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 14,
@@ -1822,7 +1822,7 @@ const styles = StyleSheet.create({
   },
   addCatInput: {
     flex: 1,
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: '#E5E7EB',
     borderRadius: 12,
@@ -1835,7 +1835,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#C5A059',
+    backgroundColor: '#EC4899',
     paddingHorizontal: 14,
     paddingVertical: 11,
     borderRadius: 12,
@@ -1961,7 +1961,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: '#EFE7DA',
     paddingHorizontal: 12,
@@ -2024,7 +2024,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: '#EFE7DA',
     borderRadius: 12,
@@ -2088,7 +2088,7 @@ const styles = StyleSheet.create({
   },
   clearFilterBtn: {
     marginTop: 8,
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 10,
@@ -2098,7 +2098,7 @@ const styles = StyleSheet.create({
   clearFilterBtnText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#C5A059',
+    color: '#EC4899',
   },
   modPaginationContainer: {
     alignItems: 'center',
@@ -2121,7 +2121,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#FAF7F2',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: '#EFE7DA',
     paddingVertical: 10,

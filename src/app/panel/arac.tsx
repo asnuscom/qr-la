@@ -273,7 +273,7 @@ export default function VehicleManagementScreen() {
               onPress={handleOpenLive}
               activeOpacity={0.8}
             >
-              <Ionicons name="eye-outline" size={16} color="#C5A059" />
+              <Ionicons name="eye-outline" size={16} color="#0284C7" />
               <Text style={styles.previewNavBtnText}>Önizle</Text>
             </TouchableOpacity>
           </View>
@@ -311,13 +311,13 @@ export default function VehicleManagementScreen() {
               <Ionicons
                 name="add-circle-outline"
                 size={14}
-                color={selectedVehicleId === 'new' ? '#FFF' : '#C5A059'}
+                color={selectedVehicleId === 'new' ? '#FFF' : '#0284C7'}
               />
               <Text
                 style={[
                   styles.switcherTabText,
                   selectedVehicleId === 'new' && styles.switcherTabTextActive,
-                  { color: selectedVehicleId === 'new' ? '#FFF' : '#8A6D3B' },
+                  { color: selectedVehicleId === 'new' ? '#FFF' : '#0284C7' },
                 ]}
               >
                 + Yeni Araç Ekle
@@ -348,7 +348,7 @@ export default function VehicleManagementScreen() {
         {/* Form Section 1: Plate & Vehicle Info */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeaderRow}>
-            <Ionicons name="car-sport" size={20} color="#C5A059" />
+            <Ionicons name="car-sport" size={20} color="#0284C7" />
             <Text style={styles.sectionHeaderTitle}>Araç & Plaka Bilgileri</Text>
           </View>
 
@@ -448,7 +448,7 @@ export default function VehicleManagementScreen() {
         {/* Form Section 2: Driver & Contact Info */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeaderRow}>
-            <Ionicons name="person-circle" size={20} color="#C5A059" />
+            <Ionicons name="person-circle" size={20} color="#0284C7" />
             <Text style={styles.sectionHeaderTitle}>Sürücü & İletişim Bilgileri</Text>
           </View>
 
@@ -591,7 +591,7 @@ export default function VehicleManagementScreen() {
             onPress={handleShowQrSticker}
             activeOpacity={0.85}
           >
-            <Ionicons name="qr-code-outline" size={18} color="#C5A059" />
+            <Ionicons name="qr-code-outline" size={18} color="#0284C7" />
             <Text style={styles.printStickerBtnText}>Ön Cam QR Çıktısı Al</Text>
           </TouchableOpacity>
         </View>
@@ -682,7 +682,7 @@ const getStyles = (isDark: boolean, colors: ThemeColors) =>
       width: 40,
       height: 40,
       borderRadius: 20,
-      backgroundColor: isDark ? colors.surface : '#FAF7F2',
+      backgroundColor: isDark ? colors.surface : '#F1F5F9',
       justifyContent: 'center',
       alignItems: 'center',
       borderWidth: 1,
@@ -705,7 +705,7 @@ const getStyles = (isDark: boolean, colors: ThemeColors) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
-      backgroundColor: isDark ? colors.surface : '#FAF7F2',
+      backgroundColor: isDark ? colors.surface : '#F1F5F9',
       paddingVertical: 8,
       paddingHorizontal: 12,
       borderRadius: 12,
@@ -853,7 +853,7 @@ const getStyles = (isDark: boolean, colors: ThemeColors) =>
       marginTop: 10,
     },
     input: {
-      backgroundColor: isDark ? colors.surface : '#FAF7F2',
+      backgroundColor: isDark ? colors.surface : '#F1F5F9',
       borderWidth: 1,
       borderColor: colors.border,
       borderRadius: 12,
@@ -881,7 +881,7 @@ const getStyles = (isDark: boolean, colors: ThemeColors) =>
       borderRadius: 12,
       borderWidth: 1,
       borderColor: colors.border,
-      backgroundColor: isDark ? colors.surface : '#FAF7F2',
+      backgroundColor: isDark ? colors.surface : '#F1F5F9',
     },
     catBtnActive: {
       backgroundColor: isDark ? colors.accent : '#1A1817',
@@ -903,14 +903,14 @@ const getStyles = (isDark: boolean, colors: ThemeColors) =>
       paddingHorizontal: 14,
       paddingVertical: 8,
       borderRadius: 10,
-      backgroundColor: isDark ? colors.surface : '#FAF7F2',
+      backgroundColor: isDark ? colors.surface : '#F1F5F9',
       borderWidth: 1,
       borderColor: colors.border,
       marginRight: 8,
     },
     brandPillActive: {
-      backgroundColor: '#C5A059',
-      borderColor: '#C5A059',
+      backgroundColor: '#0284C7',
+      borderColor: '#0284C7',
     },
     brandPillText: {
       fontSize: 12,
@@ -934,7 +934,7 @@ const getStyles = (isDark: boolean, colors: ThemeColors) =>
       borderWidth: 1,
       borderColor: colors.border,
       marginRight: 8,
-      backgroundColor: isDark ? colors.surface : '#FAF7F2',
+      backgroundColor: isDark ? colors.surface : '#F1F5F9',
     },
     themeColorDot: {
       width: 12,
@@ -1022,7 +1022,7 @@ const getStyles = (isDark: boolean, colors: ThemeColors) =>
       paddingVertical: 14,
       borderRadius: 16,
       borderWidth: 1.5,
-      borderColor: '#C5A059',
+      borderColor: '#0284C7',
     },
     printStickerBtnText: {
       color: colors.accent,
@@ -1082,7 +1082,7 @@ const getStyles = (isDark: boolean, colors: ThemeColors) =>
       width: '100%',
       marginBottom: 20,
       borderWidth: 2,
-      borderColor: '#C5A059',
+      borderColor: '#0284C7',
     },
     stickerTopBar: {
       flexDirection: 'row',
@@ -1091,7 +1091,7 @@ const getStyles = (isDark: boolean, colors: ThemeColors) =>
       marginBottom: 14,
     },
     stickerBrandLogo: {
-      color: '#C5A059',
+      color: '#0284C7',
       fontWeight: '900',
       fontSize: 14,
       letterSpacing: 1,
@@ -1124,7 +1124,7 @@ const getStyles = (isDark: boolean, colors: ThemeColors) =>
       alignItems: 'center',
       justifyContent: 'center',
       gap: 8,
-      backgroundColor: isDark ? '#C5A059' : '#1A1817',
+      backgroundColor: isDark ? '#0284C7' : '#1A1817',
       paddingVertical: 14,
       borderRadius: 14,
       width: '100%',
