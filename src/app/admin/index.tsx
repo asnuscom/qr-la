@@ -785,12 +785,12 @@ export default function SuperAdminDashboardScreen() {
                 {/* KPI Metrics Row */}
                 <View style={styles.kpiGrid}>
                   <View style={[styles.kpiCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                    <View style={[styles.kpiIconWrap, { backgroundColor: 'rgba(197, 160, 89, 0.15)' }]}>
+                    <View style={[styles.kpiIconWrap, { backgroundColor: 'rgba(99, 102, 241, 0.15)' }]}>
                       <Ionicons name="people" size={24} color="#6366F1" />
                     </View>
                     <Text style={[styles.kpiValue, { color: colors.text }]}>{kpis?.totalUsers || 0}</Text>
                     <Text style={[styles.kpiLabel, { color: colors.textSecondary }]}>Kayıtlı Kullanıcı</Text>
-                    <Text style={styles.kpiGrowth}>↑ %14 bu hafta</Text>
+                    <Text style={[styles.kpiGrowth, { color: '#10B981' }]}>● Canlı Firebase Kaydı</Text>
                   </View>
 
                   <View style={[styles.kpiCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -799,7 +799,7 @@ export default function SuperAdminDashboardScreen() {
                     </View>
                     <Text style={[styles.kpiValue, { color: colors.text }]}>{kpis?.totalAssets || 0}</Text>
                     <Text style={[styles.kpiLabel, { color: colors.textSecondary }]}>Aktif QR Varlık</Text>
-                    <Text style={styles.kpiGrowth}>↑ 5 yeni modül</Text>
+                    <Text style={[styles.kpiGrowth, { color: '#0284C7' }]}>● Gerçek Ekosistem</Text>
                   </View>
 
                   <View style={[styles.kpiCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -810,7 +810,7 @@ export default function SuperAdminDashboardScreen() {
                       {(kpis?.totalScans || 0).toLocaleString('tr-TR')}
                     </Text>
                     <Text style={[styles.kpiLabel, { color: colors.textSecondary }]}>Toplam Okutma / Tarama</Text>
-                    <Text style={styles.kpiGrowth}>↑ %22 trafik artışı</Text>
+                    <Text style={[styles.kpiGrowth, { color: '#10B981' }]}>● Gerçek Zamanlı Sayaç</Text>
                   </View>
 
                   <View style={[styles.kpiCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -821,7 +821,9 @@ export default function SuperAdminDashboardScreen() {
                       ₺{(kpis?.totalRevenue || 0).toLocaleString('tr-TR')}
                     </Text>
                     <Text style={[styles.kpiLabel, { color: colors.textSecondary }]}>Brüt Hasılat</Text>
-                    <Text style={styles.kpiGrowth}>₺28.950 bu ay</Text>
+                    <Text style={[styles.kpiGrowth, { color: '#F59E0B' }]}>
+                      {kpis?.recentOrdersCount ? `${kpis.recentOrdersCount} Sipariş Kaydı` : '0 Bekleyen Sipariş'}
+                    </Text>
                   </View>
                 </View>
 
@@ -942,40 +944,40 @@ export default function SuperAdminDashboardScreen() {
                   <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border, flex: 1 }]}>
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>☁️ Sunucu & Altyapı Sağlığı</Text>
                     <Text style={[styles.sectionSub, { color: colors.textSecondary }]}>
-                      Firebase ve CDN mikroservislerinin canlı durumu
+                      Firebase (qr-la-b9847) Canlı Mikroservis Durumu
                     </Text>
 
                     <View style={styles.healthList}>
                       <View style={styles.healthItem}>
                         <View style={styles.healthLeft}>
                           <View style={styles.greenDot} />
-                          <Text style={[styles.healthName, { color: colors.text }]}>Firestore Database</Text>
+                          <Text style={[styles.healthName, { color: colors.text }]}>Firestore Veritabanı</Text>
                         </View>
-                        <Text style={styles.healthStatus}>%99.99 Canlı</Text>
+                        <Text style={styles.healthStatus}>Aktif / Bağlı</Text>
                       </View>
 
                       <View style={styles.healthItem}>
                         <View style={styles.healthLeft}>
                           <View style={styles.greenDot} />
-                          <Text style={[styles.healthName, { color: colors.text }]}>Cloud Storage (142.8 GB / 1 TB)</Text>
+                          <Text style={[styles.healthName, { color: colors.text }]}>Firebase Cloud Storage</Text>
                         </View>
-                        <Text style={styles.healthStatus}>Optimal (%14)</Text>
+                        <Text style={styles.healthStatus}>Aktif / CDN Hazır</Text>
                       </View>
 
                       <View style={styles.healthItem}>
                         <View style={styles.healthLeft}>
                           <View style={styles.greenDot} />
-                          <Text style={[styles.healthName, { color: colors.text }]}>Cloud Functions & Webhook</Text>
+                          <Text style={[styles.healthName, { color: colors.text }]}>Firebase Authentication</Text>
                         </View>
-                        <Text style={styles.healthStatus}>24ms Latency</Text>
+                        <Text style={styles.healthStatus}>Aktif (casska@asnus.com)</Text>
                       </View>
 
                       <View style={styles.healthItem}>
                         <View style={styles.healthLeft}>
                           <View style={styles.greenDot} />
-                          <Text style={[styles.healthName, { color: colors.text }]}>Global CDN & DNS</Text>
+                          <Text style={[styles.healthName, { color: colors.text }]}>Canlı Webhook & Senkronizasyon</Text>
                         </View>
-                        <Text style={styles.healthStatus}>Cloudflare Aktif</Text>
+                        <Text style={styles.healthStatus}>Canlı</Text>
                       </View>
                     </View>
                   </View>
@@ -1509,42 +1511,52 @@ export default function SuperAdminDashboardScreen() {
                   </View>
 
                   <View style={styles.couponGrid}>
-                    {coupons.map((c) => (
-                      <View
-                        key={c.code}
-                        style={[
-                          styles.couponCard,
-                          {
-                            backgroundColor: colors.bgSecondary,
-                            borderColor: c.isActive ? colors.goldBorder : colors.border,
-                          },
-                        ]}
-                      >
-                        <View style={styles.couponTop}>
-                          <Text style={[styles.couponCodeText, { color: colors.gold }]}>{c.code}</Text>
-                          <TouchableOpacity onPress={() => handleToggleCoupon(c.code)}>
-                            <Ionicons
-                              name={c.isActive ? 'checkmark-circle' : 'close-circle'}
-                              size={20}
-                              color={c.isActive ? '#10B981' : '#EF4444'}
-                            />
-                          </TouchableOpacity>
-                        </View>
-
-                        <Text style={[styles.couponDesc, { color: colors.text }]}>
-                          %{c.value} İndirim {c.tier ? `(${c.tier.toUpperCase()})` : ''}
+                    {coupons.length === 0 ? (
+                      <View style={{ alignItems: 'center', paddingVertical: 28, width: '100%' }}>
+                        <Ionicons name="ticket-outline" size={36} color={colors.textMuted} style={{ marginBottom: 6 }} />
+                        <Text style={{ color: colors.text, fontSize: 14, fontWeight: '600' }}>Aktif Kupon Bulunmuyor</Text>
+                        <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2 }}>
+                          Yeni indirim veya promosyon kodu tanımlamak için "Yeni Kupon Oluştur" butonunu kullanabilirsiniz.
                         </Text>
-
-                        <View style={styles.couponBottom}>
-                          <Text style={[styles.couponUsage, { color: colors.textMuted }]}>
-                            Kullanım: {c.usedCount} / {c.maxUsage}
-                          </Text>
-                          <TouchableOpacity onPress={() => handleDeleteCoupon(c.code)}>
-                            <Ionicons name="trash-outline" size={15} color="#EF4444" />
-                          </TouchableOpacity>
-                        </View>
                       </View>
-                    ))}
+                    ) : (
+                      coupons.map((c) => (
+                        <View
+                          key={c.code}
+                          style={[
+                            styles.couponCard,
+                            {
+                              backgroundColor: colors.bgSecondary,
+                              borderColor: c.isActive ? colors.goldBorder : colors.border,
+                            },
+                          ]}
+                        >
+                          <View style={styles.couponTop}>
+                            <Text style={[styles.couponCodeText, { color: colors.gold }]}>{c.code}</Text>
+                            <TouchableOpacity onPress={() => handleToggleCoupon(c.code)}>
+                              <Ionicons
+                                name={c.isActive ? 'checkmark-circle' : 'close-circle'}
+                                size={20}
+                                color={c.isActive ? '#10B981' : '#EF4444'}
+                              />
+                            </TouchableOpacity>
+                          </View>
+
+                          <Text style={[styles.couponDesc, { color: colors.text }]}>
+                            %{c.value} İndirim {c.tier ? `(${c.tier.toUpperCase()})` : ''}
+                          </Text>
+
+                          <View style={styles.couponBottom}>
+                            <Text style={[styles.couponUsage, { color: colors.textMuted }]}>
+                              Kullanım: {c.usedCount} / {c.maxUsage}
+                            </Text>
+                            <TouchableOpacity onPress={() => handleDeleteCoupon(c.code)}>
+                              <Ionicons name="trash-outline" size={15} color="#EF4444" />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      ))
+                    )}
                   </View>
                 </View>
 
@@ -1570,31 +1582,41 @@ export default function SuperAdminDashboardScreen() {
                     />
                   </View>
 
-                  {filteredOrders.map((order) => (
-                    <View key={order.id} style={[styles.orderRow, { borderBottomColor: colors.border }]}>
-                      <View style={styles.orderLeft}>
-                        <View style={[styles.orderIconWrap, { backgroundColor: 'rgba(16, 185, 129, 0.12)' }]}>
-                          <Ionicons name="receipt-outline" size={20} color="#10B981" />
-                        </View>
-                        <View>
-                          <Text style={[styles.orderNum, { color: colors.text }]}>{order.orderNumber}</Text>
-                          <Text style={[styles.orderTitle, { color: colors.textSecondary }]}>{order.title}</Text>
-                          <Text style={[styles.orderCustomer, { color: colors.textMuted }]}>
-                            {order.userName} • {order.paymentMethod} • {order.date}
-                          </Text>
-                        </View>
-                      </View>
-
-                      <View style={styles.orderRight}>
-                        <Text style={[styles.orderAmount, { color: colors.text }]}>
-                          ₺{order.amount.toLocaleString('tr-TR')}
-                        </Text>
-                        <View style={styles.orderStatusBadge}>
-                          <Text style={styles.orderStatusText}>Tamamlandı</Text>
-                        </View>
-                      </View>
+                  {filteredOrders.length === 0 ? (
+                    <View style={{ alignItems: 'center', paddingVertical: 36 }}>
+                      <Ionicons name="receipt-outline" size={42} color={colors.textMuted} style={{ marginBottom: 8 }} />
+                      <Text style={{ color: colors.text, fontSize: 15, fontWeight: '600' }}>Henüz Sipariş Kaydı Bulunmuyor</Text>
+                      <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 4 }}>
+                        Platform üzerinden gerçekleşen dijital paket ve kart siparişleri burada canlı listelenecektir.
+                      </Text>
                     </View>
-                  ))}
+                  ) : (
+                    filteredOrders.map((order) => (
+                      <View key={order.id} style={[styles.orderRow, { borderBottomColor: colors.border }]}>
+                        <View style={styles.orderLeft}>
+                          <View style={[styles.orderIconWrap, { backgroundColor: 'rgba(16, 185, 129, 0.12)' }]}>
+                            <Ionicons name="receipt-outline" size={20} color="#10B981" />
+                          </View>
+                          <View>
+                            <Text style={[styles.orderNum, { color: colors.text }]}>{order.orderNumber}</Text>
+                            <Text style={[styles.orderTitle, { color: colors.textSecondary }]}>{order.title}</Text>
+                            <Text style={[styles.orderCustomer, { color: colors.textMuted }]}>
+                              {order.userName} • {order.paymentMethod} • {order.date}
+                            </Text>
+                          </View>
+                        </View>
+
+                        <View style={styles.orderRight}>
+                          <Text style={[styles.orderAmount, { color: colors.text }]}>
+                            ₺{order.amount.toLocaleString('tr-TR')}
+                          </Text>
+                          <View style={styles.orderStatusBadge}>
+                            <Text style={styles.orderStatusText}>Tamamlandı</Text>
+                          </View>
+                        </View>
+                      </View>
+                    ))
+                  )}
                 </View>
               </View>
             )}

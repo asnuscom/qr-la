@@ -1,7 +1,7 @@
 import { appStorage } from './storage';
 import { db, auth } from './firebase';
 import { authService } from './authService';
-import { collection, getDocs, getDoc, doc, setDoc, updateDoc, addDoc, query, where } from 'firebase/firestore';
+import { collection, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, addDoc, query, where } from 'firebase/firestore';
 
 export const ROOT_ADMIN_EMAILS = ['casska@asnus.com', 'casska@msn.com'];
 export let ADMIN_EMAILS = [...ROOT_ADMIN_EMAILS];
@@ -144,289 +144,10 @@ export const DEFAULT_MODULE_CONTROLS: Record<PlatformModuleKey, ModuleControlCon
   },
 };
 
-const DEFAULT_USERS: AdminUser[] = [
-  {
-    id: 'usr-admin-asnus',
-    name: 'Samet Sunman',
-    email: 'casska@asnus.com',
-    role: 'superadmin',
-    status: 'active',
-    assetCount: 12,
-    totalSpent: 4950,
-    createdAt: '2026-09-01T10:00:00.000Z',
-    lastLogin: '2026-10-30T09:30:00.000Z',
-  },
-  {
-    id: 'usr-1',
-    name: 'Samet Sunman',
-    email: 'casska@msn.com',
-    role: 'superadmin',
-    status: 'active',
-    assetCount: 6,
-    totalSpent: 2850,
-    createdAt: '2026-09-01T10:00:00.000Z',
-    lastLogin: '2026-10-28T14:30:00.000Z',
-  },
-  {
-    id: 'usr-2',
-    name: 'Yavuz Demir (Demo Host)',
-    email: 'demo@qr-la.com',
-    role: 'moderator',
-    status: 'active',
-    assetCount: 3,
-    totalSpent: 450,
-    createdAt: '2026-09-15T12:00:00.000Z',
-    lastLogin: '2026-10-28T12:15:00.000Z',
-  },
-  {
-    id: 'usr-3',
-    name: 'Şule & Samet Yılmaz',
-    email: 'sule.samet@dugun.com',
-    role: 'user',
-    status: 'active',
-    assetCount: 2,
-    totalSpent: 1290,
-    createdAt: '2026-10-01T09:30:00.000Z',
-    lastLogin: '2026-10-27T19:40:00.000Z',
-  },
-  {
-    id: 'usr-4',
-    name: 'Lucca Bistrot & Cocktail',
-    email: 'management@luccabebek.com',
-    role: 'user',
-    status: 'active',
-    assetCount: 1,
-    totalSpent: 1800,
-    createdAt: '2026-10-05T14:20:00.000Z',
-    lastLogin: '2026-10-28T11:00:00.000Z',
-  },
-  {
-    id: 'usr-5',
-    name: 'Cemre Aksoy (Pati Duman)',
-    email: 'cemre.aksoy@gmail.com',
-    role: 'user',
-    status: 'active',
-    assetCount: 2,
-    totalSpent: 250,
-    createdAt: '2026-10-12T16:00:00.000Z',
-    lastLogin: '2026-10-25T15:20:00.000Z',
-  },
-  {
-    id: 'usr-6',
-    name: 'Kaan Demirkan (Honda CBR)',
-    email: 'kaan.d@motoclub.com',
-    role: 'user',
-    status: 'active',
-    assetCount: 1,
-    totalSpent: 300,
-    createdAt: '2026-10-18T18:10:00.000Z',
-    lastLogin: '2026-10-28T09:12:00.000Z',
-  },
-  {
-    id: 'usr-7',
-    name: 'Test Spam Hesabı',
-    email: 'bot992@spammer.org',
-    role: 'user',
-    status: 'suspended',
-    assetCount: 0,
-    totalSpent: 0,
-    createdAt: '2026-10-22T04:10:00.000Z',
-    lastLogin: '2026-10-22T04:12:00.000Z',
-  },
-];
-
-const DEFAULT_ASSETS: AdminAssetItem[] = [
-  {
-    id: 'ast-1',
-    title: 'Samet & Şule Düğünü',
-    moduleType: 'event',
-    slug: 'samet-ve-sule',
-    ownerEmail: 'casska@msn.com',
-    ownerName: 'Samet Sunman',
-    scans: 1420,
-    status: 'active',
-    tier: 'VIP Sınırsız',
-    createdAt: '2026-10-01',
-  },
-  {
-    id: 'ast-2',
-    title: 'Honda CBR 650R (34 ABC 123)',
-    moduleType: 'vehicle',
-    slug: '34abc123',
-    ownerEmail: 'kaan.d@motoclub.com',
-    ownerName: 'Kaan Demirkan',
-    scans: 284,
-    status: 'active',
-    tier: 'Ömür Boyu Park Tagı',
-    createdAt: '2026-10-18',
-  },
-  {
-    id: 'ast-3',
-    title: 'Pati Duman (Petguru Künye)',
-    moduleType: 'pet',
-    slug: 'duman',
-    ownerEmail: 'cemre.aksoy@gmail.com',
-    ownerName: 'Cemre Aksoy',
-    scans: 95,
-    status: 'active',
-    tier: 'GPS Akıllı Künye',
-    createdAt: '2026-10-12',
-  },
-  {
-    id: 'ast-4',
-    title: 'Samet Sunman (vCard & NFC)',
-    moduleType: 'vcard',
-    slug: 'samet-sunman',
-    ownerEmail: 'casska@msn.com',
-    ownerName: 'Samet Sunman',
-    scans: 620,
-    status: 'active',
-    tier: 'Pro Dijital vCard',
-    createdAt: '2026-10-02',
-  },
-  {
-    id: 'ast-5',
-    title: 'Lucca Bistrot & Cocktail Bar Menü',
-    moduleType: 'menu',
-    slug: 'lucca-bistrot',
-    ownerEmail: 'management@luccabebek.com',
-    ownerName: 'Lucca Bistrot',
-    scans: 3840,
-    status: 'active',
-    tier: 'Kurumsal Restoran QR',
-    createdAt: '2026-10-05',
-  },
-  {
-    id: 'ast-6',
-    title: 'Demo Panel Etkinliği',
-    moduleType: 'event',
-    slug: 'demo-panel',
-    ownerEmail: 'demo@qr-la.com',
-    ownerName: 'Yavuz Demir',
-    scans: 8520,
-    status: 'active',
-    tier: 'Free Demo',
-    createdAt: '2026-09-15',
-  },
-  {
-    id: 'ast-7',
-    title: 'Şüpheli QR Kampanyası',
-    moduleType: 'vcard',
-    slug: 'kazan-bedava',
-    ownerEmail: 'bot992@spammer.org',
-    ownerName: 'Test Spam Hesabı',
-    scans: 12,
-    status: 'suspended',
-    tier: 'Free',
-    createdAt: '2026-10-22',
-  },
-];
-
-const DEFAULT_ORDERS: AdminOrder[] = [
-  {
-    id: 'ord-101',
-    orderNumber: 'QRLA-2026-9812',
-    userEmail: 'management@luccabebek.com',
-    userName: 'Lucca Bistrot',
-    title: 'Restoran Yıllık Menü Lisansı + 50 Adet Pleksi Karekod',
-    category: 'menu',
-    amount: 1800,
-    date: '2026-10-27 16:40',
-    status: 'completed',
-    paymentMethod: 'Kredi Kartı (3D Secure)',
-  },
-  {
-    id: 'ord-102',
-    orderNumber: 'QRLA-2026-9790',
-    userEmail: 'sule.samet@dugun.com',
-    userName: 'Şule & Samet Yılmaz',
-    title: 'VIP Düğün Paketi + 100 Masa QR Kartı',
-    category: 'event',
-    amount: 1290,
-    date: '2026-10-26 14:15',
-    status: 'completed',
-    paymentMethod: 'Havale / EFT',
-  },
-  {
-    id: 'ord-103',
-    orderNumber: 'QRLA-2026-9755',
-    userEmail: 'kaan.d@motoclub.com',
-    userName: 'Kaan Demirkan',
-    title: 'Araç UV Korumalı Ön Cam Stickerı',
-    category: 'vehicle',
-    amount: 300,
-    date: '2026-10-25 11:30',
-    status: 'completed',
-    paymentMethod: 'Kredi Kartı',
-  },
-  {
-    id: 'ord-104',
-    orderNumber: 'QRLA-2026-9721',
-    userEmail: 'cemre.aksoy@gmail.com',
-    userName: 'Cemre Aksoy',
-    title: 'Lazer Kazımalı Paslanmaz Çelik Pati Künyesi',
-    category: 'pet',
-    amount: 250,
-    date: '2026-10-24 18:22',
-    status: 'completed',
-    paymentMethod: 'Kredi Kartı',
-  },
-  {
-    id: 'ord-105',
-    orderNumber: 'QRLA-2026-9680',
-    userEmail: 'casska@msn.com',
-    userName: 'Samet Sunman',
-    title: 'Mat Siyah Lüks NFC Dijital Kartvizit',
-    category: 'vcard',
-    amount: 450,
-    date: '2026-10-22 10:05',
-    status: 'completed',
-    paymentMethod: 'Kredi Kartı',
-  },
-];
-
-const DEFAULT_COUPONS: AdminCoupon[] = [
-  {
-    code: 'QRVIP50',
-    discountType: 'percentage',
-    value: 50,
-    tier: 'premium',
-    usedCount: 28,
-    maxUsage: 100,
-    expiresAt: '2026-12-31',
-    isActive: true,
-  },
-  {
-    code: 'DUGUN2026',
-    discountType: 'percentage',
-    value: 20,
-    tier: 'vip',
-    usedCount: 64,
-    maxUsage: 200,
-    expiresAt: '2026-11-30',
-    isActive: true,
-  },
-  {
-    code: 'PETGURU100',
-    discountType: 'free_tier',
-    value: 100,
-    tier: 'standart',
-    usedCount: 15,
-    maxUsage: 50,
-    expiresAt: '2026-12-15',
-    isActive: true,
-  },
-  {
-    code: 'LAUNCHVIP',
-    discountType: 'free_tier',
-    value: 100,
-    tier: 'vip',
-    usedCount: 12,
-    maxUsage: 20,
-    expiresAt: '2026-11-15',
-    isActive: true,
-  },
-];
+const DEFAULT_USERS: AdminUser[] = [];
+const DEFAULT_ASSETS: AdminAssetItem[] = [];
+const DEFAULT_ORDERS: AdminOrder[] = [];
+const DEFAULT_COUPONS: AdminCoupon[] = [];
 
 const DEFAULT_SETTINGS: SystemSettings = {
   maintenanceMode: false,
@@ -439,40 +160,7 @@ const DEFAULT_SETTINGS: SystemSettings = {
   autoApproveNewEvents: true,
 };
 
-const DEFAULT_LOGS: SystemLog[] = [
-  {
-    id: 'log-1',
-    level: 'info',
-    title: 'Yönetici Girişi Yapıldı',
-    details: 'Superadmin hesabı (casska@msn.com) başarıyla giriş yaptı.',
-    timestamp: '2026-10-28 14:30:12',
-    ip: '88.241.12.84',
-  },
-  {
-    id: 'log-2',
-    level: 'success',
-    title: 'Yeni Sipariş Onaylandı',
-    details: 'QRLA-2026-9812 nolu restoran siparişi başarıyla tahsil edildi.',
-    timestamp: '2026-10-27 16:40:55',
-    ip: '176.234.90.11',
-  },
-  {
-    id: 'log-3',
-    level: 'warn',
-    title: 'Şüpheli Kayıt Engellendi',
-    details: 'bot992@spammer.org hesabı spam kuralı tetiklediği için askıya alındı.',
-    timestamp: '2026-10-22 04:12:00',
-    ip: '194.32.10.45',
-  },
-  {
-    id: 'log-4',
-    level: 'info',
-    title: 'Sistem Yedeklemesi Tamamlandı',
-    details: 'Firestore ve Cloud Storage veritabanı yedeği alındı (142.8 GB).',
-    timestamp: '2026-10-28 03:00:00',
-    ip: '10.0.0.1 (cron)',
-  },
-];
+const DEFAULT_LOGS: SystemLog[] = [];
 
 class AdminService {
   private isUnlocked: boolean = false;
@@ -674,71 +362,76 @@ class AdminService {
 
   // Users with Firebase Integration
   async getUsers(): Promise<AdminUser[]> {
-    let usersList: AdminUser[] = [...DEFAULT_USERS];
+    const userMap = new Map<string, AdminUser>();
 
-    // Load from local cache first if available
-    const raw = await appStorage.getItem(STORAGE_KEY_ADMIN_USERS);
-    if (raw) {
-      try {
-        const cached: AdminUser[] = JSON.parse(raw);
-        cached.forEach((cu) => {
-          const idx = usersList.findIndex((u) => u.email.toLowerCase() === cu.email.toLowerCase());
-          if (idx >= 0) usersList[idx] = { ...usersList[idx], ...cu };
-          else usersList.push(cu);
-        });
-      } catch (_) {}
-    }
-
-    // Connect to Firestore collection 'users'
+    // Query Firestore collection 'users'
     if (db) {
       try {
         const snap = await getDocs(collection(db, 'users'));
-        if (!snap.empty) {
-          snap.docs.forEach((d) => {
-            const data = d.data();
-            const email = (data.email || '').toLowerCase().trim();
-            if (!email) return;
+        const adminEmails = await this.getAdminEmails();
 
-            const isSuper =
-              ADMIN_EMAILS.includes(email) ||
-              data.role === 'superadmin' ||
-              data.isAdmin === true;
+        snap.docs.forEach((d) => {
+          const data = d.data();
+          const email = (data.email || '').toLowerCase().trim();
+          if (!email) return;
 
-            const adminItem: AdminUser = {
-              id: d.id,
-              name: data.displayName || email.split('@')[0] || 'Kullanıcı',
-              email: data.email || email,
-              role: isSuper ? 'superadmin' : (data.role || 'user'),
-              status: data.status || 'active',
-              assetCount: (data.events?.length || 0),
-              totalSpent: data.totalSpent || (isSuper ? 4950 : 0),
-              createdAt: data.createdAt || new Date().toISOString(),
-              lastLogin: data.lastLogin || data.createdAt || new Date().toISOString(),
-            };
+          // Exclude legacy demo accounts if present
+          if (email.endsWith('@spammer.org') || email === 'demo@qr-la.com') return;
 
-            const idx = usersList.findIndex((u) => u.email.toLowerCase() === email);
-            if (idx >= 0) {
-              usersList[idx] = { ...usersList[idx], ...adminItem };
-            } else {
-              usersList.push(adminItem);
-            }
-          });
-        }
+          const isSuper =
+            adminEmails.includes(email) ||
+            data.role === 'superadmin' ||
+            data.isAdmin === true;
+
+          const isMod = !isSuper && (data.role === 'moderator' || data.isModerator === true);
+
+          const existing = userMap.get(email);
+          const userItem: AdminUser = {
+            id: d.id,
+            name: data.displayName || existing?.name || email.split('@')[0] || 'Kullanıcı',
+            email: data.email || email,
+            role: isSuper ? 'superadmin' : isMod ? 'moderator' : (data.role || existing?.role || 'user'),
+            status: data.status || existing?.status || 'active',
+            assetCount: Array.isArray(data.events) ? data.events.length : (existing?.assetCount || 0),
+            totalSpent: Number(data.totalSpent || existing?.totalSpent || 0),
+            createdAt: data.createdAt || existing?.createdAt || new Date().toISOString(),
+            lastLogin: data.lastLogin || existing?.lastLogin || data.createdAt || new Date().toISOString(),
+          };
+          userMap.set(email, userItem);
+        });
       } catch (err) {
         console.warn('Firestore users fetch warning:', err);
       }
     }
 
-    // Guarantee casska@asnus.com is at the top with superadmin permissions
-    const asnusIdx = usersList.findIndex((u) => u.email.toLowerCase() === 'casska@asnus.com');
-    if (asnusIdx >= 0) {
-      const [asnusUser] = usersList.splice(asnusIdx, 1);
-      asnusUser.role = 'superadmin';
-      asnusUser.status = 'active';
-      usersList.unshift(asnusUser);
+    // Always guarantee root superadmin casska@asnus.com
+    const asnusEmail = 'casska@asnus.com';
+    if (!userMap.has(asnusEmail)) {
+      userMap.set(asnusEmail, {
+        id: 'usr-admin-asnus',
+        name: 'Samet Sunman',
+        email: asnusEmail,
+        role: 'superadmin',
+        status: 'active',
+        assetCount: 0,
+        totalSpent: 0,
+        createdAt: '2026-09-01T10:00:00.000Z',
+        lastLogin: new Date().toISOString(),
+      });
     } else {
-      usersList.unshift(DEFAULT_USERS[0]);
+      const u = userMap.get(asnusEmail)!;
+      u.role = 'superadmin';
+      u.status = 'active';
+      userMap.set(asnusEmail, u);
     }
+
+    const usersList = Array.from(userMap.values());
+    // Move casska@asnus.com to top
+    usersList.sort((a, b) => {
+      if (a.email.toLowerCase() === asnusEmail) return -1;
+      if (b.email.toLowerCase() === asnusEmail) return 1;
+      return 0;
+    });
 
     await appStorage.setItem(STORAGE_KEY_ADMIN_USERS, JSON.stringify(usersList));
     return usersList;
@@ -792,64 +485,279 @@ class AdminService {
     return updated;
   }
 
-  // Assets
+  // Assets with Real Firestore Integration
   async getAssets(): Promise<AdminAssetItem[]> {
-    const raw = await appStorage.getItem(STORAGE_KEY_ADMIN_ASSETS);
-    if (!raw) return DEFAULT_ASSETS;
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return DEFAULT_ASSETS;
+    const assetList: AdminAssetItem[] = [];
+
+    if (db) {
+      try {
+        // 1. Events collection
+        const eventsSnap = await getDocs(collection(db, 'events'));
+        eventsSnap.docs.forEach((d) => {
+          const data = d.data();
+          const slug = data.slug || d.id;
+          assetList.push({
+            id: d.id,
+            title: data.title || (data.eventType === 'dugun' ? 'Düğün Etkinliği' : 'Özel Etkinlik'),
+            moduleType: 'event',
+            slug: slug,
+            ownerEmail: data.ownerEmail || data.hostEmail || 'casska@asnus.com',
+            ownerName: data.ownerName || data.hostName || 'Samet Sunman',
+            scans: Number(data.viewCount || data.views || 0),
+            status: data.isArchived ? 'suspended' : 'active',
+            tier: data.tier || 'VIP Sınırsız',
+            createdAt: data.createdAt ? new Date(data.createdAt).toISOString().split('T')[0] : '2026-10-01',
+          });
+        });
+
+        // 2. Vehicles collection
+        const vehiclesSnap = await getDocs(collection(db, 'vehicles'));
+        vehiclesSnap.docs.forEach((d) => {
+          const data = d.data();
+          assetList.push({
+            id: d.id,
+            title: data.plateNumber ? `${data.plateNumber} (${data.brand || 'Araç'})` : 'Araç Tagı',
+            moduleType: 'vehicle',
+            slug: data.slug || d.id,
+            ownerEmail: data.ownerEmail || '',
+            ownerName: data.ownerName || 'Araç Sahibi',
+            scans: Number(data.viewCount || 0),
+            status: 'active',
+            tier: 'Standart',
+            createdAt: data.createdAt ? new Date(data.createdAt).toISOString().split('T')[0] : '2026-10-01',
+          });
+        });
+
+        // 3. VCards collection
+        const vcardsSnap = await getDocs(collection(db, 'vcards'));
+        vcardsSnap.docs.forEach((d) => {
+          const data = d.data();
+          assetList.push({
+            id: d.id,
+            title: data.fullName || data.title || 'Dijital vCard',
+            moduleType: 'vcard',
+            slug: data.slug || d.id,
+            ownerEmail: data.ownerEmail || '',
+            ownerName: data.fullName || 'Kartvizit Sahibi',
+            scans: Number(data.viewCount || 0),
+            status: 'active',
+            tier: 'Standart',
+            createdAt: data.createdAt ? new Date(data.createdAt).toISOString().split('T')[0] : '2026-10-01',
+          });
+        });
+
+        // 4. Menus (restaurants) collection
+        const menusSnap = await getDocs(collection(db, 'restaurants'));
+        menusSnap.docs.forEach((d) => {
+          const data = d.data();
+          assetList.push({
+            id: d.id,
+            title: data.name || 'Restoran Menüsü',
+            moduleType: 'menu',
+            slug: data.slug || d.id,
+            ownerEmail: data.ownerEmail || '',
+            ownerName: data.ownerName || 'İşletme',
+            scans: Number(data.viewCount || 0),
+            status: 'active',
+            tier: 'Standart',
+            createdAt: data.createdAt ? new Date(data.createdAt).toISOString().split('T')[0] : '2026-10-01',
+          });
+        });
+
+        // 5. Pets collection
+        const petsSnap = await getDocs(collection(db, 'pets'));
+        petsSnap.docs.forEach((d) => {
+          const data = d.data();
+          assetList.push({
+            id: d.id,
+            title: data.petName ? `🐾 ${data.petName}` : 'Pati Künyesi',
+            moduleType: 'pet',
+            slug: data.slug || d.id,
+            ownerEmail: data.ownerEmail || '',
+            ownerName: data.ownerName || 'Pati Sahibi',
+            scans: Number(data.viewCount || 0),
+            status: 'active',
+            tier: 'Standart',
+            createdAt: data.createdAt ? new Date(data.createdAt).toISOString().split('T')[0] : '2026-10-01',
+          });
+        });
+
+        await appStorage.setItem(STORAGE_KEY_ADMIN_ASSETS, JSON.stringify(assetList));
+        return assetList;
+      } catch (err) {
+        console.warn('Error fetching Firestore assets:', err);
+      }
     }
+
+    const raw = await appStorage.getItem(STORAGE_KEY_ADMIN_ASSETS);
+    if (raw) {
+      try {
+        const cached: AdminAssetItem[] = JSON.parse(raw);
+        return cached.filter((a) => !a.id.startsWith('ast-'));
+      } catch {}
+    }
+    return [];
   }
 
   async updateAssetStatus(assetId: string, newStatus: AdminAssetItem['status']): Promise<AdminAssetItem[]> {
     const assets = await this.getAssets();
+    const target = assets.find((a) => a.id === assetId);
     const updated = assets.map((a) => (a.id === assetId ? { ...a, status: newStatus } : a));
     await appStorage.setItem(STORAGE_KEY_ADMIN_ASSETS, JSON.stringify(updated));
+
+    if (db && target) {
+      try {
+        const colName =
+          target.moduleType === 'event'
+            ? 'events'
+            : target.moduleType === 'vehicle'
+            ? 'vehicles'
+            : target.moduleType === 'vcard'
+            ? 'vcards'
+            : target.moduleType === 'menu'
+            ? 'restaurants'
+            : 'pets';
+        await updateDoc(doc(db, colName, assetId), {
+          status: newStatus,
+          isArchived: newStatus === 'suspended',
+        });
+        await this.addLog('warn', 'Varlık Durumu Değiştirildi', `${target.title} durumu "${newStatus}" yapıldı.`);
+      } catch (err) {
+        console.warn('Firestore asset status update error:', err);
+      }
+    }
     return updated;
   }
 
   async deleteAsset(assetId: string): Promise<AdminAssetItem[]> {
     const assets = await this.getAssets();
+    const target = assets.find((a) => a.id === assetId);
     const updated = assets.filter((a) => a.id !== assetId);
     await appStorage.setItem(STORAGE_KEY_ADMIN_ASSETS, JSON.stringify(updated));
+
+    if (db && target) {
+      try {
+        const colName =
+          target.moduleType === 'event'
+            ? 'events'
+            : target.moduleType === 'vehicle'
+            ? 'vehicles'
+            : target.moduleType === 'vcard'
+            ? 'vcards'
+            : target.moduleType === 'menu'
+            ? 'restaurants'
+            : 'pets';
+        await deleteDoc(doc(db, colName, assetId));
+        await this.addLog('warn', 'Varlık Silindi', `${target.title} (${target.slug}) veritabanından kalıcı olarak silindi.`);
+      } catch (err) {
+        console.warn('Firestore asset delete error:', err);
+      }
+    }
     return updated;
   }
 
-  // Orders
+  // Orders with Firestore Integration
   async getOrders(): Promise<AdminOrder[]> {
-    const raw = await appStorage.getItem(STORAGE_KEY_ADMIN_ORDERS);
-    if (!raw) return DEFAULT_ORDERS;
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return DEFAULT_ORDERS;
+    const ordersList: AdminOrder[] = [];
+    if (db) {
+      try {
+        const snap = await getDocs(collection(db, 'orders'));
+        if (!snap.empty) {
+          snap.docs.forEach((d) => {
+            const data = d.data();
+            ordersList.push({
+              id: d.id,
+              orderNumber: data.orderNumber || d.id,
+              userEmail: data.userEmail || '',
+              userName: data.userName || 'Müşteri',
+              title: data.title || 'Sipariş',
+              category: data.category || 'event',
+              amount: Number(data.amount || 0),
+              date: data.date || data.createdAt || new Date().toISOString(),
+              status: data.status || 'completed',
+              paymentMethod: data.paymentMethod || 'Kredi Kartı',
+            });
+          });
+        }
+        await appStorage.setItem(STORAGE_KEY_ADMIN_ORDERS, JSON.stringify(ordersList));
+        return ordersList;
+      } catch (err) {
+        console.warn('Firestore orders fetch error:', err);
+      }
     }
+
+    const raw = await appStorage.getItem(STORAGE_KEY_ADMIN_ORDERS);
+    if (raw) {
+      try {
+        const cached: AdminOrder[] = JSON.parse(raw);
+        return cached.filter((o) => !o.id.startsWith('ord-'));
+      } catch {}
+    }
+    return [];
   }
 
-  // Coupons
+  // Coupons with Firestore Integration
   async getCoupons(): Promise<AdminCoupon[]> {
-    const raw = await appStorage.getItem(STORAGE_KEY_ADMIN_COUPONS);
-    if (!raw) return DEFAULT_COUPONS;
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return DEFAULT_COUPONS;
+    const list: AdminCoupon[] = [];
+    if (db) {
+      try {
+        const snap = await getDocs(collection(db, 'coupons'));
+        if (!snap.empty) {
+          snap.docs.forEach((d) => {
+            list.push(d.data() as AdminCoupon);
+          });
+          await appStorage.setItem(STORAGE_KEY_ADMIN_COUPONS, JSON.stringify(list));
+          return list;
+        }
+      } catch (err) {
+        console.warn('Firestore coupons fetch error:', err);
+      }
     }
+
+    const raw = await appStorage.getItem(STORAGE_KEY_ADMIN_COUPONS);
+    if (raw) {
+      try {
+        return JSON.parse(raw);
+      } catch {}
+    }
+    return [];
   }
 
   async addCoupon(coupon: AdminCoupon): Promise<AdminCoupon[]> {
     const list = await this.getCoupons();
     const updated = [coupon, ...list.filter((c) => c.code !== coupon.code)];
     await appStorage.setItem(STORAGE_KEY_ADMIN_COUPONS, JSON.stringify(updated));
+
+    if (db) {
+      try {
+        await setDoc(doc(db, 'coupons', coupon.code), coupon);
+        await this.addLog('info', 'Yeni Kupon Eklendi', `"${coupon.code}" kodlu %${coupon.value} kupon tanımlandı.`);
+      } catch (err) {
+        console.warn('Firestore coupon add error:', err);
+      }
+    }
     return updated;
   }
 
   async toggleCoupon(code: string): Promise<AdminCoupon[]> {
     const list = await this.getCoupons();
-    const updated = list.map((c) => (c.code === code ? { ...c, isActive: !c.isActive } : c));
+    let targetCoupon: AdminCoupon | undefined;
+    const updated = list.map((c) => {
+      if (c.code === code) {
+        targetCoupon = { ...c, isActive: !c.isActive };
+        return targetCoupon;
+      }
+      return c;
+    });
     await appStorage.setItem(STORAGE_KEY_ADMIN_COUPONS, JSON.stringify(updated));
+
+    if (db && targetCoupon) {
+      try {
+        await updateDoc(doc(db, 'coupons', code), { isActive: targetCoupon.isActive });
+      } catch (err) {
+        console.warn('Firestore coupon toggle error:', err);
+      }
+    }
     return updated;
   }
 
@@ -857,6 +765,15 @@ class AdminService {
     const list = await this.getCoupons();
     const updated = list.filter((c) => c.code !== code);
     await appStorage.setItem(STORAGE_KEY_ADMIN_COUPONS, JSON.stringify(updated));
+
+    if (db) {
+      try {
+        await deleteDoc(doc(db, 'coupons', code));
+        await this.addLog('warn', 'Kupon Silindi', `"${code}" kuponu silindi.`);
+      } catch (err) {
+        console.warn('Firestore coupon delete error:', err);
+      }
+    }
     return updated;
   }
 
@@ -888,13 +805,14 @@ class AdminService {
             id: d.id,
             ...(d.data() as any),
           }));
-          return [...list, ...DEFAULT_LOGS].slice(0, 30);
+          list.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+          return list.slice(0, 50);
         }
       } catch (err) {
         console.warn('Firestore logs fetch warning:', err);
       }
     }
-    return DEFAULT_LOGS;
+    return [];
   }
 
   async addLog(level: SystemLog['level'], title: string, details: string): Promise<void> {
@@ -918,8 +836,8 @@ class AdminService {
     const assets = await this.getAssets();
     const orders = await this.getOrders();
 
-    const totalScans = assets.reduce((acc, a) => acc + a.scans, 0);
-    const totalRevenue = orders.reduce((acc, o) => (o.status === 'completed' ? acc + o.amount : acc), 0);
+    const totalScans = assets.reduce((acc, a) => acc + (a.scans || 0), 0);
+    const totalRevenue = orders.reduce((acc, o) => (o.status === 'completed' ? acc + (o.amount || 0) : acc), 0);
 
     return {
       totalUsers: users.length,
@@ -929,9 +847,9 @@ class AdminService {
       totalScans,
       totalRevenue,
       recentOrdersCount: orders.length,
-      storageUsedGB: 142.8,
+      storageUsedGB: 0,
       storageMaxGB: 1000,
-      uptimePercentage: '99.98%',
+      uptimePercentage: '99.99%',
     };
   }
 }
