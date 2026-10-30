@@ -87,6 +87,9 @@ export default function SuperAdminDashboardScreen() {
   const [newCouponMaxUsage, setNewCouponMaxUsage] = useState('50');
 
   const [announcementModalOpen, setAnnouncementModalOpen] = useState(false);
+  const [addAdminModalOpen, setAddAdminModalOpen] = useState(false);
+  const [newAdminEmail, setNewAdminEmail] = useState('');
+  const [newAdminRole, setNewAdminRole] = useState<'superadmin' | 'moderator'>('superadmin');
   const [announcementText, setAnnouncementText] = useState('');
 
   // Initial Auth Check
@@ -213,6 +216,26 @@ export default function SuperAdminDashboardScreen() {
       'Kullanıcı Güncellendi',
       `${user.name} kullanıcısının durumu "${nextStatus === 'active' ? 'Aktif' : 'Askıda'}" olarak ayarlandı.`
     );
+  };
+
+  const handleAddAdminByEmail = async () => {
+    const email = newAdminEmail.trim().toLowerCase();
+    if (!email || !email.includes('@')) {
+      Alert.alert('Geçersiz E-Posta', 'Lütfen geçerli bir e-posta adresi giriniz.');
+      return;
+    }
+    try {
+      await adminService.addAdminEmail(email, newAdminRole);
+      await loadAllAdminData();
+      setAddAdminModalOpen(false);
+      setNewAdminEmail('');
+      Alert.alert(
+        'Yönetici Yetkilendirildi 🎉',
+        `"${email}" kullanıcısına ${newAdminRole === 'superadmin' ? 'Süper Admin' : 'Moderatör'} yetkisi başarıyla verildi ve Firestore'a kaydedildi.`
+      );
+    } catch (err: any) {
+      Alert.alert('Hata', err?.message || 'Yetki verilirken bir sorun oluştu.');
+    }
   };
 
   const handleChangeUserRole = async (user: AdminUser, newRole: AdminUser['role']) => {
@@ -1308,8 +1331,8 @@ export default function SuperAdminDashboardScreen() {
             {activeTab === 'users' && (
               <View style={styles.tabContainer}>
                 {/* Search Bar */}
-                <View style={[styles.filterBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                  <View style={[styles.searchBox, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
+                <View style={[styles.filterBar, { backgroundColor: colors.card, borderColor: colors.border, flexDirection: isMobile ? 'column' : 'row', gap: 10 }]}>
+                  <View style={[styles.searchBox, { backgroundColor: colors.bgSecondary, borderColor: colors.border, flex: 1 }]}>
                     <Ionicons name="search-outline" size={18} color={colors.textSecondary} style={{ marginRight: 8 }} />
                     <TextInput
                       style={[styles.searchInput, { color: colors.text }]}
@@ -1324,6 +1347,15 @@ export default function SuperAdminDashboardScreen() {
                       </TouchableOpacity>
                     ) : null}
                   </View>
+
+                  <TouchableOpacity
+                    style={[styles.primaryBtn, { width: isMobile ? '100%' : 'auto', paddingHorizontal: 16, height: 42, backgroundColor: '#6366F1', marginTop: 0 }]}
+                    onPress={() => setAddAdminModalOpen(true)}
+                    activeOpacity={0.85}
+                  >
+                    <Ionicons name="person-add-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text style={styles.primaryBtnText}>+ Yönetici Yetkilendir</Text>
+                  </TouchableOpacity>
                 </View>
 
                 {/* Users List */}
@@ -1407,18 +1439,42 @@ export default function SuperAdminDashboardScreen() {
                           </Text>
                         </TouchableOpacity>
 
-                        {user.role !== 'superadmin' && (
+                        {/* Dynamic Role Management */}
+                        {user.role === 'user' && (
                           <TouchableOpacity
-                            style={[styles.smallActionBtn, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}
-                            onPress={() => {
-                              const nextRole = user.role === 'moderator' ? 'user' : 'moderator';
-                              handleChangeUserRole(user, nextRole);
-                            }}
+                            style={[styles.smallActionBtn, { backgroundColor: 'rgba(99, 102, 241, 0.1)', borderColor: '#6366F1' }]}
+                            onPress={() => handleChangeUserRole(user, 'superadmin')}
                             activeOpacity={0.7}
                           >
-                            <Ionicons name="shield-outline" size={15} color={colors.gold} />
-                            <Text style={[styles.smallActionText, { color: colors.text }]}>
-                              {user.role === 'moderator' ? 'Kullanıcı Yap' : 'Moderatör Yap'}
+                            <Ionicons name="ribbon" size={14} color="#6366F1" />
+                            <Text style={[styles.smallActionText, { color: '#6366F1', fontWeight: '700' }]}>
+                              Süper Admin Yap
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+
+                        {user.role === 'moderator' && (
+                          <TouchableOpacity
+                            style={[styles.smallActionBtn, { backgroundColor: 'rgba(99, 102, 241, 0.1)', borderColor: '#6366F1' }]}
+                            onPress={() => handleChangeUserRole(user, 'superadmin')}
+                            activeOpacity={0.7}
+                          >
+                            <Ionicons name="ribbon" size={14} color="#6366F1" />
+                            <Text style={[styles.smallActionText, { color: '#6366F1', fontWeight: '700' }]}>
+                              Süper Admin Yap
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+
+                        {user.role === 'superadmin' && user.email !== 'casska@asnus.com' && (
+                          <TouchableOpacity
+                            style={[styles.smallActionBtn, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}
+                            onPress={() => handleChangeUserRole(user, 'user')}
+                            activeOpacity={0.7}
+                          >
+                            <Ionicons name="person-outline" size={14} color={colors.textSecondary} />
+                            <Text style={[styles.smallActionText, { color: colors.textSecondary }]}>
+                              Yetkiyi Kaldır
                             </Text>
                           </TouchableOpacity>
                         )}

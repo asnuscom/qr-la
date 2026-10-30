@@ -1,9 +1,10 @@
 import { appStorage } from './storage';
 import { db, auth } from './firebase';
 import { authService } from './authService';
-import { collection, getDocs, doc, setDoc, updateDoc, addDoc } from 'firebase/firestore';
+import { collection, getDocs, getDoc, doc, setDoc, updateDoc, addDoc, query, where } from 'firebase/firestore';
 
-export const ADMIN_EMAILS = ['casska@asnus.com', 'casska@msn.com'];
+export const ROOT_ADMIN_EMAILS = ['casska@asnus.com', 'casska@msn.com'];
+export let ADMIN_EMAILS = [...ROOT_ADMIN_EMAILS];
 
 
 export type PlatformModuleKey = 'wedding' | 'vehicle' | 'pet' | 'vcard' | 'menu';
@@ -477,6 +478,92 @@ class AdminService {
   private isUnlocked: boolean = false;
   private readonly MASTER_PIN = '1923';
   private moduleListeners: Array<(controls: Record<PlatformModuleKey, ModuleControlConfig>) => void> = [];
+  private dynamicAdminEmails: string[] = [...ROOT_ADMIN_EMAILS];
+
+  // Dynamic Admin Email List (Stored in Firestore: admin_settings/admins)
+  async getAdminEmails(): Promise<string[]> {
+    if (db) {
+      try {
+        const snap = await getDoc(doc(db, 'admin_settings', 'admins'));
+        if (snap.exists()) {
+          const data = snap.data();
+          if (Array.isArray(data.adminEmails)) {
+            this.dynamicAdminEmails = Array.from(new Set([...ROOT_ADMIN_EMAILS, ...data.adminEmails]));
+            ADMIN_EMAILS = this.dynamicAdminEmails;
+            return this.dynamicAdminEmails;
+          }
+        }
+      } catch (err) {
+        console.warn('Dynamic admin emails fetch note:', err);
+      }
+    }
+    ADMIN_EMAILS = this.dynamicAdminEmails;
+    return this.dynamicAdminEmails;
+  }
+
+  async addAdminEmail(email: string, role: 'superadmin' | 'moderator' = 'superadmin'): Promise<string[]> {
+    const clean = email.trim().toLowerCase();
+    const current = await this.getAdminEmails();
+    const updated = Array.from(new Set([...current, clean]));
+    this.dynamicAdminEmails = updated;
+    ADMIN_EMAILS = updated;
+
+    if (db) {
+      try {
+        await setDoc(doc(db, 'admin_settings', 'admins'), {
+          adminEmails: updated,
+          updatedAt: new Date().toISOString(),
+        }, { merge: true });
+
+        // Update user record in Firestore if exists
+        const q = query(collection(db, 'users'), where('email', '==', clean));
+        const snap = await getDocs(q);
+        for (const docSnap of snap.docs) {
+          await updateDoc(doc(db, 'users', docSnap.id), {
+            role,
+            isAdmin: true,
+          });
+        }
+        await this.addLog('warn', 'Yeni Yönetici Yetkilendirildi (Dinamik)', `${clean} adresine ${role} yetkisi verildi.`);
+      } catch (err) {
+        console.warn('Firestore add admin email error:', err);
+      }
+    }
+    return updated;
+  }
+
+  async removeAdminEmail(email: string): Promise<string[]> {
+    const clean = email.trim().toLowerCase();
+    if (ROOT_ADMIN_EMAILS.includes(clean)) {
+      throw new Error('Kök yönetici hesabı sistemden kaldırılamaz.');
+    }
+    const current = await this.getAdminEmails();
+    const updated = current.filter((e) => e !== clean);
+    this.dynamicAdminEmails = updated;
+    ADMIN_EMAILS = updated;
+
+    if (db) {
+      try {
+        await setDoc(doc(db, 'admin_settings', 'admins'), {
+          adminEmails: updated,
+          updatedAt: new Date().toISOString(),
+        }, { merge: true });
+
+        const q = query(collection(db, 'users'), where('email', '==', clean));
+        const snap = await getDocs(q);
+        for (const docSnap of snap.docs) {
+          await updateDoc(doc(db, 'users', docSnap.id), {
+            role: 'user',
+            isAdmin: false,
+          });
+        }
+        await this.addLog('warn', 'Yönetici Yetkisi Geri Alındı', `${clean} adresinin yönetici yetkisi kaldırıldı.`);
+      } catch (err) {
+        console.warn('Firestore remove admin email error:', err);
+      }
+    }
+    return updated;
+  }
 
   // Auth / Lock State
   async checkAdminAuth(): Promise<boolean> {
@@ -487,8 +574,9 @@ class AdminService {
       const currentUser = authService.getState().user;
       if (currentUser && currentUser.email) {
         const email = currentUser.email.trim().toLowerCase();
+        const adminEmails = await this.getAdminEmails();
         if (
-          ADMIN_EMAILS.includes(email) ||
+          adminEmails.includes(email) ||
           currentUser.role === 'superadmin' ||
           currentUser.isAdmin === true
         ) {
@@ -513,8 +601,9 @@ class AdminService {
 
     try {
       const user = await authService.signIn(cleanEmail, cleanPass);
+      const adminEmails = await this.getAdminEmails();
       const isSuper =
-        ADMIN_EMAILS.includes(cleanEmail) ||
+        adminEmails.includes(cleanEmail) ||
         user.role === 'superadmin' ||
         user.isAdmin === true;
 
@@ -673,8 +762,21 @@ class AdminService {
 
   async updateUserRole(userId: string, newRole: AdminUser['role']): Promise<AdminUser[]> {
     const users = await this.getUsers();
+    const target = users.find((u) => u.id === userId);
     const updated = users.map((u) => (u.id === userId ? { ...u, role: newRole } : u));
     await appStorage.setItem(STORAGE_KEY_ADMIN_USERS, JSON.stringify(updated));
+
+    if (target && target.email) {
+      if (newRole === 'superadmin') {
+        await this.addAdminEmail(target.email, 'superadmin');
+      } else if (newRole === 'moderator') {
+        await this.addAdminEmail(target.email, 'moderator');
+      } else {
+        try {
+          await this.removeAdminEmail(target.email);
+        } catch (_) {}
+      }
+    }
 
     if (db) {
       try {
@@ -682,7 +784,7 @@ class AdminService {
           role: newRole,
           isAdmin: newRole === 'superadmin',
         });
-        await this.addLog('warn', 'Kullanıcı Yetkisi Değiştirildi', `Kullanıcı (${userId}) yetkisi "${newRole}" olarak güncellendi.`);
+        await this.addLog('warn', 'Kullanıcı Yetkisi Değiştirildi (Dinamik Firestore)', `Kullanıcı (${target?.email || userId}) yetkisi "${newRole}" olarak güncellendi.`);
       } catch (err) {
         console.warn('Firestore user role update warning:', err);
       }
