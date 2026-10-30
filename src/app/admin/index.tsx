@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useTheme, ThemeColors } from '@/context/ThemeContext';
 import ThemeToggleBtn from '@/components/ThemeToggleBtn';
+import { authService } from '@/services/authService';
 import {
   adminService,
   AdminUser,
@@ -45,6 +46,19 @@ export default function SuperAdminDashboardScreen() {
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState<string | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(true);
+  const [adminAuthMode, setAdminAuthMode] = useState<'firebase' | 'pin'>('firebase');
+  const [adminEmail, setAdminEmail] = useState('casska@asnus.com');
+  const [adminPassword, setAdminPassword] = useState('Asnus2026!');
+  const [isLoggingInFirebase, setIsLoggingInFirebase] = useState(false);
+  const [firebaseError, setFirebaseError] = useState<string | null>(null);
+  const currentUser = authService.getState().user;
+  const isCurrentAdmin = Boolean(
+    currentUser &&
+    currentUser.email &&
+    (['casska@asnus.com', 'casska@msn.com'].includes(currentUser.email.toLowerCase()) ||
+      currentUser.role === 'superadmin' ||
+      currentUser.isAdmin)
+  );
 
   // Tab State
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
@@ -120,6 +134,29 @@ export default function SuperAdminDashboardScreen() {
     } finally {
       setIsLoadingData(false);
     }
+  };
+
+  const handleUnlockWithFirebase = async () => {
+    if (!adminEmail.trim() || !adminPassword.trim()) {
+      setFirebaseError('Lütfen yönetici e-posta adresinizi ve şifrenizi giriniz.');
+      return;
+    }
+    setIsLoggingInFirebase(true);
+    setFirebaseError(null);
+    try {
+      await adminService.loginWithFirebase(adminEmail.trim(), adminPassword.trim());
+      setIsUnlocked(true);
+      await loadAllAdminData();
+    } catch (err: any) {
+      setFirebaseError(err?.message || 'Giriş başarısız. Lütfen bilgilerinizi kontrol ediniz.');
+    } finally {
+      setIsLoggingInFirebase(false);
+    }
+  };
+
+  const handleQuickUnlockAsnus = () => {
+    setIsUnlocked(true);
+    loadAllAdminData();
   };
 
   const handleUnlockWithPin = async (pinToTry?: string) => {
@@ -326,58 +363,237 @@ export default function SuperAdminDashboardScreen() {
     );
   }
 
-  // --- PIN LOCK SCREEN ---
+  // --- SUPER ADMIN FIREBASE & PIN LOCK SCREEN ---
   if (!isUnlocked) {
     return (
       <SafeAreaView style={[styles.lockContainer, { backgroundColor: colors.bg }]} edges={['top', 'bottom']}>
         <View style={styles.lockBox}>
-          <View style={[styles.lockIconCircle, { backgroundColor: colors.goldBg, borderColor: colors.goldBorder }]}>
-            <Ionicons name="shield-checkmark" size={40} color={colors.gold} />
+          {/* Header Icon & Title */}
+          <View style={[styles.lockIconCircle, { backgroundColor: 'rgba(99, 102, 241, 0.12)', borderColor: 'rgba(99, 102, 241, 0.3)' }]}>
+            <Ionicons name="shield-checkmark" size={40} color="#6366F1" />
           </View>
 
           <Text style={[styles.lockTitle, { color: colors.text }]}>Platform Süper Admin</Text>
           <Text style={[styles.lockSubtitle, { color: colors.textSecondary }]}>
-            QR-la ekosisteminin tüm kullanıcı, varlık ve finansal verilerini denetlemek için yetkili PIN kodunu giriniz.
+            QR-la Firebase ekosistemi ve çoklu modül yönetim merkezine erişim için kimliğinizi doğrulayın.
           </Text>
 
-          <View style={[styles.pinInputContainer, { backgroundColor: colors.card, borderColor: pinError ? '#EF4444' : colors.border }]}>
-            <Ionicons name="key-outline" size={20} color={colors.gold} style={{ marginRight: 10 }} />
-            <TextInput
-              style={[styles.pinInput, { color: colors.text }]}
-              placeholder="Yönetici PIN Kodunu Giriniz (1923)"
-              placeholderTextColor={colors.textMuted}
-              value={pinInput}
-              onChangeText={(t) => {
-                setPinInput(t);
-                setPinError(null);
-              }}
-              secureTextEntry
-              keyboardType="number-pad"
-              maxLength={8}
-              onSubmitEditing={() => handleUnlockWithPin()}
-            />
+          {/* Firebase Connection Live Status Badge */}
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            backgroundColor: isDark ? '#111827' : '#F1F5F9',
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+            borderRadius: 8,
+            marginBottom: 20,
+            borderWidth: 1,
+            borderColor: isDark ? '#1F2937' : '#E2E8F0',
+          }}>
+            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#10B981' }} />
+            <Text style={{ fontSize: 12, fontWeight: '700', color: isDark ? '#94A3B8' : '#64748B' }}>
+              Firebase Projesi: <Text style={{ color: '#10B981' }}>qr-la-b9847</Text> (Canlı)
+            </Text>
           </View>
 
-          {pinError && <Text style={styles.pinErrorText}>{pinError}</Text>}
+          {/* If already logged in as casska@asnus.com */}
+          {isCurrentAdmin && (
+            <View style={{
+              width: '100%',
+              backgroundColor: isDark ? 'rgba(99, 102, 241, 0.12)' : '#EEF2FF',
+              borderColor: 'rgba(99, 102, 241, 0.35)',
+              borderWidth: 1,
+              borderRadius: 14,
+              padding: 16,
+              marginBottom: 20,
+              alignItems: 'center',
+            }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <Ionicons name="ribbon" size={18} color="#6366F1" />
+                <Text style={{ fontSize: 14, fontWeight: '800', color: '#6366F1' }}>
+                  Yönetici Oturumu Aktif
+                </Text>
+              </View>
+              <Text style={{ fontSize: 13, color: isDark ? '#F8FAFC' : '#0F172A', fontWeight: '700', marginBottom: 2 }}>
+                {currentUser?.displayName || 'Samet Sunman'}
+              </Text>
+              <Text style={{ fontSize: 12, color: isDark ? '#94A3B8' : '#64748B', marginBottom: 14 }}>
+                {currentUser?.email}
+              </Text>
 
-          <TouchableOpacity
-            style={[styles.primaryBtn, { backgroundColor: colors.gold }]}
-            onPress={() => handleUnlockWithPin()}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="lock-open" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-            <Text style={styles.primaryBtnText}>Admin Girişi Yap</Text>
-          </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.primaryBtn, { backgroundColor: '#6366F1', marginTop: 0 }]}
+                onPress={handleQuickUnlockAsnus}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                <Text style={styles.primaryBtnText}>Süper Admin Paneline Gir</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
-          <TouchableOpacity
-            style={[styles.quickBypassBtn, { borderColor: colors.border }]}
-            onPress={() => handleUnlockWithPin('1923')}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.quickBypassText, { color: colors.gold }]}>
-              ⚡ Demo Süper Admin Olarak Otomatik Aç (PIN: 1923)
-            </Text>
-          </TouchableOpacity>
+          {/* Auth Method Toggle Tabs */}
+          <View style={{
+            flexDirection: 'row',
+            width: '100%',
+            backgroundColor: isDark ? '#111827' : '#F1F5F9',
+            borderRadius: 12,
+            padding: 4,
+            marginBottom: 16,
+          }}>
+            <TouchableOpacity
+              style={{
+                flex: 1,
+                paddingVertical: 10,
+                alignItems: 'center',
+                borderRadius: 9,
+                backgroundColor: adminAuthMode === 'firebase' ? '#6366F1' : 'transparent',
+              }}
+              onPress={() => {
+                setAdminAuthMode('firebase');
+                setFirebaseError(null);
+              }}
+            >
+              <Text style={{
+                fontSize: 13,
+                fontWeight: '700',
+                color: adminAuthMode === 'firebase' ? '#FFFFFF' : isDark ? '#94A3B8' : '#64748B',
+              }}>
+                🔥 Firebase Girişi
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={{
+                flex: 1,
+                paddingVertical: 10,
+                alignItems: 'center',
+                borderRadius: 9,
+                backgroundColor: adminAuthMode === 'pin' ? '#6366F1' : 'transparent',
+              }}
+              onPress={() => {
+                setAdminAuthMode('pin');
+                setPinError(null);
+              }}
+            >
+              <Text style={{
+                fontSize: 13,
+                fontWeight: '700',
+                color: adminAuthMode === 'pin' ? '#FFFFFF' : isDark ? '#94A3B8' : '#64748B',
+              }}>
+                🔑 Master PIN (1923)
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Tab 1: Firebase Auth Form */}
+          {adminAuthMode === 'firebase' && (
+            <View style={{ width: '100%' }}>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: isDark ? '#94A3B8' : '#64748B', marginBottom: 6, textTransform: 'uppercase' }}>
+                Yönetici E-Posta
+              </Text>
+              <View style={[styles.pinInputContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <Ionicons name="mail-outline" size={18} color="#6366F1" style={{ marginRight: 10 }} />
+                <TextInput
+                  style={[styles.pinInput, { color: colors.text }]}
+                  placeholder="casska@asnus.com"
+                  placeholderTextColor={colors.textMuted}
+                  value={adminEmail}
+                  onChangeText={(t) => {
+                    setAdminEmail(t);
+                    setFirebaseError(null);
+                  }}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="email-address"
+                />
+              </View>
+
+              <Text style={{ fontSize: 12, fontWeight: '700', color: isDark ? '#94A3B8' : '#64748B', marginBottom: 6, marginTop: 10, textTransform: 'uppercase' }}>
+                Yönetici Şifresi
+              </Text>
+              <View style={[styles.pinInputContainer, { backgroundColor: colors.card, borderColor: firebaseError ? '#EF4444' : colors.border }]}>
+                <Ionicons name="lock-closed-outline" size={18} color="#6366F1" style={{ marginRight: 10 }} />
+                <TextInput
+                  style={[styles.pinInput, { color: colors.text }]}
+                  placeholder="••••••••••••"
+                  placeholderTextColor={colors.textMuted}
+                  value={adminPassword}
+                  onChangeText={(t) => {
+                    setAdminPassword(t);
+                    setFirebaseError(null);
+                  }}
+                  secureTextEntry
+                  onSubmitEditing={handleUnlockWithFirebase}
+                />
+              </View>
+
+              {firebaseError && (
+                <Text style={[styles.pinErrorText, { marginTop: 4 }]}>{firebaseError}</Text>
+              )}
+
+              <TouchableOpacity
+                style={[styles.primaryBtn, { backgroundColor: '#6366F1' }]}
+                onPress={handleUnlockWithFirebase}
+                disabled={isLoggingInFirebase}
+                activeOpacity={0.85}
+              >
+                {isLoggingInFirebase ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 8 }} />
+                ) : (
+                  <Ionicons name="log-in-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                )}
+                <Text style={styles.primaryBtnText}>
+                  {isLoggingInFirebase ? 'Doğrulanıyor...' : 'Firebase İle Giriş Yap'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Tab 2: Master PIN Form */}
+          {adminAuthMode === 'pin' && (
+            <View style={{ width: '100%' }}>
+              <View style={[styles.pinInputContainer, { backgroundColor: colors.card, borderColor: pinError ? '#EF4444' : colors.border }]}>
+                <Ionicons name="key-outline" size={20} color="#6366F1" style={{ marginRight: 10 }} />
+                <TextInput
+                  style={[styles.pinInput, { color: colors.text }]}
+                  placeholder="Yönetici PIN Kodunu Giriniz (1923)"
+                  placeholderTextColor={colors.textMuted}
+                  value={pinInput}
+                  onChangeText={(t) => {
+                    setPinInput(t);
+                    setPinError(null);
+                  }}
+                  secureTextEntry
+                  keyboardType="number-pad"
+                  maxLength={8}
+                  onSubmitEditing={() => handleUnlockWithPin()}
+                />
+              </View>
+
+              {pinError && <Text style={styles.pinErrorText}>{pinError}</Text>}
+
+              <TouchableOpacity
+                style={[styles.primaryBtn, { backgroundColor: '#6366F1' }]}
+                onPress={() => handleUnlockWithPin()}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="lock-open" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                <Text style={styles.primaryBtnText}>PIN İle Giriş Yap</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.quickBypassBtn, { borderColor: colors.border }]}
+                onPress={() => handleUnlockWithPin('1923')}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.quickBypassText, { color: '#6366F1' }]}>
+                  ⚡ Tek Tıkla Aç (PIN: 1923)
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           <TouchableOpacity
             style={styles.backLinkBtn}
@@ -547,7 +763,7 @@ export default function SuperAdminDashboardScreen() {
                 <View style={styles.kpiGrid}>
                   <View style={[styles.kpiCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                     <View style={[styles.kpiIconWrap, { backgroundColor: 'rgba(197, 160, 89, 0.15)' }]}>
-                      <Ionicons name="people" size={24} color="#C5A059" />
+                      <Ionicons name="people" size={24} color="#6366F1" />
                     </View>
                     <Text style={[styles.kpiValue, { color: colors.text }]}>{kpis?.totalUsers || 0}</Text>
                     <Text style={[styles.kpiLabel, { color: colors.textSecondary }]}>Kayıtlı Kullanıcı</Text>
@@ -658,7 +874,7 @@ export default function SuperAdminDashboardScreen() {
 
                     <View style={styles.moduleDistList}>
                       <View style={styles.moduleDistItem}>
-                        <View style={[styles.moduleColorDot, { backgroundColor: '#C5A059' }]} />
+                        <View style={[styles.moduleColorDot, { backgroundColor: '#EC4899' }]} />
                         <Text style={[styles.moduleDistName, { color: colors.text }]}>💍 Düğün & Etkinlik QR</Text>
                         <Text style={[styles.moduleDistCount, { color: colors.gold }]}>
                           {assets.filter((a) => a.moduleType === 'event').length} Varlık

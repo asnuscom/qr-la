@@ -134,6 +134,8 @@ export interface UserModel {
   displayName: string;
   photoURL?: string;
   isHost: boolean;
+  role?: 'superadmin' | 'moderator' | 'user';
+  isAdmin?: boolean;
   events: string[]; // List of event slugs owned by this user
   createdAt: string;
 }

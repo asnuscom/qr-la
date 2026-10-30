@@ -1,4 +1,10 @@
 import { appStorage } from './storage';
+import { db, auth } from './firebase';
+import { authService } from './authService';
+import { collection, getDocs, doc, setDoc, updateDoc, addDoc } from 'firebase/firestore';
+
+export const ADMIN_EMAILS = ['casska@asnus.com', 'casska@msn.com'];
+
 
 export type PlatformModuleKey = 'wedding' | 'vehicle' | 'pet' | 'vcard' | 'menu';
 
@@ -138,6 +144,17 @@ export const DEFAULT_MODULE_CONTROLS: Record<PlatformModuleKey, ModuleControlCon
 };
 
 const DEFAULT_USERS: AdminUser[] = [
+  {
+    id: 'usr-admin-asnus',
+    name: 'Samet Sunman',
+    email: 'casska@asnus.com',
+    role: 'superadmin',
+    status: 'active',
+    assetCount: 12,
+    totalSpent: 4950,
+    createdAt: '2026-09-01T10:00:00.000Z',
+    lastLogin: '2026-10-30T09:30:00.000Z',
+  },
   {
     id: 'usr-1',
     name: 'Samet Sunman',
@@ -464,6 +481,24 @@ class AdminService {
   // Auth / Lock State
   async checkAdminAuth(): Promise<boolean> {
     if (this.isUnlocked) return true;
+
+    // Check if user is currently authenticated in authService
+    try {
+      const currentUser = authService.getState().user;
+      if (currentUser && currentUser.email) {
+        const email = currentUser.email.trim().toLowerCase();
+        if (
+          ADMIN_EMAILS.includes(email) ||
+          currentUser.role === 'superadmin' ||
+          currentUser.isAdmin === true
+        ) {
+          this.isUnlocked = true;
+          await appStorage.setItem(STORAGE_KEY_ADMIN_AUTH, 'true');
+          return true;
+        }
+      }
+    } catch (_) {}
+
     const stored = await appStorage.getItem(STORAGE_KEY_ADMIN_AUTH);
     if (stored === 'true') {
       this.isUnlocked = true;
@@ -472,10 +507,35 @@ class AdminService {
     return false;
   }
 
+  async loginWithFirebase(email: string, pass: string): Promise<{ success: boolean; user: any }> {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPass = pass.trim();
+
+    try {
+      const user = await authService.signIn(cleanEmail, cleanPass);
+      const isSuper =
+        ADMIN_EMAILS.includes(cleanEmail) ||
+        user.role === 'superadmin' ||
+        user.isAdmin === true;
+
+      if (!isSuper) {
+        throw new Error('Bu hesap ("' + cleanEmail + '") Süper Admin yetkisine sahip değildir.');
+      }
+
+      this.isUnlocked = true;
+      await appStorage.setItem(STORAGE_KEY_ADMIN_AUTH, 'true');
+      await this.addLog('info', 'Yönetici Girişi (Firebase)', `Süper Admin hesabı (${cleanEmail}) Firebase ile oturum açtı.`);
+      return { success: true, user };
+    } catch (err: any) {
+      throw err;
+    }
+  }
+
   async verifyPin(pin: string): Promise<boolean> {
     if (pin === this.MASTER_PIN) {
       this.isUnlocked = true;
       await appStorage.setItem(STORAGE_KEY_ADMIN_AUTH, 'true');
+      await this.addLog('info', 'Yönetici Girişi (Master PIN)', 'Süper Admin paneli Master PIN (1923) ile açıldı.');
       return true;
     }
     return false;
@@ -523,21 +583,91 @@ class AdminService {
     return updated;
   }
 
-  // Users
+  // Users with Firebase Integration
   async getUsers(): Promise<AdminUser[]> {
+    let usersList: AdminUser[] = [...DEFAULT_USERS];
+
+    // Load from local cache first if available
     const raw = await appStorage.getItem(STORAGE_KEY_ADMIN_USERS);
-    if (!raw) return DEFAULT_USERS;
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return DEFAULT_USERS;
+    if (raw) {
+      try {
+        const cached: AdminUser[] = JSON.parse(raw);
+        cached.forEach((cu) => {
+          const idx = usersList.findIndex((u) => u.email.toLowerCase() === cu.email.toLowerCase());
+          if (idx >= 0) usersList[idx] = { ...usersList[idx], ...cu };
+          else usersList.push(cu);
+        });
+      } catch (_) {}
     }
+
+    // Connect to Firestore collection 'users'
+    if (db) {
+      try {
+        const snap = await getDocs(collection(db, 'users'));
+        if (!snap.empty) {
+          snap.docs.forEach((d) => {
+            const data = d.data();
+            const email = (data.email || '').toLowerCase().trim();
+            if (!email) return;
+
+            const isSuper =
+              ADMIN_EMAILS.includes(email) ||
+              data.role === 'superadmin' ||
+              data.isAdmin === true;
+
+            const adminItem: AdminUser = {
+              id: d.id,
+              name: data.displayName || email.split('@')[0] || 'Kullanıcı',
+              email: data.email || email,
+              role: isSuper ? 'superadmin' : (data.role || 'user'),
+              status: data.status || 'active',
+              assetCount: (data.events?.length || 0),
+              totalSpent: data.totalSpent || (isSuper ? 4950 : 0),
+              createdAt: data.createdAt || new Date().toISOString(),
+              lastLogin: data.lastLogin || data.createdAt || new Date().toISOString(),
+            };
+
+            const idx = usersList.findIndex((u) => u.email.toLowerCase() === email);
+            if (idx >= 0) {
+              usersList[idx] = { ...usersList[idx], ...adminItem };
+            } else {
+              usersList.push(adminItem);
+            }
+          });
+        }
+      } catch (err) {
+        console.warn('Firestore users fetch warning:', err);
+      }
+    }
+
+    // Guarantee casska@asnus.com is at the top with superadmin permissions
+    const asnusIdx = usersList.findIndex((u) => u.email.toLowerCase() === 'casska@asnus.com');
+    if (asnusIdx >= 0) {
+      const [asnusUser] = usersList.splice(asnusIdx, 1);
+      asnusUser.role = 'superadmin';
+      asnusUser.status = 'active';
+      usersList.unshift(asnusUser);
+    } else {
+      usersList.unshift(DEFAULT_USERS[0]);
+    }
+
+    await appStorage.setItem(STORAGE_KEY_ADMIN_USERS, JSON.stringify(usersList));
+    return usersList;
   }
 
   async updateUserStatus(userId: string, newStatus: AdminUser['status']): Promise<AdminUser[]> {
     const users = await this.getUsers();
     const updated = users.map((u) => (u.id === userId ? { ...u, status: newStatus } : u));
     await appStorage.setItem(STORAGE_KEY_ADMIN_USERS, JSON.stringify(updated));
+
+    if (db) {
+      try {
+        await updateDoc(doc(db, 'users', userId), { status: newStatus });
+        await this.addLog('warn', 'Kullanıcı Durumu Değiştirildi', `Kullanıcı (${userId}) durumu "${newStatus}" yapıldı.`);
+      } catch (err) {
+        console.warn('Firestore user status update warning:', err);
+      }
+    }
     return updated;
   }
 
@@ -545,6 +675,18 @@ class AdminService {
     const users = await this.getUsers();
     const updated = users.map((u) => (u.id === userId ? { ...u, role: newRole } : u));
     await appStorage.setItem(STORAGE_KEY_ADMIN_USERS, JSON.stringify(updated));
+
+    if (db) {
+      try {
+        await updateDoc(doc(db, 'users', userId), {
+          role: newRole,
+          isAdmin: newRole === 'superadmin',
+        });
+        await this.addLog('warn', 'Kullanıcı Yetkisi Değiştirildi', `Kullanıcı (${userId}) yetkisi "${newRole}" olarak güncellendi.`);
+      } catch (err) {
+        console.warn('Firestore user role update warning:', err);
+      }
+    }
     return updated;
   }
 
@@ -634,9 +776,38 @@ class AdminService {
     return updated;
   }
 
-  // Logs
+  // Logs with Firestore
   async getLogs(): Promise<SystemLog[]> {
+    if (db) {
+      try {
+        const snap = await getDocs(collection(db, 'admin_logs'));
+        if (!snap.empty) {
+          const list: SystemLog[] = snap.docs.map((d) => ({
+            id: d.id,
+            ...(d.data() as any),
+          }));
+          return [...list, ...DEFAULT_LOGS].slice(0, 30);
+        }
+      } catch (err) {
+        console.warn('Firestore logs fetch warning:', err);
+      }
+    }
     return DEFAULT_LOGS;
+  }
+
+  async addLog(level: SystemLog['level'], title: string, details: string): Promise<void> {
+    const newLog: SystemLog = {
+      id: 'log-' + Date.now(),
+      level,
+      title,
+      details,
+      timestamp: new Date().toLocaleString('tr-TR'),
+    };
+    if (db) {
+      try {
+        await addDoc(collection(db, 'admin_logs'), newLog);
+      } catch (_) {}
+    }
   }
 
   // Platform Metrics summary
