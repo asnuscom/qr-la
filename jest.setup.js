@@ -1,3 +1,23 @@
+// Mock window methods in test env
+if (typeof window !== 'undefined') {
+  window.addEventListener = window.addEventListener || jest.fn();
+  window.removeEventListener = window.removeEventListener || jest.fn();
+  window.dispatchEvent = window.dispatchEvent || jest.fn();
+}
+
+// Mock qrcode
+jest.mock('qrcode', () => ({
+  toDataURL: jest.fn(() => Promise.resolve('data:image/png;base64,mockqr')),
+  toString: jest.fn(() => Promise.resolve('<svg>mock</svg>')),
+  create: jest.fn(() => ({
+    modules: {
+      size: 21,
+      data: new Uint8Array(21 * 21).fill(1),
+      get: (r, c) => true,
+    },
+  })),
+}));
+
 // Mock expo-router
 const mockRouter = {
   push: jest.fn(),

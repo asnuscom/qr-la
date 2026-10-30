@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
   Platform,
   Modal,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import Head from 'expo-router/head';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -224,8 +224,32 @@ export default function LandingScreen() {
     const unsub = adminService.subscribeModuleControls((controls) => {
       setModuleControls(controls);
     });
-    return () => unsub();
+
+    const handleCustomUpdate = (e: any) => {
+      if (e.detail) {
+        setModuleControls(e.detail);
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('qrla_module_controls_updated', handleCustomUpdate);
+    }
+
+    return () => {
+      unsub();
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('qrla_module_controls_updated', handleCustomUpdate);
+      }
+    };
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      adminService.getModuleControls().then((controls) => {
+        setModuleControls(controls);
+      });
+    }, [])
+  );
 
   // Filter visible modules
   const isModuleVisible = (key: PlatformModuleKey) => {

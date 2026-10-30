@@ -120,7 +120,7 @@ export default function QRStudioScreen() {
             (a) => a.liveUrl === params.url || `https://qr-la.com${a.liveUrl}` === params.url
           );
           if (matched) {
-            setSelectedAssetId(matched.id);
+            handleSelectAsset(matched);
           }
         } else if (userAssets.length > 0 && !selectedAssetId) {
           handleSelectAsset(userAssets[0]);

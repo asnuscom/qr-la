@@ -39,7 +39,23 @@ export default function MarketingNav({ activeModule = 'home', accentColor = BRAN
     const unsub = adminService.subscribeModuleControls((controls) => {
       setModuleControls(controls);
     });
-    return () => unsub();
+
+    const handleCustomUpdate = (e: any) => {
+      if (e.detail) {
+        setModuleControls(e.detail);
+      }
+    };
+
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+      window.addEventListener('qrla_module_controls_updated', handleCustomUpdate);
+    }
+
+    return () => {
+      unsub();
+      if (typeof window !== 'undefined' && typeof window.removeEventListener === 'function') {
+        window.removeEventListener('qrla_module_controls_updated', handleCustomUpdate);
+      }
+    };
   }, []);
 
   const navKeyMap: Record<string, PlatformModuleKey> = {

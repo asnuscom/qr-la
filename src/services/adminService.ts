@@ -409,6 +409,11 @@ class AdminService {
     }
 
     this.notifyModuleControls(updated);
+    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+      try {
+        window.dispatchEvent(new CustomEvent('qrla_module_controls_updated', { detail: updated }));
+      } catch (_) {}
+    }
     return updated;
   }
 

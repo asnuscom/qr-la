@@ -1831,11 +1831,78 @@ export default function SuperAdminDashboardScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* MODAL: Yeni Yönetici Yetkilendir */}
+      <Modal visible={addAdminModalOpen} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Yeni Yönetici Yetkilendir</Text>
+              <TouchableOpacity onPress={() => setAddAdminModalOpen(false)}>
+                <Ionicons name="close" size={22} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.modalInputLabel, { color: colors.textSecondary }]}>Yönetici E-Posta Adresi</Text>
+            <TextInput
+              style={[styles.modalInput, { backgroundColor: colors.bgSecondary, color: colors.text, borderColor: colors.border }]}
+              placeholder="Örn: yonetici@asnus.com"
+              placeholderTextColor={colors.textMuted}
+              value={newAdminEmail}
+              onChangeText={setNewAdminEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+
+            <Text style={[styles.modalInputLabel, { color: colors.textSecondary, marginTop: 12 }]}>Yönetici Rolü</Text>
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 6, marginBottom: 16 }}>
+              <TouchableOpacity
+                style={[
+                  styles.secondaryBtn,
+                  { flex: 1, paddingVertical: 10, borderColor: newAdminRole === 'superadmin' ? colors.gold : colors.border, backgroundColor: newAdminRole === 'superadmin' ? 'rgba(197, 160, 89, 0.15)' : colors.bgSecondary },
+                ]}
+                onPress={() => setNewAdminRole('superadmin')}
+              >
+                <Text style={{ textAlign: 'center', fontWeight: '700', color: newAdminRole === 'superadmin' ? colors.gold : colors.textSecondary }}>
+                  👑 Süper Admin
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.secondaryBtn,
+                  { flex: 1, paddingVertical: 10, borderColor: newAdminRole === 'moderator' ? '#0284C7' : colors.border, backgroundColor: newAdminRole === 'moderator' ? 'rgba(2, 132, 199, 0.15)' : colors.bgSecondary },
+                ]}
+                onPress={() => setNewAdminRole('moderator')}
+              >
+                <Text style={{ textAlign: 'center', fontWeight: '700', color: newAdminRole === 'moderator' ? '#0284C7' : colors.textSecondary }}>
+                  🛡️ Moderatör
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.secondaryBtn, { borderColor: colors.border }]}
+                onPress={() => setAddAdminModalOpen(false)}
+              >
+                <Text style={{ color: colors.textSecondary }}>Vazgeç</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.primaryBtn, { backgroundColor: '#6366F1' }]}
+                onPress={handleAddAdminByEmail}
+              >
+                <Text style={styles.primaryBtnText}>Yetkilendir ve Kaydet</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
-function getStyles(isDark: boolean, colors: ThemeColors, isMobile: boolean, isWide: boolean) {
+function getStyles(isDark: boolean, colors: ThemeColors, isMobile: boolean, _isWide: boolean) {
   return StyleSheet.create({
     container: {
       flex: 1,
