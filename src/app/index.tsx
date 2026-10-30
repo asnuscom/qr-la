@@ -8,14 +8,12 @@ import {
   Image,
   useWindowDimensions,
   Platform,
-  TextInput,
   Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import QRCode from 'qrcode';
 import { DEMO_HOST_UID } from '@/services/mockData';
 import { authService } from '@/services/authService';
 import { UserModel } from '@/types';
@@ -200,22 +198,7 @@ const MODULES: Record<ModuleKey, ModuleConfig> = {
 const BRAND_PRIMARY = '#6366F1';
 const BRAND_SECONDARY = '#06B6D4';
 
-const QR_PALETTE = [
-  { name: 'Koyu Grafit', hex: '#0F172A' },
-  { name: 'Elektrik İndigo', hex: '#6366F1' },
-  { name: 'Okyanus Mavisi', hex: '#0284C7' },
-  { name: 'Pati Zümrüdü', hex: '#10B981' },
-  { name: 'Canlı Mercan', hex: '#F43F5E' },
-];
 
-const PRESETS = [
-  { label: '🔗 Web / Link', value: 'https://qr-la.com', color: '#0F172A' },
-  { label: '🚗 Araç Park Tagı', value: 'https://qr-la.com/34abc123', color: '#0284C7' },
-  { label: '🐾 GPS Pati Künyesi', value: 'https://qr-la.com/p/duman', color: '#10B981' },
-  { label: '💼 Dijital vCard', value: 'https://qr-la.com/samet-sunman', color: '#6366F1' },
-  { label: '🍽️ Restoran Menü', value: 'https://qr-la.com/m/lucca-bistrot', color: '#F59E0B' },
-  { label: '📸 Etkinlik Albümü', value: 'https://qr-la.com/samet-ve-sule', color: '#EC4899' },
-];
 
 export default function LandingScreen() {
   const router = useRouter();
@@ -228,13 +211,6 @@ export default function LandingScreen() {
   const [activeModule, setActiveModule] = useState<ModuleKey>('vehicle');
   const [currentUser, setCurrentUser] = useState<UserModel | null>(authService.getState().user);
   const [moduleControls, setModuleControls] = useState<Record<PlatformModuleKey, ModuleControlConfig>>(DEFAULT_MODULE_CONTROLS);
-
-  // Live Quick QR Generator State
-  const [qrInputText, setQrInputText] = useState('https://qr-la.com');
-  const [selectedQrColor, setSelectedQrColor] = useState(BRAND_PRIMARY);
-  const [liveQrDataUrl, setLiveQrDataUrl] = useState('');
-  const [isQrGenerating, setIsQrGenerating] = useState(false);
-  const [copiedLink, setCopiedLink] = useState(false);
 
   // FAQ Accordion State
   const [expandedFaq, setExpandedFaq] = useState<number | null>(0);
@@ -273,56 +249,6 @@ export default function LandingScreen() {
     });
     return () => unsub();
   }, []);
-
-  // Generate live QR code
-  useEffect(() => {
-    let isCancelled = false;
-    const generate = async () => {
-      try {
-        setIsQrGenerating(true);
-        const url = await QRCode.toDataURL(qrInputText || 'https://qr-la.com', {
-          width: 600,
-          margin: 1,
-          errorCorrectionLevel: 'M',
-          color: {
-            dark: selectedQrColor,
-            light: isDark ? '#111827' : '#FFFFFF',
-          },
-        });
-        if (!isCancelled) {
-          setLiveQrDataUrl(url);
-          setIsQrGenerating(false);
-        }
-      } catch (e) {
-        console.error('Error generating quick QR:', e);
-        if (!isCancelled) setIsQrGenerating(false);
-      }
-    };
-    generate();
-    return () => {
-      isCancelled = true;
-    };
-  }, [qrInputText, selectedQrColor, isDark]);
-
-  const handleDownloadQr = () => {
-    if (!liveQrDataUrl) return;
-    if (Platform.OS === 'web' && typeof document !== 'undefined') {
-      const link = document.createElement('a');
-      link.download = 'qr-la-karekod.png';
-      link.href = liveQrDataUrl;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-  };
-
-  const handleCopyLink = () => {
-    if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(qrInputText);
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2000);
-    }
-  };
 
   const isUserLoggedIn = Boolean(currentUser && currentUser.uid !== DEMO_HOST_UID);
   const selectedConfig = MODULES[activeModule] || MODULES.vehicle;
@@ -424,12 +350,12 @@ export default function LandingScreen() {
                   styles.heroSecondaryBtn,
                   { borderColor: isDark ? '#334155' : '#CBD5E1', backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : '#FFFFFF' },
                 ]}
-                onPress={() => setIsDemoModalOpen(true)}
+                onPress={() => router.push('/panel/qr-studio' as any)}
                 activeOpacity={0.8}
               >
-                <Ionicons name="layers-outline" size={19} color={BRAND_PRIMARY} />
+                <Ionicons name="sparkles" size={17} color={BRAND_PRIMARY} />
                 <Text style={[styles.heroSecondaryBtnText, { color: isDark ? '#F8FAFC' : '#0F172A' }]}>
-                  Canlı Demoyu İncele
+                  Hızlı QR Oluştur
                 </Text>
               </TouchableOpacity>
             </View>
@@ -458,144 +384,7 @@ export default function LandingScreen() {
             </View>
           </View>
 
-          {/* ========================================================================= */}
-          {/* HERO LIVE INTERACTIVE QUICK QR GENERATOR WIDGET */}
-          {/* ========================================================================= */}
-          <View style={[styles.quickGeneratorCard, { backgroundColor: isDark ? '#111827' : '#FFFFFF', borderColor: isDark ? '#1F2937' : '#E2E8F0' }]}>
-            <View style={styles.quickGenHeader}>
-              <View style={styles.quickGenTitleRow}>
-                <View style={[styles.quickGenIconBadge, { backgroundColor: 'rgba(99, 102, 241, 0.15)' }]}>
-                  <Ionicons name="sparkles" size={16} color={BRAND_PRIMARY} />
-                </View>
-                <View>
-                  <Text style={[styles.quickGenTitle, { color: isDark ? '#F8FAFC' : '#0F172A' }]}>Hızlı Karekod Üretici</Text>
-                  <Text style={[styles.quickGenSub, { color: isDark ? '#94A3B8' : '#64748B' }]}>Anında oluştur, renk seç ve yüksek çözünürlüklü indir</Text>
-                </View>
-              </View>
-              <View style={styles.instantFreePill}>
-                <Text style={styles.instantFreePillText}>ÜCRETSİZ &amp; ANINDA</Text>
-              </View>
-            </View>
-
-            <View style={[styles.quickGenBody, !isDesktop && styles.quickGenBodyStacked]}>
-              {/* Left Controls */}
-              <View style={styles.quickGenLeft}>
-                <Text style={[styles.inputLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>Hazır Şablon Seç:</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.presetsScrollView}>
-                  {PRESETS.map((p, idx) => (
-                    <TouchableOpacity
-                      key={idx}
-                      style={[
-                        styles.presetChip,
-                        {
-                          backgroundColor: qrInputText === p.value ? p.color : isDark ? '#1E293B' : '#F1F5F9',
-                          borderColor: qrInputText === p.value ? p.color : isDark ? '#334155' : '#CBD5E1',
-                        },
-                      ]}
-                      onPress={() => {
-                        setQrInputText(p.value);
-                        setSelectedQrColor(p.color);
-                      }}
-                    >
-                      <Text
-                        style={[
-                          styles.presetChipText,
-                          { color: qrInputText === p.value ? '#FFF' : isDark ? '#F1F5F9' : '#0F172A' },
-                        ]}
-                      >
-                        {p.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-
-                <Text style={[styles.inputLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>Hedef Web Adresi veya Metin:</Text>
-                <View style={[styles.inputBox, { backgroundColor: isDark ? '#090D16' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
-                  <Ionicons name="link-outline" size={18} color="#94A3B8" />
-                  <TextInput
-                    style={[styles.textInput, { color: isDark ? '#F8FAFC' : '#0F172A' }]}
-                    value={qrInputText}
-                    onChangeText={setQrInputText}
-                    placeholder="https://..."
-                    placeholderTextColor="#64748B"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                  />
-                  {qrInputText.length > 0 && (
-                    <TouchableOpacity onPress={() => setQrInputText('')} style={styles.clearBtn}>
-                      <Ionicons name="close-circle" size={16} color="#94A3B8" />
-                    </TouchableOpacity>
-                  )}
-                </View>
-
-                {/* Color Palette Selector */}
-                <Text style={[styles.inputLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>Karekod Rengi:</Text>
-                <View style={styles.paletteRow}>
-                  {QR_PALETTE.map((pal) => {
-                    const isSelected = selectedQrColor === pal.hex;
-                    return (
-                      <TouchableOpacity
-                        key={pal.hex}
-                        style={[
-                          styles.colorCircle,
-                          { backgroundColor: pal.hex },
-                          isSelected && styles.colorCircleSelected,
-                        ]}
-                        onPress={() => setSelectedQrColor(pal.hex)}
-                      >
-                        {isSelected && <Ionicons name="checkmark" size={13} color="#FFF" />}
-                      </TouchableOpacity>
-                    );
-                  })}
-                  <Text style={[styles.colorNameLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>
-                    {QR_PALETTE.find((c) => c.hex === selectedQrColor)?.name}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Right QR Display Box */}
-              <View style={styles.quickGenRight}>
-                <View style={[styles.qrPreviewBox, { backgroundColor: isDark ? '#090D16' : '#F8FAFC', borderColor: isDark ? '#1F2937' : '#E2E8F0' }]}>
-                  {liveQrDataUrl ? (
-                    <Image
-                      source={{ uri: liveQrDataUrl }}
-                      style={styles.qrImage}
-                      resizeMode="contain"
-                    />
-                  ) : (
-                    <View style={styles.qrLoadingBox}>
-                      <Ionicons name="qr-code-outline" size={48} color="#94A3B8" />
-                      <Text style={styles.qrLoadingText}>Karekod Oluşturuluyor...</Text>
-                    </View>
-                  )}
-
-                  <View style={[styles.qrLiveBadge, { backgroundColor: isDark ? '#1E293B' : '#0F172A' }]}>
-                    <View style={[styles.qrLiveDot, { backgroundColor: selectedQrColor }]} />
-                    <Text style={styles.qrLiveBadgeText}>Canlı Önizleme</Text>
-                  </View>
-                </View>
-
-                {/* Action Buttons */}
-                <View style={styles.qrActionBtnRow}>
-                  <TouchableOpacity style={[styles.qrDownloadBtn, { backgroundColor: BRAND_PRIMARY }]} onPress={handleDownloadQr}>
-                    <Ionicons name="download-outline" size={16} color="#FFF" />
-                    <Text style={styles.qrDownloadBtnText}>PNG İndir</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[styles.qrCopyBtn, { borderColor: isDark ? '#334155' : '#CBD5E1' }]}
-                    onPress={handleCopyLink}
-                  >
-                    <Ionicons name={copiedLink ? 'checkmark' : 'copy-outline'} size={15} color={copiedLink ? '#10B981' : isDark ? '#F8FAFC' : '#0F172A'} />
-                    <Text style={[styles.qrCopyBtnText, { color: copiedLink ? '#10B981' : isDark ? '#F8FAFC' : '#0F172A' }]}>
-                      {copiedLink ? 'Kopyalandı' : 'Linki Kopyala'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
           </View>
-        </View>
 
         {/* ========================================================================= */}
         {/* LINEAR STYLE BENTO GRID (5 BALANCED, EQUAL MODULE CARDS) */}
@@ -1319,7 +1108,25 @@ export default function LandingScreen() {
                 <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
               </TouchableOpacity>
 
-              {/* Etkinlik */}
+                            {/* Hızlı QR Stüdyo */}
+              <TouchableOpacity
+                style={[styles.modalItemCard, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.1)' : '#F5F3FF', borderColor: 'rgba(139, 92, 246, 0.3)' }]}
+                onPress={() => {
+                  setIsCreateModalOpen(false);
+                  router.push('/panel/qr-studio' as any);
+                }}
+              >
+                <View style={[styles.modalItemIconWrap, { backgroundColor: '#8B5CF6' }]}>
+                  <Ionicons name="sparkles" size={22} color="#FFFFFF" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.modalItemTitle, { color: '#8B5CF6' }]}>✨ Hızlı QR Kod Oluşturucu</Text>
+                  <Text style={[styles.modalItemDesc, { color: isDark ? '#94A3B8' : '#64748B' }]}>Vektörel SVG & HD PNG çıktısı, özel renk ve logo stüdyosu</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#8B5CF6" />
+              </TouchableOpacity>
+
+{/* Etkinlik */}
               <TouchableOpacity
                 style={[styles.modalItemCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
                 onPress={() => {
@@ -1728,218 +1535,6 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   heroStatText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-
-  /* Hero Live Quick Generator Card */
-  quickGeneratorCard: {
-    borderRadius: 22,
-    borderWidth: 1,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.12,
-    shadowRadius: 28,
-  },
-  quickGenHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
-    paddingBottom: 16,
-  },
-  quickGenTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  quickGenIconBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  quickGenTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  quickGenSub: {
-    fontSize: 13,
-    marginTop: 2,
-  },
-  instantFreePill: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.3)',
-  },
-  instantFreePillText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#10B981',
-  },
-  quickGenBody: {
-    flexDirection: 'row',
-    gap: 28,
-  },
-  quickGenBodyStacked: {
-    flexDirection: 'column',
-  },
-  quickGenLeft: {
-    flex: 1.3,
-  },
-  inputLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    marginBottom: 8,
-    marginTop: 10,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  presetsScrollView: {
-    marginBottom: 14,
-  },
-  presetChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginRight: 8,
-  },
-  presetChipText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  inputBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginBottom: 14,
-  },
-  textInput: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '500',
-    outlineStyle: 'none' as any,
-  },
-  clearBtn: {
-    padding: 4,
-  },
-  paletteRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginTop: 4,
-  },
-  colorCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  colorCircleSelected: {
-    borderWidth: 2,
-    borderColor: '#FFF',
-  },
-  colorNameLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    marginLeft: 6,
-  },
-  quickGenRight: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  qrPreviewBox: {
-    width: 220,
-    height: 220,
-    borderRadius: 18,
-    borderWidth: 1,
-    padding: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-    marginBottom: 14,
-  },
-  qrImage: {
-    width: '100%',
-    height: '100%',
-  },
-  qrLoadingBox: {
-    alignItems: 'center',
-    gap: 8,
-  },
-  qrLoadingText: {
-    fontSize: 12,
-    color: '#94A3B8',
-  },
-  qrLiveBadge: {
-    position: 'absolute',
-    bottom: -10,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  qrLiveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  qrLiveBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#FFF',
-  },
-  qrActionBtnRow: {
-    flexDirection: 'row',
-    gap: 10,
-    width: '100%',
-    maxWidth: 240,
-  },
-  qrDownloadBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  qrDownloadBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#FFF',
-  },
-  qrCopyBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    borderWidth: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  qrCopyBtnText: {
     fontSize: 13,
     fontWeight: '600',
   },

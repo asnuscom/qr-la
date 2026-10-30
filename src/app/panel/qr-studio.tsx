@@ -255,11 +255,11 @@ export default function QRStudioScreen() {
         <View style={styles.topBarLeft}>
           <TouchableOpacity
             style={styles.backBtn}
-            onPress={() => router.push('/panel' as any)}
+            onPress={() => router.canGoBack() ? router.back() : router.push('/' as any)}
             activeOpacity={0.8}
           >
             <Ionicons name="arrow-back" size={20} color={isDark ? '#FFFFFF' : colors.text} />
-            <Text style={styles.backBtnText}>Panele Dön</Text>
+            <Text style={styles.backBtnText}>Geri Dön</Text>
           </TouchableOpacity>
 
           <View style={styles.titleGroup}>

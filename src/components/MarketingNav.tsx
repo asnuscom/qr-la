@@ -338,7 +338,35 @@ export default function MarketingNav({ activeModule = 'home', accentColor = BRAN
                 <Ionicons name="open-outline" size={18} color="#EC4899" />
               </TouchableOpacity>
 
-              {/* Yönetim Paneli */}
+                            {/* QR Kod Tasarım Stüdyosu */}
+              <TouchableOpacity
+                style={[
+                  styles.modalItemCard,
+                  {
+                    backgroundColor: isDark ? 'rgba(139, 92, 246, 0.1)' : '#F5F3FF',
+                    borderColor: 'rgba(139, 92, 246, 0.3)',
+                  },
+                ]}
+                onPress={() => {
+                  setIsDemoModalOpen(false);
+                  router.push('/panel/qr-studio' as any);
+                }}
+              >
+                <View style={[styles.modalItemIconWrap, { backgroundColor: '#8B5CF6' }]}>
+                  <Ionicons name="color-palette" size={22} color="#FFFFFF" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.modalItemTitle, { color: '#8B5CF6' }]}>
+                    ✨ Hızlı QR Kod Tasarım Stüdyosu
+                  </Text>
+                  <Text style={[styles.modalItemDesc, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+                    Vektörel SVG, HD PNG, özel renk, nokta & çerçeve stüdyosu
+                  </Text>
+                </View>
+                <Ionicons name="arrow-forward" size={18} color="#8B5CF6" />
+              </TouchableOpacity>
+
+{/* Yönetim Paneli */}
               <TouchableOpacity
                 style={[
                   styles.modalItemCard,
