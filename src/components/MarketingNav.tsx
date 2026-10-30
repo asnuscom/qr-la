@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { authService } from '@/services/authService';
+import { adminService, DEFAULT_MODULE_CONTROLS, PlatformModuleKey, ModuleControlConfig } from '@/services/adminService';
 import { useTheme } from '@/context/ThemeContext';
 import ThemeToggleBtn from '@/components/ThemeToggleBtn';
 
@@ -32,6 +33,34 @@ export default function MarketingNav({ activeModule = 'home', accentColor = BRAN
   const { isDark, colors } = useTheme();
 
   const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
+  const [moduleControls, setModuleControls] = useState<Record<PlatformModuleKey, ModuleControlConfig>>(DEFAULT_MODULE_CONTROLS);
+
+  useEffect(() => {
+    const unsub = adminService.subscribeModuleControls((controls) => {
+      setModuleControls(controls);
+    });
+    return () => unsub();
+  }, []);
+
+  const navKeyMap: Record<string, PlatformModuleKey> = {
+    otomobil: 'vehicle',
+    pati: 'pet',
+    kartvizit: 'vcard',
+    menu: 'menu',
+    dugun: 'wedding',
+  };
+
+  const isModuleVisible = (key: PlatformModuleKey) => {
+    const ctrl = moduleControls[key];
+    if (!ctrl) return true;
+    return ctrl.isEnabled && !ctrl.isHiddenOnHome;
+  };
+
+  const visibleNavLinks = MODULE_NAV_LINKS.filter((item) => {
+    const modKey = navKeyMap[item.id];
+    if (!modKey) return true;
+    return isModuleVisible(modKey);
+  });
 
   return (
     <>
@@ -63,7 +92,7 @@ export default function MarketingNav({ activeModule = 'home', accentColor = BRAN
           {/* Orta: Modül Linkleri (Masaüstü) */}
           {!isMobile && (
             <View style={styles.navLinksRow}>
-              {MODULE_NAV_LINKS.map((mod) => {
+              {visibleNavLinks.map((mod) => {
                 const isActive = activeModule === mod.id;
                 return (
                   <TouchableOpacity
@@ -145,7 +174,7 @@ export default function MarketingNav({ activeModule = 'home', accentColor = BRAN
         {/* Mobil Modül Kaydırma Çubuğu */}
         {isMobile && (
           <View style={styles.mobileModuleScrollContainer}>
-            {MODULE_NAV_LINKS.map((mod) => {
+            {visibleNavLinks.map((mod) => {
               const isActive = activeModule === mod.id;
               return (
                 <TouchableOpacity

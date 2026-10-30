@@ -228,6 +228,12 @@ export default function LandingScreen() {
   }, []);
 
   // Filter visible modules
+  const isModuleVisible = (key: PlatformModuleKey) => {
+    const ctrl = moduleControls[key];
+    if (!ctrl) return true;
+    return ctrl.isEnabled && !ctrl.isHiddenOnHome;
+  };
+
   const visibleModules = useMemo(() => {
     return Object.values(MODULES).filter((mod) => {
       const ctrl = moduleControls[mod.key];
@@ -405,6 +411,7 @@ export default function LandingScreen() {
           {/* Bento Grid: 2 Top + 3 Bottom Equal High-Tech Cards */}
           <View style={styles.bentoContainer}>
             {/* ==================== BENTO CARD 1: ARAÇ & PARK TAGI ==================== */}
+            {isModuleVisible('vehicle') && (
             <View style={[styles.bentoCard, styles.bentoCardHalf, { backgroundColor: isDark ? '#111827' : '#FFFFFF', borderColor: isDark ? '#1E293B' : '#E2E8F0' }]}>
               <View style={styles.bentoCardInner}>
                 <View style={styles.bentoCardHeader}>
@@ -457,13 +464,13 @@ export default function LandingScreen() {
                     <Text style={styles.bentoPrimaryActionBtnText}>Araç Tagını İncele</Text>
                     <Ionicons name="arrow-forward" size={14} color="#FFF" />
                   </TouchableOpacity>
-
-
                 </View>
               </View>
             </View>
+            )}
 
             {/* ==================== BENTO CARD 2: PETGURU GPS PATİ KÜNYESİ ==================== */}
+            {isModuleVisible('pet') && (
             <View style={[styles.bentoCard, styles.bentoCardHalf, { backgroundColor: isDark ? '#111827' : '#FFFFFF', borderColor: isDark ? '#1E293B' : '#E2E8F0' }]}>
               <View style={styles.bentoCardInner}>
                 <View style={styles.bentoCardHeader}>
@@ -515,13 +522,13 @@ export default function LandingScreen() {
                     <Text style={styles.bentoPrimaryActionBtnText}>Pati Künyesini İncele</Text>
                     <Ionicons name="arrow-forward" size={14} color="#FFF" />
                   </TouchableOpacity>
-
-
                 </View>
               </View>
             </View>
+            )}
 
             {/* ==================== BENTO CARD 3: DİJİTAL KARTVİZİT (NFC) ==================== */}
+            {isModuleVisible('vcard') && (
             <View style={[styles.bentoCard, styles.bentoCardThird, { backgroundColor: isDark ? '#111827' : '#FFFFFF', borderColor: isDark ? '#1E293B' : '#E2E8F0' }]}>
               <View style={styles.bentoCardInner}>
                 <View style={styles.bentoCardHeader}>
@@ -563,8 +570,10 @@ export default function LandingScreen() {
                 </TouchableOpacity>
               </View>
             </View>
+            )}
 
             {/* ==================== BENTO CARD 4: RESTORAN QR MENÜ ==================== */}
+            {isModuleVisible('menu') && (
             <View style={[styles.bentoCard, styles.bentoCardThird, { backgroundColor: isDark ? '#111827' : '#FFFFFF', borderColor: isDark ? '#1E293B' : '#E2E8F0' }]}>
               <View style={styles.bentoCardInner}>
                 <View style={styles.bentoCardHeader}>
@@ -606,8 +615,10 @@ export default function LandingScreen() {
                 </TouchableOpacity>
               </View>
             </View>
+            )}
 
             {/* ==================== BENTO CARD 5: ETKİNLİK & DAVET ALBÜMÜ ==================== */}
+            {isModuleVisible('wedding') && (
             <View style={[styles.bentoCard, styles.bentoCardThird, { backgroundColor: isDark ? '#111827' : '#FFFFFF', borderColor: isDark ? '#1E293B' : '#E2E8F0' }]}>
               <View style={styles.bentoCardInner}>
                 <View style={styles.bentoCardHeader}>
@@ -649,6 +660,7 @@ export default function LandingScreen() {
                 </TouchableOpacity>
               </View>
             </View>
+            )}
           </View>
         </View>
 
@@ -791,6 +803,7 @@ export default function LandingScreen() {
           </View>
 
           <View style={[styles.phygitalGrid, isDesktop ? styles.phygitalGridDesktop : styles.phygitalGridMobile]}>
+            {isModuleVisible('vehicle') && (
             <View style={styles.phygitalCard}>
               <View style={[styles.phygitalIconWrap, { backgroundColor: 'rgba(2, 132, 199, 0.15)' }]}>
                 <Ionicons name="car-outline" size={26} color="#38BDF8" />
@@ -803,7 +816,9 @@ export default function LandingScreen() {
                 <Text style={styles.phygitalBadgeText}>🚗 Araç &amp; Motosiklet</Text>
               </View>
             </View>
+            )}
 
+            {isModuleVisible('pet') && (
             <View style={styles.phygitalCard}>
               <View style={[styles.phygitalIconWrap, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
                 <Ionicons name="paw-outline" size={26} color="#34D399" />
@@ -816,7 +831,9 @@ export default function LandingScreen() {
                 <Text style={styles.phygitalBadgeText}>🐾 Petguru x QR-la</Text>
               </View>
             </View>
+            )}
 
+            {isModuleVisible('vcard') && (
             <View style={styles.phygitalCard}>
               <View style={[styles.phygitalIconWrap, { backgroundColor: 'rgba(99, 102, 241, 0.15)' }]}>
                 <Ionicons name="card-outline" size={26} color="#818CF8" />
@@ -829,7 +846,9 @@ export default function LandingScreen() {
                 <Text style={styles.phygitalBadgeText}>💼 Dijital Kartvizit</Text>
               </View>
             </View>
+            )}
 
+            {isModuleVisible('menu') && (
             <View style={styles.phygitalCard}>
               <View style={[styles.phygitalIconWrap, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
                 <Ionicons name="restaurant-outline" size={26} color="#FBBF24" />
@@ -842,6 +861,7 @@ export default function LandingScreen() {
                 <Text style={styles.phygitalBadgeText}>🍽️ Menü &amp; Masa</Text>
               </View>
             </View>
+            )}
           </View>
         </View>
 
@@ -1037,6 +1057,7 @@ export default function LandingScreen() {
 
             <View style={styles.modalGrid}>
               {/* Araç */}
+              {isModuleVisible('vehicle') && (
               <TouchableOpacity
                 style={[styles.modalItemCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
                 onPress={() => {
@@ -1053,8 +1074,10 @@ export default function LandingScreen() {
                 </View>
                 <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
               </TouchableOpacity>
+              )}
 
               {/* Pati */}
+              {isModuleVisible('pet') && (
               <TouchableOpacity
                 style={[styles.modalItemCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
                 onPress={() => {
@@ -1071,8 +1094,10 @@ export default function LandingScreen() {
                 </View>
                 <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
               </TouchableOpacity>
+              )}
 
               {/* Kartvizit */}
+              {isModuleVisible('vcard') && (
               <TouchableOpacity
                 style={[styles.modalItemCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
                 onPress={() => {
@@ -1089,8 +1114,10 @@ export default function LandingScreen() {
                 </View>
                 <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
               </TouchableOpacity>
+              )}
 
               {/* Menü */}
+              {isModuleVisible('menu') && (
               <TouchableOpacity
                 style={[styles.modalItemCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
                 onPress={() => {
@@ -1107,6 +1134,7 @@ export default function LandingScreen() {
                 </View>
                 <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
               </TouchableOpacity>
+              )}
 
                             {/* Hızlı QR Stüdyo */}
               <TouchableOpacity
@@ -1127,6 +1155,7 @@ export default function LandingScreen() {
               </TouchableOpacity>
 
 {/* Etkinlik */}
+              {isModuleVisible('wedding') && (
               <TouchableOpacity
                 style={[styles.modalItemCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
                 onPress={() => {
@@ -1143,6 +1172,7 @@ export default function LandingScreen() {
                 </View>
                 <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
               </TouchableOpacity>
+              )}
             </View>
           </View>
         </View>
@@ -1175,6 +1205,7 @@ export default function LandingScreen() {
 
             <View style={styles.modalGrid}>
               {/* Araç Demosu */}
+              {isModuleVisible('vehicle') && (
               <TouchableOpacity
                 style={[styles.modalItemCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
                 onPress={() => {
@@ -1191,8 +1222,10 @@ export default function LandingScreen() {
                 </View>
                 <Ionicons name="open-outline" size={18} color="#0284C7" />
               </TouchableOpacity>
+              )}
 
               {/* Pati Demosu */}
+              {isModuleVisible('pet') && (
               <TouchableOpacity
                 style={[styles.modalItemCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
                 onPress={() => {
@@ -1209,8 +1242,10 @@ export default function LandingScreen() {
                 </View>
                 <Ionicons name="open-outline" size={18} color="#10B981" />
               </TouchableOpacity>
+              )}
 
               {/* Kartvizit Demosu */}
+              {isModuleVisible('vcard') && (
               <TouchableOpacity
                 style={[styles.modalItemCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
                 onPress={() => {
@@ -1227,8 +1262,10 @@ export default function LandingScreen() {
                 </View>
                 <Ionicons name="open-outline" size={18} color="#6366F1" />
               </TouchableOpacity>
+              )}
 
               {/* Menü Demosu */}
+              {isModuleVisible('menu') && (
               <TouchableOpacity
                 style={[styles.modalItemCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
                 onPress={() => {
@@ -1245,8 +1282,10 @@ export default function LandingScreen() {
                 </View>
                 <Ionicons name="open-outline" size={18} color="#F59E0B" />
               </TouchableOpacity>
+              )}
 
               {/* Etkinlik Demosu */}
+              {isModuleVisible('wedding') && (
               <TouchableOpacity
                 style={[styles.modalItemCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
                 onPress={() => {
@@ -1263,6 +1302,7 @@ export default function LandingScreen() {
                 </View>
                 <Ionicons name="open-outline" size={18} color="#EC4899" />
               </TouchableOpacity>
+              )}
 
               {/* Yönetim Paneli */}
               <TouchableOpacity

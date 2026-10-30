@@ -1,7 +1,7 @@
 import { appStorage } from './storage';
 import { db, auth } from './firebase';
 import { authService } from './authService';
-import { collection, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, addDoc, query, where } from 'firebase/firestore';
+import { collection, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, addDoc, query, where, onSnapshot } from 'firebase/firestore';
 
 export const ROOT_ADMIN_EMAILS = ['casska@asnus.com', 'casska@msn.com'];
 export let ADMIN_EMAILS = [...ROOT_ADMIN_EMAILS];
@@ -323,20 +323,58 @@ class AdminService {
     await appStorage.removeItem(STORAGE_KEY_ADMIN_AUTH);
   }
 
-  // --- Module Controls (Toggle Enable & Hide on Home) ---
+  // --- Module Controls (Toggle Enable & Hide on Home) with Live Firestore Sync ---
   subscribeModuleControls(listener: (controls: Record<PlatformModuleKey, ModuleControlConfig>) => void): () => void {
     this.moduleListeners.push(listener);
     this.getModuleControls().then((c) => listener(c));
+
+    let fsUnsub: (() => void) | null = null;
+    if (db) {
+      try {
+        fsUnsub = onSnapshot(doc(db, 'admin_settings', 'modules'), (snap) => {
+          if (snap.exists()) {
+            const data = snap.data() as Record<PlatformModuleKey, ModuleControlConfig>;
+            const merged = { ...DEFAULT_MODULE_CONTROLS, ...data };
+            appStorage.setItem(STORAGE_KEY_ADMIN_MODULE_CONTROLS, JSON.stringify(merged));
+            this.notifyModuleControls(merged);
+          }
+        });
+      } catch (err) {
+        console.warn('Firestore module subscription error:', err);
+      }
+    }
+
     return () => {
       this.moduleListeners = this.moduleListeners.filter((l) => l !== listener);
+      if (fsUnsub) {
+        try { fsUnsub(); } catch (_) {}
+      }
     };
   }
 
   private notifyModuleControls(controls: Record<PlatformModuleKey, ModuleControlConfig>) {
-    this.moduleListeners.forEach((l) => l(controls));
+    this.moduleListeners.forEach((l) => {
+      try { l(controls); } catch (_) {}
+    });
   }
 
   async getModuleControls(): Promise<Record<PlatformModuleKey, ModuleControlConfig>> {
+    // 1. Try Firestore
+    if (db) {
+      try {
+        const snap = await getDoc(doc(db, 'admin_settings', 'modules'));
+        if (snap.exists()) {
+          const data = snap.data() as Record<PlatformModuleKey, ModuleControlConfig>;
+          const merged = { ...DEFAULT_MODULE_CONTROLS, ...data };
+          await appStorage.setItem(STORAGE_KEY_ADMIN_MODULE_CONTROLS, JSON.stringify(merged));
+          return merged;
+        }
+      } catch (e) {
+        console.warn('Error reading module controls from Firestore:', e);
+      }
+    }
+
+    // 2. Fallback to local storage
     const raw = await appStorage.getItem(STORAGE_KEY_ADMIN_MODULE_CONTROLS);
     if (!raw) return DEFAULT_MODULE_CONTROLS;
     try {
@@ -356,6 +394,20 @@ class AdminService {
       [key]: { ...current[key], ...updates },
     };
     await appStorage.setItem(STORAGE_KEY_ADMIN_MODULE_CONTROLS, JSON.stringify(updated));
+
+    if (db) {
+      try {
+        await setDoc(doc(db, 'admin_settings', 'modules'), updated, { merge: true });
+        await this.addLog(
+          'info',
+          'Modül Ayarı Değiştirildi',
+          `${updated[key].label} modülü: ${updates.isEnabled !== undefined ? (updates.isEnabled ? 'Aktif' : 'Kapalı') : ''} ${updates.isHiddenOnHome !== undefined ? (updates.isHiddenOnHome ? 'Anasayfada Gizli' : 'Anasayfada Görünür') : ''}`
+        );
+      } catch (e) {
+        console.warn('Error saving module controls to Firestore:', e);
+      }
+    }
+
     this.notifyModuleControls(updated);
     return updated;
   }
