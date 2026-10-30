@@ -489,11 +489,11 @@ export const petService = {
 
     // QR-la bildirim merkezine de anlık bildirim düşür
     try {
-      notificationService.addNotification({
-        type: 'collar_scanned',
+      notificationService.triggerNotification({
+        category: 'pet',
         title: '🐾 Petguru Künye Taraması',
-        message: `${slug} etiketli Petguru künyesi okutuldu.${location ? ' Canlı GPS konumu alındı.' : ''}`,
-        link: `/p/${slug}`,
+        body: `${slug} etiketli Petguru künyesi okutuldu.${location ? ' Canlı GPS konumu alındı.' : ''}`,
+        url: `/p/${slug}`,
       });
     } catch (_e) {}
   },

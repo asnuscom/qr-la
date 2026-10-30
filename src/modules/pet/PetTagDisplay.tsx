@@ -805,6 +805,21 @@ const styles = StyleSheet.create({
     marginTop: 6,
     marginBottom: 4,
   },
+  claimNowBtn: {
+    marginTop: 10,
+    backgroundColor: '#F59E0B',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  claimNowBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
   unclaimedText: {
     color: '#FDE68A',
     fontSize: 12,

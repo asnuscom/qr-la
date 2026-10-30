@@ -59,7 +59,7 @@ export default function LoginScreen() {
       }
     });
     return () => unsub();
-  }, [router]);
+  }, []);
 
   // Handle Display Name Change -> Auto-fill slug if not manually altered
   const handleDisplayNameChange = (text: string) => {

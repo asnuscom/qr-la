@@ -92,24 +92,6 @@ export default function SuperAdminDashboardScreen() {
   const [newAdminRole, setNewAdminRole] = useState<'superadmin' | 'moderator'>('superadmin');
   const [announcementText, setAnnouncementText] = useState('');
 
-  // Initial Auth Check
-  useEffect(() => {
-    if (Platform.OS === 'web' && typeof document !== 'undefined') {
-      document.title = 'Platform Süper Admin | QR-la';
-    }
-
-    async function checkAuth() {
-      setIsAuthenticating(true);
-      const ok = await adminService.checkAdminAuth();
-      setIsUnlocked(ok);
-      setIsAuthenticating(false);
-      if (ok) {
-        loadAllAdminData();
-      }
-    }
-    checkAuth();
-  }, []);
-
   const loadAllAdminData = async () => {
     setIsLoadingData(true);
     try {
@@ -138,6 +120,26 @@ export default function SuperAdminDashboardScreen() {
       setIsLoadingData(false);
     }
   };
+
+
+  // Initial Auth Check
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      document.title = 'Platform Süper Admin | QR-la';
+    }
+
+    async function checkAuth() {
+      setIsAuthenticating(true);
+      const ok = await adminService.checkAdminAuth();
+      setIsUnlocked(ok);
+      setIsAuthenticating(false);
+      if (ok) {
+        loadAllAdminData();
+      }
+    }
+    checkAuth();
+  }, []);
+
 
   const handleUnlockWithFirebase = async () => {
     if (!adminEmail.trim() || !adminPassword.trim()) {
